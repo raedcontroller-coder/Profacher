@@ -4,6 +4,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
+RUN npx prisma generate
 
 # Stage 2: Build the application
 FROM node:20-alpine AS builder
