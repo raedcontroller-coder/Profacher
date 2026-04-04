@@ -20,25 +20,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-          include: { role: true },
-        })
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+            include: { role: true },
+          })
 
-        if (!user || !user.passwordHash) return null
+          if (!user || !user.passwordHash) {
+            throw new Error("USER_NOT_FOUND_OR_NO_HASH")
+          }
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        )
+          const isValid = await bcrypt.compare(
+            credentials.password as string,
+            user.passwordHash
+          )
 
-        if (!isValid) return null
+          if (!isValid) {
+            throw new Error("INVALID_PASSWORD")
+          }
 
-        return {
-          id: user.id.toString(),
-          email: user.email,
-          name: user.fullName,
-          role: user.role.name,
+          return {
+            id: user.id.toString(),
+            email: user.email,
+            name: user.fullName,
+            role: user.role.name,
+          }
+        } catch (e: any) {
+          console.error("ERRO GRAVE NO AUTHORIZE:", e.message || e);
+          throw new Error("Detalhe_Authorize: " + (e.message || "Erro desconhecido"));
         }
       },
     }),

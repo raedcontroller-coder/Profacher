@@ -12,11 +12,14 @@ export async function loginAction(prevState: string | undefined, formData: FormD
     })
   } catch (error) {
     if (error instanceof AuthError) {
+      console.log("AuthError Capturado:", error.type, error.cause?.err?.message);
       switch (error.type) {
         case "CredentialsSignin":
-          return "E-mail ou senha incorretos."
+          return `[FALHA_DE_LOGIN]: ${error.cause?.err?.message || "Erro de credenciais genérico"}`;
+        case "CallbackRouteError":
+          return `[ERRO_NO_CATCH]: ${error.cause?.err?.message || "Erro de rota"}`;
         default:
-          return "Ocorreu um erro no servidor."
+          return `[ERRO_INTERNO]: ${error.type} - ${error.cause?.err?.message || "Desconhecido"}`;
       }
     }
     throw error
