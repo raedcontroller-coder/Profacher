@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique // "ADMIN", "COORDINATOR", "PROFESSOR", "STUDENT"
+  users User[]
+
+  @@map("roles")
+}
+
+model Institution {
+  id             Int      @id @default(autoincrement())
+  name           String
+  slug           String   @unique
+  apiKeyOpenai   String?  @map("api_key_openai")
+  users          User[]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("institutions")
+}
+
+model User {
+  id             Int          @id @default(autoincrement())
+  email          String       @unique
+  passwordHash   String       @map("password_hash")
+  fullName       String       @map("full_name")
+  roleId         Int          @map("role_id")
+  role           Role         @relation(fields: [roleId], references: [id])
+  institutionId  Int?         @map("institution_id")
+  institution    Institution? @relation(fields: [institutionId], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("users")
+}
