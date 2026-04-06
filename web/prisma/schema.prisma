@@ -29,16 +29,67 @@ model Institution {
 }
 
 model User {
-  id             Int          @id @default(autoincrement())
-  email          String       @unique
-  passwordHash   String       @map("password_hash")
-  fullName       String       @map("full_name")
-  roleId         Int          @map("role_id")
-  role           Role         @relation(fields: [roleId], references: [id])
-  institutionId  Int?         @map("institution_id")
-  institution    Institution? @relation(fields: [institutionId], references: [id])
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  fullName       String          @map("full_name")
+  roleId         Int             @map("role_id")
+  role           Role            @relation(fields: [roleId], references: [id])
+  institutionId  Int?            @map("institution_id")
+  institution    Institution?    @relation(fields: [institutionId], references: [id])
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  questionGroups QuestionGroup[]
+  questions      Question[]
 
   @@map("users")
+}
+
+// ─── Banco de Questões ──────────────────────────────────────────────────────
+
+model QuestionGroup {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  teacherId   Int        @map("teacher_id")
+  teacher     User       @relation(fields: [teacherId], references: [id])
+  questions   Question[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@map("question_groups")
+}
+
+model Question {
+  id        Int              @id @default(autoincrement())
+  content   String           // Suporta HTML, KaTeX, Markdown
+  type      QuestionType     // Enum para o tipo da questão
+  points    Float            @default(1.0)
+  teacherId Int              @map("teacher_id")
+  teacher   User             @relation(fields: [teacherId], references: [id])
+  groupId   Int?             @map("group_id") // NULL = Geral (sem grupo)
+  group     QuestionGroup?   @relation(fields: [groupId], references: [id])
+  options   QuestionOption[]
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         Int      @id @default(autoincrement())
+  content    String   // Texto da alternativa
+  isCorrect  Boolean  @default(false) @map("is_correct")
+  questionId Int      @map("question_id")
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("question_options")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE // Múltipla escolha A/B/C/D
+  TRUE_FALSE      // Verdadeiro ou Falso
+  ESSAY           // Dissertativa (corrigida pela IA)
+  MATH            // Cálculo/KaTeX (corrigida pela IA)
 }
