@@ -14,8 +14,6 @@ export default function LoginPage() {
         <img 
           src="/bg.png" 
           alt="Background" 
-          onLoad={() => console.log("SUCESSO: A imagem '/bg.png' foi encontrada e carregada com sucesso no fundo!")}
-          onError={() => console.error("ERRO DE ARQUIVO: A imagem não apareceu no fundo porque o arquivo 'bg.png' NÃO ESTÁ na pasta web/public/! Por favor, salve-a lá.")}
           className="w-full h-full object-cover opacity-70 blur-[20px] scale-110" 
         />
       </div>

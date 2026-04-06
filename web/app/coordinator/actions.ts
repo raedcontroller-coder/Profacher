@@ -25,13 +25,9 @@ export async function getInstitutionUsers() {
   })
 }
 
-export async function inviteUserAction(formData: FormData) {
+export async function inviteUserAction({ fullName, email, roleName = "PROFESSOR" }: { fullName: string, email: string, roleName?: string }) {
   const session = await auth()
   if (!session?.user) return { error: "Não autorizado" }
-
-  const fullName = formData.get("fullName") as string
-  const email = formData.get("email") as string
-  const roleName = formData.get("role") as string || "PROFESSOR"
 
   try {
     const currentUser = await prisma.user.findUnique({

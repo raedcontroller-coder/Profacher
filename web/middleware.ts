@@ -15,11 +15,13 @@ export default auth((req) => {
 export const config = {
   matcher: [
     /*
-     * Protege as rotas de Admin e Coordenador.
-     * Ignora arquivos estáticos (favicon, imagens, etc) e a própria API do NextAuth.
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (images, etc)
      */
-    "/admin/:path*",
-    "/coordinator/:path*",
-    "/((?!api|_next/static|_next/image|favicon.ico).*)"
+    '/((?!api|_next/static|_next/image|favicon.ico|bg.png|RaedLogo.svg).*)',
   ],
 };

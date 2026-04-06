@@ -1,66 +1,69 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
+import React from 'react';
 import { useState, useEffect, useTransition } from 'react';
-import { getInstitutionUsers, inviteUserAction, deleteUserAction } from './actions';
 import { useSession, signOut } from 'next-auth/react';
+import Link from 'next/link';
+import { getInstitutionUsers, inviteUserAction, deleteUserAction } from './actions';
 
 const navItems = [
-  { icon: 'dashboard', label: 'Dashboard', href: '/coordinator', active: false },
-  { icon: 'quiz', label: 'Provas', href: '/coordinator/exams', active: false },
+  { icon: 'dashboard', label: 'Dashboard', href: '/coordinator', active: true },
+  { icon: 'description', label: 'Provas', href: '/coordinator/exams', active: false },
   { icon: 'analytics', label: 'Resultados', href: '/coordinator/results', active: false },
-  { icon: 'group', label: 'Gestão de Usuários', href: '/coordinator/users', active: true },
+  { icon: 'group', label: 'Gestão de Usuários', href: '/coordinator', active: true },
   { icon: 'settings', label: 'Configurações', href: '/coordinator/settings', active: false },
 ];
 
 function Sidebar() {
   return (
-    <aside className="h-screen w-64 fixed left-0 top-0 flex flex-col bg-[#1b1c1d] shadow-[12px_0_32px_rgba(0,0,0,0.4)] z-50">
-      <div className="flex flex-col h-full py-6">
-        <div className="px-6 mb-10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-lg">
-              <span className="material-symbols-outlined text-on-primary-container text-base">auto_awesome</span>
-            </div>
-            <div>
-              <h1 className="text-base font-bold tracking-tighter text-primary font-['Inter']">Profacher</h1>
-              <p className="text-[9px] font-['Inter'] uppercase tracking-widest text-gray-500">Elite Examination System</p>
-            </div>
-          </div>
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#121315]/80 backdrop-blur-xl border-r border-outline-variant/10 z-50 flex flex-col p-4">
+      <div className="flex items-center gap-3 px-4 py-8 mb-4">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+          <span className="material-symbols-outlined text-black font-bold">menu_book</span>
         </div>
-
-        <nav className="flex-1 space-y-1 px-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                item.active
-                  ? 'bg-[#343536]/60 backdrop-blur-md text-primary shadow-inner'
-                  : 'text-gray-400 hover:text-white hover:bg-[#1f2021]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-xl">{item.icon}</span>
-              <span className="font-['Inter'] font-medium text-sm tracking-tight">{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="px-4 mb-4">
-          <button className="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-bold py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-2 text-sm font-['Inter']">
-            <span className="material-symbols-outlined text-base">add</span>
-            Nova Prova
-          </button>
+        <div>
+          <h1 className="text-on-surface font-bold text-lg tracking-tight font-['Inter']">Profacher</h1>
+          <p className="text-[10px] text-primary font-['Inter'] uppercase tracking-widest font-bold">Elite Examination System</p>
         </div>
+      </div>
 
+      <nav className="flex-1 space-y-1">
+        {navItems.map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+              item.active 
+                ? 'bg-primary/10 text-primary' 
+                : 'text-gray-400 hover:text-white hover:bg-[#1f2021]'
+            }`}
+          >
+            <span className={`material-symbols-outlined text-xl ${item.active ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>
+              {item.icon}
+            </span>
+            <span className="font-['Inter'] font-medium text-sm">{item.label}</span>
+          </Link>
+        ))}
+      </nav>
+
+      <div className="mt-auto space-y-4">
+        <Link href="/coordinator/new-exam" className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 rounded-2xl border border-primary/20 group shadow-lg">
+          <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">add_circle</span>
+          <span className="font-['Inter'] font-bold text-sm">Nova Prova</span>
+        </Link>
+        
         <div className="border-t border-outline-variant/10 pt-4 px-2 space-y-1">
           <button 
-            onClick={() => signOut({ callbackUrl: '/login' })} 
+            onClick={() => signOut({ callbackUrl: '/login' })}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2021] transition-colors"
           >
             <span className="material-symbols-outlined text-xl">logout</span>
             <span className="font-['Inter'] font-medium text-sm">Sair</span>
           </button>
+        </div>
+
+        <div className="px-4 py-4 opacity-40 hover:opacity-100 transition-opacity flex justify-center text-white">
+          <img src="/RaedLogo.svg" alt="Raed Technology" className="h-6 brightness-0 invert" />
         </div>
       </div>
     </aside>
@@ -88,21 +91,43 @@ function TopBar({ userName }: { userName: string }) {
   );
 }
 
-function InviteCard() {
-  const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+function MetricCard() {
+  return (
+    <div className="col-span-12 lg:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden group shadow-2xl">
+      <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
+      <div className="relative z-10">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-2 py-0.5 bg-primary/10 text-primary font-['Inter'] text-[10px] uppercase tracking-widest rounded">AI Intelligence Hub</span>
+        </div>
+        <h3 className="text-gray-400 font-medium text-sm mb-1 font-['Inter']">Total de Tokens Consumidos</h3>
+        <p className="text-4xl font-bold tracking-tighter text-on-surface font-['Inter']">
+          0.0M <span className="text-sm font-normal text-gray-500 font-['Inter']">/ 20M</span>
+        </p>
+      </div>
+      <div className="mt-6 space-y-2">
+        <div className="flex justify-between text-[10px] font-['Inter'] text-gray-500 uppercase tracking-widest">
+          <span>Cota Mensal</span>
+          <span>0% Utilizado</span>
+        </div>
+        <div className="h-1.5 w-full bg-outline-variant/20 rounded-full overflow-hidden">
+          <div className="h-full w-[2%] bg-primary rounded-full shadow-[0_0_10px_rgba(192,193,255,0.5)]" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  async function handleSubmit(formData: FormData) {
-    setMessage(null);
+function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: string }) => void }) {
+  const [isPending, startTransition] = useTransition();
+
+  const handleSubmit = (formData: FormData) => {
+    const fullName = formData.get('fullName') as string;
+    const email = formData.get('email') as string;
+
     startTransition(async () => {
-      const result = await inviteUserAction(formData);
-      if (result.error) {
-        setMessage({ type: 'error', text: result.error });
-      } else {
-        setMessage({ type: 'success', text: "Convite enviado com sucesso!" });
-      }
+      onInvite({ fullName, email });
     });
-  }
+  };
 
   return (
     <div className="col-span-12 lg:col-span-8 liquid-glass rounded-2xl p-8 flex flex-col justify-between shadow-2xl">
@@ -143,11 +168,6 @@ function InviteCard() {
           </button>
         </div>
       </form>
-      {message && (
-        <p className={`mt-4 text-xs font-['Inter'] ${message.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
-          {message.text}
-        </p>
-      )}
     </div>
   );
 }
@@ -159,7 +179,7 @@ function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete:
         <div className="flex items-center gap-6">
           <h3 className="font-bold text-2xl font-['Inter']">Diretório de Usuários</h3>
           <div className="h-8 w-px bg-outline-variant/30" />
-          <span className="text-sm font-['Inter'] text-gray-500 tracking-widest">{users.length} USUÁRIOS ATIVOS</span>
+          <span className="text-sm font-['Inter'] text-gray-500 tracking-widest uppercase">{users.length} USUÁRIOS ATIVOS</span>
         </div>
       </div>
 
@@ -220,7 +240,7 @@ function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete:
 }
 
 export default function CoordinatorPage() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -232,7 +252,7 @@ export default function CoordinatorPage() {
       const data = await getInstitutionUsers();
       setUsers(data);
     } catch (error) {
-      console.error(error);
+      console.error("Erro:", error);
     } finally {
       setLoading(false);
     }
@@ -242,63 +262,59 @@ export default function CoordinatorPage() {
     loadUsers();
   }, []);
 
+  async function handleInvite(data: { fullName: string, email: string }) {
+    const result = await inviteUserAction(data);
+    if (result?.error) {
+      alert(result.error);
+    } else {
+      alert("Usuário convidado com sucesso!");
+      loadUsers();
+    }
+  }
+
   async function handleDelete(id: number) {
-    const res = await deleteUserAction(id);
-    if (res.success) {
+    const result = await deleteUserAction(id);
+    if (result.error) {
+      alert(result.error);
+    } else {
       loadUsers();
     }
   }
 
   return (
-    <div className="bg-[#121315] min-h-screen text-on-surface font-['Inter']">
+    <div className="bg-[#121315] min-h-screen text-on-surface font-['Inter'] relative overflow-hidden">
+      {/* BACKGROUND IMAGE - RESTORED */}
+      <div 
+        className="fixed inset-0 z-0 opacity-40 pointer-events-none bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/bg.png')" }}
+      />
+      
       <Sidebar />
       <TopBar userName={currentUserName} />
 
-      <main className="pl-64 pt-16 min-h-screen">
+      <main className="pl-64 pt-16 min-h-screen relative z-10">
         <div className="p-12 max-w-[1700px] mx-auto space-y-10">
           <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-3">
               <h2 className="text-4xl font-bold tracking-tight text-on-surface font-['Inter']">Gestão da Instituição</h2>
-              <p className="text-on-surface-variant text-lg max-w-3xl font-['Inter']">
+              <p className="text-on-surface-variant text-lg max-w-3xl font-['Inter'] leading-relaxed">
                 Controle o acesso, monitore o uso de IA e gerencie o pessoal do ecossistema acadêmico.
               </p>
             </div>
             <div className="flex items-end justify-end">
-              <div className="w-full max-w-xs space-y-1 text-right">
-                <label className="font-['Inter'] text-[10px] uppercase tracking-widest text-primary/70 mr-1">Instituição Atual</label>
-                <div className="liquid-glass p-3 rounded-xl flex items-center justify-between cursor-pointer group hover:bg-[#343536]/80 transition-all">
+              <div className="w-full max-w-xs space-y-1 text-right text-gray-500 uppercase font-['Inter'] text-[10px] tracking-widest">
+                <span>Instituição Atual</span>
+                <div className="liquid-glass p-3 rounded-xl flex items-center justify-between mt-1">
                   <span className="material-symbols-outlined text-primary">account_balance</span>
-                  <span className="font-bold text-sm tracking-tight font-['Inter']">Colégio FECAP</span>
+                  <span className="font-bold text-sm tracking-tight text-on-surface">Colégio FECAP</span>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 lg:col-span-4 bg-[#1f2021] rounded-xl p-6 relative overflow-hidden flex flex-col justify-between group">
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                <span className="material-symbols-outlined text-[96px]">neurology</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="px-2 py-0.5 bg-primary/10 text-primary font-['Berkeley_Mono'] text-[10px] uppercase tracking-widest rounded">AI Intelligence Hub</span>
-                </div>
-                <h3 className="text-gray-400 font-medium text-sm mb-1 font-['Inter']">Total de Tokens Consumidos</h3>
-                <p className="text-4xl font-bold tracking-tighter text-on-surface font-['Inter']">
-                  0.0M <span className="text-sm font-normal text-gray-500 font-['Berkeley_Mono']">/ 20M</span>
-                </p>
-              </div>
-              <div className="mt-6 space-y-2">
-                <div className="flex justify-between text-[10px] font-['Berkeley_Mono'] text-gray-500 uppercase">
-                  <span>Cota Mensal</span>
-                  <span>0% Utilizado</span>
-                </div>
-                <div className="h-1.5 w-full bg-[#292a2b] rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-primary to-primary-container w-[0%]" />
-                </div>
-              </div>
-            </div>
-            <InviteCard />
+          <section className="grid grid-cols-12 gap-8">
+            <MetricCard />
+            <InviteCard onInvite={handleInvite} />
           </section>
 
           {loading ? (
