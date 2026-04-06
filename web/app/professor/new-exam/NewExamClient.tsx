@@ -6,6 +6,7 @@ import TopBar from '@/components/dashboard/TopBar';
 import { saveExam } from './actions';
 import { useRouter } from 'next/navigation';
 import ImportQuestionModal from './ImportQuestionModal';
+import RichTextEditor from '@/components/shared/RichTextEditor';
 
 interface QuestionInput {
   content: string;
@@ -50,8 +51,9 @@ export default function NewExamClient({ userName }: { userName: string }) {
     
     if (newType === 'TRUE_FALSE') {
       newQs[qIndex].options = [
-        { content: 'Verdadeiro', isCorrect: true },
-        { content: 'Falso', isCorrect: false }
+        { content: '', isCorrect: true },
+        { content: '', isCorrect: false },
+        { content: '', isCorrect: true }
       ];
     } else if (newType === 'ESSAY' || newType === 'MATH') {
       newQs[qIndex].options = [];
@@ -66,11 +68,23 @@ export default function NewExamClient({ userName }: { userName: string }) {
     setQuestions(newQs);
   }
 
+  function addOption(qIndex: number) {
+    const newQs = [...questions];
+    newQs[qIndex].options.push({ content: '', isCorrect: false });
+    setQuestions(newQs);
+  }
+
+  function removeOption(qIndex: number, oIndex: number) {
+    const newQs = [...questions];
+    newQs[qIndex].options = newQs[qIndex].options.filter((_, i) => i !== oIndex);
+    setQuestions(newQs);
+  }
+
   function handleImportQuestions(importedQuestions: any[]) {
     const formatted: QuestionInput[] = importedQuestions.map(q => ({
       content: q.content,
       type: q.type,
-      points: 1.0, // Pontuação padrão para itens importados
+      points: 1.0, 
       referenceAnswer: q.referenceAnswer || '',
       options: q.options.map((opt: any) => ({
         content: opt.content,
@@ -277,15 +291,14 @@ export default function NewExamClient({ userName }: { userName: string }) {
 
                                 {/* Corpo da Questão */}
                                 <div className="space-y-8">
-                                    <textarea 
-                                        placeholder="Clique aqui para digitar o enunciado da questão..."
-                                        className="w-full bg-transparent text-2xl font-medium outline-none border-b border-outline-variant focus:border-primary py-4 min-h-[120px] resize-none transition-all placeholder:text-gray-700"
+                                    <RichTextEditor 
                                         value={q.content}
-                                        onChange={e => {
+                                        onChange={(val) => {
                                             const newQs = [...questions];
-                                            newQs[qIndex].content = e.target.value;
+                                            newQs[qIndex].content = val;
                                             setQuestions(newQs);
                                         }}
+                                        placeholder="Clique aqui para digitar o enunciado da questão..."
                                     />
 
                                     {/* Gabarito de Referência para Dissertativas */}
@@ -312,34 +325,68 @@ export default function NewExamClient({ userName }: { userName: string }) {
                                         </div>
                                     )}
                                     
-                                    {/* Alternativas para Objetivas */}
+                                    {/* Alternativas para Objetivas e V/F */}
                                     {q.type !== 'ESSAY' && q.type !== 'MATH' && (
                                         <div className="space-y-6 pt-4 animate-in fade-in duration-500">
                                             <div className="flex items-center justify-between mb-2">
                                                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">
-                                                    {q.type === 'TRUE_FALSE' ? 'Selecione a resposta correta' : 'Defina as alternativas (marque a correta)'}
+                                                    {q.type === 'TRUE_FALSE' ? 'Defina as afirmações e seus gabaritos (V/F)' : 'Defina as alternativas (marque a correta)'}
                                                 </p>
+                                                <button 
+                                                    onClick={() => addOption(qIndex)}
+                                                    className="text-xs font-bold text-primary flex items-center gap-2 hover:underline"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">add_circle</span>
+                                                    {q.type === 'TRUE_FALSE' ? 'Adicionar Afirmação' : 'Adicionar Alternativa'}
+                                                </button>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 gap-6">
                                             {q.options.map((opt, oIndex) => (
                                                 <div key={oIndex} className="flex items-center gap-4 group/opt">
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const newQs = [...questions];
-                                                            newQs[qIndex].options = newQs[qIndex].options.map((o, idx) => ({ ...o, isCorrect: idx === oIndex }));
-                                                            setQuestions(newQs);
-                                                        }}
-                                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all font-bold shrink-0 ${opt.isCorrect ? 'bg-primary text-black border-primary scale-110 shadow-lg shadow-primary/20' : 'border-outline-variant text-gray-600 hover:border-primary/50'}`}
-                                                    >
-                                                        {opt.isCorrect ? (
-                                                            <span className="material-symbols-outlined">done</span>
-                                                        ) : (
-                                                            String.fromCharCode(65 + oIndex)
-                                                        )}
-                                                    </button>
+                                                    {q.type === 'TRUE_FALSE' ? (
+                                                        <div className="flex gap-2 shrink-0">
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newQs = [...questions];
+                                                                    newQs[qIndex].options[oIndex].isCorrect = true;
+                                                                    setQuestions(newQs);
+                                                                }}
+                                                                className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all font-bold ${opt.isCorrect ? 'bg-green-500 text-black border-green-500 scale-110 shadow-lg shadow-green-500/20' : 'border-outline-variant text-gray-600 hover:border-green-500/50'}`}
+                                                            >
+                                                                V
+                                                            </button>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newQs = [...questions];
+                                                                    newQs[qIndex].options[oIndex].isCorrect = false;
+                                                                    setQuestions(newQs);
+                                                                }}
+                                                                className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all font-bold ${!opt.isCorrect ? 'bg-red-500 text-black border-red-500 scale-110 shadow-lg shadow-red-500/20' : 'border-outline-variant text-gray-600 hover:border-red-500/50'}`}
+                                                            >
+                                                                F
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newQs = [...questions];
+                                                                newQs[qIndex].options = newQs[qIndex].options.map((o, idx) => ({ ...o, isCorrect: idx === oIndex }));
+                                                                setQuestions(newQs);
+                                                            }}
+                                                            className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all font-bold shrink-0 ${opt.isCorrect ? 'bg-primary text-black border-primary scale-110 shadow-lg shadow-primary/20' : 'border-outline-variant text-gray-600 hover:border-primary/50'}`}
+                                                        >
+                                                            {opt.isCorrect ? (
+                                                                <span className="material-symbols-outlined">done</span>
+                                                            ) : (
+                                                                String.fromCharCode(65 + oIndex)
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    
                                                     <input 
-                                                        readOnly={q.type === 'TRUE_FALSE'}
                                                         className={`flex-1 bg-white/5 border rounded-2xl p-5 outline-none transition-all ${opt.isCorrect ? 'border-primary/40 text-on-surface font-bold' : 'border-outline-variant focus:border-primary text-gray-400'}`}
                                                         value={opt.content}
                                                         onChange={e => {
@@ -347,8 +394,17 @@ export default function NewExamClient({ userName }: { userName: string }) {
                                                             newQs[qIndex].options[oIndex].content = e.target.value;
                                                             setQuestions(newQs);
                                                         }}
-                                                        placeholder={`Texto da alternativa ${String.fromCharCode(65 + oIndex)}...`}
+                                                        placeholder={q.type === 'TRUE_FALSE' ? "Digite a afirmação..." : `Texto da alternativa ${String.fromCharCode(65 + oIndex)}...`}
                                                     />
+                                                    
+                                                    {q.options.length > 2 && (
+                                                        <button 
+                                                            onClick={() => removeOption(qIndex, oIndex)}
+                                                            className="text-gray-600 hover:text-red-500 p-2 opacity-0 group-hover/opt:opacity-100 transition-opacity"
+                                                        >
+                                                            <span className="material-symbols-outlined">close</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             ))}
                                             </div>
