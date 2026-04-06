@@ -5,91 +5,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { getInstitutionUsers, inviteUserAction, deleteUserAction } from './actions';
+import Sidebar from '@/components/dashboard/Sidebar';
+import TopBar from '@/components/dashboard/TopBar';
 
-const navItems = [
-  { icon: 'dashboard', label: 'Dashboard', href: '/coordinator', active: true },
-  { icon: 'description', label: 'Provas', href: '/coordinator/exams', active: false },
-  { icon: 'analytics', label: 'Resultados', href: '/coordinator/results', active: false },
-  { icon: 'group', label: 'Gestão de Usuários', href: '/coordinator', active: true },
-  { icon: 'settings', label: 'Configurações', href: '/coordinator/settings', active: false },
-];
-
-function Sidebar() {
-  return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#121315]/80 backdrop-blur-xl border-r border-outline-variant/10 z-50 flex flex-col p-4">
-      <div className="flex items-center gap-3 px-4 py-8 mb-4">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-          <span className="material-symbols-outlined text-black font-bold">menu_book</span>
-        </div>
-        <div>
-          <h1 className="text-on-surface font-bold text-lg tracking-tight font-['Inter']">Profacher</h1>
-          <p className="text-xs text-primary font-['Inter'] uppercase tracking-widest font-bold">Elite Examination System</p>
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
-              item.active 
-                ? 'bg-primary/10 text-primary' 
-                : 'text-gray-400 hover:text-white hover:bg-[#1f2021]'
-            }`}
-          >
-            <span className={`material-symbols-outlined text-xl ${item.active ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>
-              {item.icon}
-            </span>
-            <span className="font-['Inter'] font-medium text-sm">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      <div className="mt-auto space-y-4">
-        <Link href="/coordinator/new-exam" className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 rounded-2xl border border-primary/20 group shadow-lg">
-          <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">add_circle</span>
-          <span className="font-['Inter'] font-bold text-sm">Nova Prova</span>
-        </Link>
-        
-        <div className="border-t border-outline-variant/10 pt-4 px-2 space-y-1">
-          <button 
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2021] transition-colors"
-          >
-            <span className="material-symbols-outlined text-xl">logout</span>
-            <span className="font-['Inter'] font-medium text-sm">Sair</span>
-          </button>
-        </div>
-
-        <div className="px-4 py-4 opacity-40 hover:opacity-100 transition-opacity flex justify-center text-white">
-          <img src="/RaedLogo.svg" alt="Raed Technology" className="h-6 brightness-0 invert" />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function TopBar({ userName }: { userName: string }) {
-  return (
-    <header className="fixed top-0 right-0 left-64 h-16 z-40 bg-[#121315]/80 backdrop-blur-xl flex justify-between items-center px-8 border-b border-outline-variant/10">
-      <div className="flex items-center gap-8">
-        <span className="font-['Inter'] text-sm uppercase tracking-widest text-gray-400">Exam Intelligence</span>
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-3 pl-4 border-l border-outline-variant/20">
-          <div className="text-right">
-            <p className="text-xs font-['Inter'] uppercase tracking-tighter text-gray-500">Coordenadora</p>
-            <p className="text-xs font-bold text-on-surface font-['Inter']">{userName}</p>
-          </div>
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-primary-container flex items-center justify-center font-bold text-sm ring-2 ring-primary/20 font-['Inter']">
-            {userName === "Carregando..." || userName === "Usuário" ? "?" : userName.split(' ').map(n => n[0]).join('')}
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function MetricCard() {
   return (
@@ -294,8 +212,8 @@ export default function CoordinatorClient({ initialUserName }: { initialUserName
         style={{ backgroundImage: "url('/bg.png')" }}
       />
       
-      <Sidebar />
-      <TopBar userName={currentUserName} />
+      <Sidebar role="COORDENADOR" />
+      <TopBar userName={currentUserName} roleLabel="Coordenadora" />
 
       <main className="pl-64 pt-16 min-h-screen relative z-10">
         <div className="p-12 max-w-[1700px] mx-auto space-y-10">
