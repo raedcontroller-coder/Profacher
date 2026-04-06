@@ -36,13 +36,13 @@ async function main() {
       where: { email: adminEmail },
       update: {
         passwordHash: hashedPassword,
-        fullName: 'Glen Arison (Global Admin)',
+        fullName: 'Glen',
         roleId: adminRole.id,
       },
       create: {
         email: adminEmail,
         passwordHash: hashedPassword,
-        fullName: 'Glen Arison (Global Admin)',
+        fullName: 'Glen',
         roleId: adminRole.id,
       },
     })
