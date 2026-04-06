@@ -1,18 +1,20 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
+import Image from '@tiptap/extension-image'
 import { 
   Bold, 
   Italic, 
   Underline as UnderlineIcon, 
   List, 
   ListOrdered, 
-  Quote,
+  ImageIcon,
   Undo,
-  Redo
+  Redo,
+  Loader2
 } from 'lucide-react'
 
 interface RichTextEditorProps {
@@ -21,7 +23,7 @@ interface RichTextEditorProps {
   placeholder?: string;
 }
 
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor, onImageUpload, isUploading }: { editor: any, onImageUpload: () => void, isUploading: boolean }) => {
   if (!editor) return null
 
   const items = [
@@ -42,6 +44,16 @@ const MenuBar = ({ editor }: { editor: any }) => {
       title: 'Sublinhado',
       action: () => editor.chain().focus().toggleUnderline().run(),
       isActive: () => editor.isActive('underline'),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      icon: isUploading ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />,
+      title: 'Inserir Imagem',
+      action: onImageUpload,
+      isActive: () => false,
+      disabled: isUploading
     },
     {
       type: 'divider',
@@ -81,12 +93,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
         ) : (
           <button
             key={index}
+            disabled={item.disabled}
             onClick={(e) => {
                 e.preventDefault();
                 item.action();
             }}
             title={item.title}
-            className={`p-2 rounded-xl transition-all hover:bg-primary/20 hover:text-primary ${
+            className={`p-2 rounded-xl transition-all hover:bg-primary/20 hover:text-primary disabled:opacity-50 ${
               item.isActive?.() ? 'bg-primary text-black hover:bg-primary hover:text-black' : 'text-gray-400'
             }`}
           >
@@ -99,10 +112,19 @@ const MenuBar = ({ editor }: { editor: any }) => {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = React.useState(false)
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
+      Image.configure({
+        allowBase64: true,
+        HTMLAttributes: {
+          class: 'rounded-2xl border border-white/10 my-4 max-w-full h-auto shadow-xl',
+        },
+      }),
     ],
     immediatelyRender: false,
     content: value,
@@ -123,9 +145,52 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     }
   }, [value, editor])
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !editor) return
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.url) {
+        editor.chain().focus().setImage({ src: data.url }).run()
+      } else {
+        alert('Erro ao fazer upload da imagem: ' + (data.error || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro no upload:', error)
+      alert('Erro inesperado no servidor de imagens.')
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="w-full group/editor">
-      <MenuBar editor={editor} />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*"
+        onChange={handleImageUpload}
+      />
+      
+      <MenuBar 
+        editor={editor} 
+        onImageUpload={() => fileInputRef.current?.click()} 
+        isUploading={isUploading}
+      />
+
       <div className="bg-white/5 border border-outline-variant rounded-[2.5rem] overflow-hidden focus-within:border-primary transition-all group-hover/editor:border-white/20 relative">
         <EditorContent editor={editor} />
         {!editor?.getText() && placeholder && (
@@ -154,6 +219,19 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
           padding-left: 1em;
           font-style: italic;
           opacity: 0.8;
+        }
+        .ProseMirror img {
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+        .ProseMirror img:hover {
+          transform: scale(1.01);
+        }
+        .ProseMirror img.ProseMirror-selectednode {
+          outline: 3px solid #00F5D4;
         }
       `}</style>
     </div>
