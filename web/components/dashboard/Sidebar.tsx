@@ -27,13 +27,24 @@ const adminNavItems: NavItem[] = [
   { icon: 'settings', label: 'Configurações', href: '/admin/settings' },
 ];
 
+const professorNavItems: NavItem[] = [
+  { icon: 'dashboard', label: 'Dashboard', href: '/professor' },
+  { icon: 'inventory_2', label: 'Banco de Questões', href: '/professor/questions' },
+  { icon: 'school', label: 'Minhas Classes', href: '/professor/classes' },
+  { icon: 'description', label: 'Provas', href: '/professor/exams' },
+  { icon: 'analytics', label: 'Desempenho', href: '/professor/analytics' },
+];
+
 interface SidebarProps {
-  role: 'ADMIN' | 'COORDENADOR';
+  role: 'ADMIN' | 'COORDENADOR' | 'PROFESSOR';
 }
 
 export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
-  const navItems = role === 'ADMIN' ? adminNavItems : coordinatorNavItems;
+  
+  let navItems = adminNavItems;
+  if (role === 'COORDENADOR') navItems = coordinatorNavItems;
+  if (role === 'PROFESSOR') navItems = professorNavItems;
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#121315]/80 backdrop-blur-xl border-r border-outline-variant z-50 flex flex-col p-4 font-['Inter']">
@@ -70,8 +81,8 @@ export default function Sidebar({ role }: SidebarProps) {
       </nav>
 
       <div className="mt-auto space-y-4">
-        {role === 'COORDENADOR' && (
-          <Link href="/coordinator/new-exam" className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-5 rounded-2xl border border-primary/20 group shadow-lg">
+        {(role === 'COORDENADOR' || role === 'PROFESSOR') && (
+          <Link href={role === 'COORDENADOR' ? "/coordinator/new-exam" : "/professor/new-exam"} className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-5 rounded-2xl border border-primary/20 group shadow-lg">
             <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">add_circle</span>
             <span className="font-bold text-body">Nova Prova</span>
           </Link>

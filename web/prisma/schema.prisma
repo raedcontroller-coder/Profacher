@@ -41,6 +41,7 @@ model User {
   updatedAt      DateTime        @updatedAt @map("updated_at")
   questionGroups QuestionGroup[]
   questions      Question[]
+  exams          Exam[]
 
   @@map("users")
 }
@@ -61,17 +62,19 @@ model QuestionGroup {
 }
 
 model Question {
-  id        Int              @id @default(autoincrement())
-  content   String           // Suporta HTML, KaTeX, Markdown
-  type      QuestionType     // Enum para o tipo da questão
-  points    Float            @default(1.0)
-  teacherId Int              @map("teacher_id")
-  teacher   User             @relation(fields: [teacherId], references: [id])
-  groupId   Int?             @map("group_id") // NULL = Geral (sem grupo)
-  group     QuestionGroup?   @relation(fields: [groupId], references: [id])
-  options   QuestionOption[]
-  createdAt DateTime         @default(now()) @map("created_at")
-  updatedAt DateTime         @updatedAt @map("updated_at")
+  id              Int              @id @default(autoincrement())
+  content         String           // Suporta HTML, KaTeX, Markdown
+  type            QuestionType     // Enum para o tipo da questão
+  points          Float            @default(1.0)
+  teacherId       Int              @map("teacher_id")
+  teacher         User             @relation(fields: [teacherId], references: [id])
+  groupId         Int?             @map("group_id") // NULL = Geral (sem grupo)
+  group           QuestionGroup?   @relation(fields: [groupId], references: [id])
+  referenceAnswer String?          @map("reference_answer") // Gabarito oficial para IA (Dissertativa/Math)
+  options         QuestionOption[]
+  exams           ExamQuestion[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   @@map("questions")
 }
@@ -85,6 +88,32 @@ model QuestionOption {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("question_options")
+}
+
+// ─── Sistema de Provas ──────────────────────────────────────────────────────
+
+model Exam {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String?
+  teacherId   Int            @map("teacher_id")
+  teacher     User           @relation(fields: [teacherId], references: [id])
+  questions   ExamQuestion[]
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id         Int      @id @default(autoincrement())
+  examId     Int      @map("exam_id")
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionId Int      @map("question_id")
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int      @default(0)
+
+  @@map("exam_questions")
 }
 
 enum QuestionType {
