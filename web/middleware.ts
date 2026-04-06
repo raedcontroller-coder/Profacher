@@ -13,5 +13,13 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    /*
+     * Protege as rotas de Admin e Coordenador.
+     * Ignora arquivos estáticos (favicon, imagens, etc) e a própria API do NextAuth.
+     */
+    "/admin/:path*",
+    "/coordinator/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)"
+  ],
 };

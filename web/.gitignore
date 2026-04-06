@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 /app/generated/prisma
+
+# Credentials
+user.md
+
+# Test scripts
+test-prisma.ts
+test-pg.ts
