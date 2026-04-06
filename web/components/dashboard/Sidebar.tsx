@@ -36,14 +36,14 @@ export default function Sidebar({ role }: SidebarProps) {
   const navItems = role === 'ADMIN' ? adminNavItems : coordinatorNavItems;
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#121315]/80 backdrop-blur-xl border-r border-outline-variant/10 z-50 flex flex-col p-4 font-['Inter']">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#121315]/80 backdrop-blur-xl border-r border-outline-variant z-50 flex flex-col p-4 font-['Inter']">
       <div className="flex items-center gap-3 px-4 py-8 mb-4">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
           <span className="material-symbols-outlined text-black font-bold">menu_book</span>
         </div>
         <div>
-          <h1 className="text-on-surface font-bold text-lg tracking-tight">Profacher</h1>
-          <p className="text-xs text-primary uppercase tracking-widest font-bold">Elite Examination System</p>
+          <h1 className="text-on-surface font-bold text-2xl tracking-tight">Profacher</h1>
+          <p className="text-caption text-primary font-bold">Elite Examination System</p>
         </div>
       </div>
 
@@ -60,10 +60,10 @@ export default function Sidebar({ role }: SidebarProps) {
                   : 'text-gray-400 hover:text-white hover:bg-[#1f2021]'
               }`}
             >
-              <span className={`material-symbols-outlined text-xl ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>
+              <span className={`material-symbols-outlined text-2xl ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>
                 {item.icon}
               </span>
-              <span className="font-medium text-sm">{item.label}</span>
+              <span className="font-bold text-body">{item.label}</span>
             </Link>
           );
         })}
@@ -71,19 +71,19 @@ export default function Sidebar({ role }: SidebarProps) {
 
       <div className="mt-auto space-y-4">
         {role === 'COORDENADOR' && (
-          <Link href="/coordinator/new-exam" className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 rounded-2xl border border-primary/20 group shadow-lg">
-            <span className="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">add_circle</span>
-            <span className="font-bold text-sm">Nova Prova</span>
+          <Link href="/coordinator/new-exam" className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-5 rounded-2xl border border-primary/20 group shadow-lg">
+            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">add_circle</span>
+            <span className="font-bold text-body">Nova Prova</span>
           </Link>
         )}
         
-        <div className="border-t border-outline-variant/10 pt-4 px-2 space-y-1">
+        <div className="border-t border-outline-variant pt-4 px-2 space-y-1">
           <button 
             onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2021] transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-4 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2021] transition-colors"
           >
-            <span className="material-symbols-outlined text-xl">logout</span>
-            <span className="font-medium text-sm">Sair</span>
+            <span className="material-symbols-outlined text-2xl">logout</span>
+            <span className="font-bold text-body">Sair</span>
           </button>
         </div>
 

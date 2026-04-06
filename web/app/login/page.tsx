@@ -66,7 +66,7 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <label className="font-mono text-xs uppercase tracking-[0.2em] text-outline ml-1" htmlFor="email">E-mail Acadêmico</label>
+                <label className="font-mono text-xs uppercase tracking-[0.2em] text-on-surface-variant ml-1" htmlFor="email">E-mail Acadêmico</label>
                 <div className="relative group">
                   <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-xl">alternate_email</span>
                   <input 
@@ -82,7 +82,7 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-end px-1">
-                  <label className="font-mono text-xs uppercase tracking-[0.2em] text-outline" htmlFor="password">Chave de Acesso</label>
+                  <label className="font-mono text-xs uppercase tracking-[0.2em] text-on-surface-variant" htmlFor="password">Chave de Acesso</label>
                   <a className="text-xs font-medium text-primary hover:text-primary-fixed transition-colors" href="#">Esqueceu a senha?</a>
                 </div>
                 <div className="relative group">

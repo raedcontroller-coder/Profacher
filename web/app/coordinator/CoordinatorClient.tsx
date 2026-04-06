@@ -15,19 +15,19 @@ function MetricCard() {
       <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
       <div className="relative z-10">
         <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-0.5 bg-primary/10 text-primary font-['Inter'] text-xs uppercase tracking-widest rounded">AI Intelligence Hub</span>
+          <span className="px-2 py-0.5 bg-primary/10 text-primary text-caption rounded">AI Intelligence Hub</span>
         </div>
-        <h3 className="text-gray-400 font-medium text-sm mb-1 font-['Inter']">Total de Tokens Consumidos</h3>
-        <p className="text-4xl font-bold tracking-tighter text-on-surface font-['Inter']">
-          0.0M <span className="text-sm font-normal text-gray-500 font-['Inter']">/ 20M</span>
+        <h3 className="text-gray-400 font-medium text-body-sm mb-1">Total de Tokens Consumidos</h3>
+        <p className="text-4xl font-bold tracking-tighter text-on-surface">
+          0.0M <span className="text-body font-normal text-gray-500">/ 20M</span>
         </p>
       </div>
       <div className="mt-6 space-y-2">
-        <div className="flex justify-between text-xs font-['Inter'] text-gray-500 uppercase tracking-widest">
+        <div className="flex justify-between text-caption text-gray-500">
           <span>Cota Mensal</span>
           <span>0% Utilizado</span>
         </div>
-        <div className="h-1.5 w-full bg-outline-variant/20 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full bg-outline-variant rounded-full overflow-hidden">
           <div className="h-full w-[2%] bg-primary rounded-full shadow-[0_0_10px_rgba(192,193,255,0.5)]" />
         </div>
       </div>
@@ -51,14 +51,14 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
     <div className="col-span-12 lg:col-span-8 liquid-glass rounded-2xl p-8 flex flex-col justify-between shadow-2xl">
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h3 className="font-bold text-2xl font-['Inter']">Cadastrar Novo Usuário</h3>
-          <p className="text-on-surface-variant text-base font-['Inter']">Conceder acesso a coordenadores ou professores.</p>
+          <h3 className="font-bold text-2xl">Cadastrar Novo Usuário</h3>
+          <p className="text-on-surface-variant text-body-lg">Conceder acesso a coordenadores ou professores.</p>
         </div>
         <span className="material-symbols-outlined text-primary/30 text-5xl">person_add</span>
       </div>
       <form action={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-1.5">
-          <label className="font-['Inter'] text-sm uppercase tracking-widest text-gray-400 ml-1">Nome Completo</label>
+          <label className="text-caption text-gray-400 ml-1">Nome Completo</label>
           <input
             name="fullName"
             required
@@ -67,7 +67,7 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
           />
         </div>
         <div className="space-y-1.5">
-          <label className="font-['Inter'] text-sm uppercase tracking-widest text-gray-400 ml-1">E-mail Institucional</label>
+          <label className="text-caption text-gray-400 ml-1">E-mail Institucional</label>
           <input
             name="email"
             type="email"
@@ -79,7 +79,7 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
         <div className="flex flex-col justify-end">
           <button 
             disabled={isPending}
-            className="w-full bg-primary hover:bg-primary-container text-black font-bold py-3.5 rounded-xl transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 font-['Inter'] text-base" 
+            className="btn-primary" 
             type="submit"
           >
             {isPending ? 'Processando...' : 'Enviar Convite'}
@@ -92,50 +92,50 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
 
 function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete: (id: number) => void, currentUserId?: string }) {
   return (
-    <section className="bg-[#1f2021] rounded-2xl overflow-hidden shadow-xl border border-outline-variant/10">
-      <div className="p-8 flex items-center justify-between bg-[#292a2b]/40 border-b border-outline-variant/10">
+    <section className="bg-[#1f2021] rounded-2xl overflow-hidden shadow-xl border border-outline-variant">
+      <div className="p-8 flex items-center justify-between bg-[#292a2b]/40 border-b border-outline-variant">
         <div className="flex items-center gap-6">
-          <h3 className="font-bold text-2xl font-['Inter']">Diretório de Usuários</h3>
-          <div className="h-8 w-px bg-outline-variant/30" />
-          <span className="text-sm font-['Inter'] text-gray-500 tracking-widest uppercase">{users.length} USUÁRIOS ATIVOS</span>
+          <h3 className="font-bold text-2xl">Diretório de Usuários</h3>
+          <div className="h-8 w-px bg-outline-variant" />
+          <span className="text-caption text-gray-500">{users.length} USUÁRIOS ATIVOS</span>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-[#292a2b]/20">
+        <table className="table-admin">
+          <thead>
             <tr>
               {['Pessoal', 'Cargo', 'Data de Criação', 'Ações'].map((h, i) => (
-                <th key={h} className={`px-8 py-5 font-['Inter'] text-sm uppercase tracking-widest text-gray-500 ${i === 3 ? 'text-right' : ''}`}>{h}</th>
+                <th key={h} className={i === 3 ? 'text-right' : ''}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant/5">
+          <tbody className="divide-y divide-outline-variant">
             {users.map((user) => {
               return (
                 <tr key={user.id} className="group hover:bg-[#343536]/40 transition-colors">
-                  <td className="px-8 py-6">
+                  <td>
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center font-bold text-primary text-lg border border-primary/20 font-['Inter'] shadow-inner">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center font-bold text-primary text-xl border border-primary/20 shadow-inner">
                         {user.fullName.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
-                        <p className="font-bold text-base font-['Inter']">{user.fullName}</p>
-                        <p className="text-sm text-gray-500 font-['Inter']">{user.email}</p>
+                        <p className="font-bold text-subtitle">{user.fullName}</p>
+                        <p className="text-body text-gray-500">{user.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6">
-                    <span className="px-3 py-1 rounded-lg text-xs font-['Inter'] font-bold border border-primary/20 bg-primary/5 text-primary uppercase tracking-wider">
+                  <td>
+                    <span className="px-3 py-1 rounded-lg text-body font-bold border border-primary/20 bg-primary/5 text-primary uppercase tracking-wider">
                       {user.role.name}
                     </span>
                   </td>
-                  <td className="px-8 py-6">
-                    <p className="text-sm text-on-surface-variant font-['Inter']">
+                  <td>
+                    <p className="text-body text-on-surface-variant">
                       {new Date(user.createdAt).toLocaleDateString('pt-BR')}
                     </p>
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="text-right">
                     {String(user.id) !== String(currentUserId) ? (
                       <button 
                         onClick={() => { if(confirm(`Excluir ${user.fullName}?`)) onDelete(user.id) }}
@@ -144,7 +144,7 @@ function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete:
                         <span className="material-symbols-outlined text-2xl">delete</span>
                       </button>
                     ) : (
-                      <span className="text-xs font-['Inter'] text-gray-500/50 italic px-4">Sua Conta</span>
+                      <span className="text-body text-gray-500/50 italic px-4">Sua Conta</span>
                     )}
                   </td>
                 </tr>
@@ -225,7 +225,7 @@ export default function CoordinatorClient({ initialUserName }: { initialUserName
               </p>
             </div>
             <div className="flex items-end justify-end">
-              <div className="w-full max-w-xs space-y-1 text-right text-gray-500 uppercase font-['Inter'] text-[10px] tracking-widest">
+              <div className="w-full max-w-xs space-y-1 text-right text-gray-500 uppercase font-['Inter'] text-base tracking-widest">
                 <span>Instituição Atual</span>
                 <div className="liquid-glass p-3 rounded-xl flex items-center justify-between mt-1">
                   <span className="material-symbols-outlined text-primary">account_balance</span>

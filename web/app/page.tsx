@@ -24,7 +24,7 @@ export default function Home() {
         <div className="w-full pt-4">
           <Link 
             href="/login"
-            className="w-full bg-surface-container-highest/50 border border-outline-variant/20 text-on-surface font-semibold py-4 rounded-xl hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-3 group relative"
+            className="w-full bg-surface-container-highest/50 border border-outline-variant text-on-surface font-semibold py-4 rounded-xl hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-3 group relative"
           >
             <span className="material-symbols-outlined">login</span>
             Acessar o Sistema

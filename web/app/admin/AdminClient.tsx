@@ -7,16 +7,16 @@ import TopBar from '@/components/dashboard/TopBar';
 
 function AdminMetricCard({ title, value, icon, subtitle }: { title: string, value: string, icon: string, subtitle?: string }) {
   return (
-    <div className="col-span-12 lg:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden group shadow-2xl border border-primary/5">
-      <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
+    <div className="col-span-12 lg:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden group shadow-2xl border border-primary">
+      <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary transition-all" />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
           <span className="material-symbols-outlined text-primary text-3xl">{icon}</span>
           {subtitle && (
-            <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs uppercase tracking-widest rounded">{subtitle}</span>
+            <span className="px-2 py-0.5 bg-primary/10 text-primary text-caption rounded">{subtitle}</span>
           )}
         </div>
-        <h3 className="text-gray-400 font-medium text-sm mb-1">{title}</h3>
+        <h3 className="text-gray-400 font-medium text-body-sm mb-1">{title}</h3>
         <p className="text-4xl font-bold tracking-tighter text-on-surface">{value}</p>
       </div>
     </div>
@@ -52,14 +52,14 @@ export default function AdminClient({ initialUserName }: { initialUserName?: str
               </p>
             </div>
             <div className="flex items-end justify-end">
-              <div className="w-full max-w-xs space-y-1 text-right text-gray-500 uppercase text-xs tracking-widest">
+              <div className="w-full max-w-xs space-y-1 text-right text-gray-500 uppercase text-caption">
                 <span>Status do Sistema</span>
                 <div className="liquid-glass p-3 rounded-xl flex items-center justify-between mt-1">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="font-bold text-sm tracking-tight text-on-surface">Operacional</span>
+                    <span className="font-bold text-body text-on-surface">Operacional</span>
                   </div>
-                  <span className="text-[10px] text-gray-500">v2.0.4-stable</span>
+                  <span className="text-caption text-gray-500/50">v2.0.5</span>
                 </div>
               </div>
             </div>
@@ -88,7 +88,7 @@ export default function AdminClient({ initialUserName }: { initialUserName?: str
           </section>
 
           {/* Global Construction Card */}
-          <section className="liquid-glass p-12 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-6 shadow-2xl border border-primary/5 min-h-[400px] relative overflow-hidden group">
+          <section className="liquid-glass p-12 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-6 shadow-2xl border border-primary min-h-[400px] relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             
             <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center relative z-10 mb-2">
@@ -105,10 +105,10 @@ export default function AdminClient({ initialUserName }: { initialUserName?: str
 
             <div className="relative z-10 pt-4">
               <div className="flex gap-4">
-                 <button className="px-8 py-3 bg-primary/10 text-primary border border-primary/20 rounded-xl font-bold hover:bg-primary hover:text-black transition-all">
+                 <button className="btn-primary px-10">
                    Ver Documentação
                  </button>
-                 <button className="px-8 py-3 bg-surface-container-highest/50 border border-outline-variant/10 rounded-xl font-bold hover:bg-white/5 transition-all">
+                 <button className="btn-secondary px-10">
                    Relatar Bug
                  </button>
               </div>
