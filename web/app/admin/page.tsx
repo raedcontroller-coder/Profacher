@@ -11,7 +11,7 @@ export default async function AdminPage() {
   }
 
   // Nome capturado direto do servidor
-  const userName = session.user.name || "Administrador"
+  const userName = session?.user?.name || "Administrador"
 
   return <AdminClient initialUserName={userName} />
 }

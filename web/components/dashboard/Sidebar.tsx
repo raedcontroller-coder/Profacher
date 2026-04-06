@@ -79,7 +79,7 @@ export default function Sidebar({ role }: SidebarProps) {
         
         <div className="border-t border-outline-variant/10 pt-4 px-2 space-y-1">
           <button 
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2021] transition-colors"
           >
             <span className="material-symbols-outlined text-xl">logout</span>
