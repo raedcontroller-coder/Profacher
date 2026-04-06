@@ -66,7 +66,7 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-outline ml-1" htmlFor="email">E-mail Acadêmico</label>
+                <label className="font-mono text-xs uppercase tracking-[0.2em] text-outline ml-1" htmlFor="email">E-mail Acadêmico</label>
                 <div className="relative group">
                   <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-xl">alternate_email</span>
                   <input 
@@ -82,8 +82,8 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-end px-1">
-                  <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-outline" htmlFor="password">Chave de Acesso</label>
-                  <a className="text-[11px] font-medium text-primary hover:text-primary-fixed transition-colors" href="#">Esqueceu a senha?</a>
+                  <label className="font-mono text-xs uppercase tracking-[0.2em] text-outline" htmlFor="password">Chave de Acesso</label>
+                  <a className="text-xs font-medium text-primary hover:text-primary-fixed transition-colors" href="#">Esqueceu a senha?</a>
                 </div>
                 <div className="relative group">
                   <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-xl">lock</span>
@@ -137,7 +137,7 @@ export default function LoginPage() {
             href="https://raed.world/" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center gap-4 text-[11px] font-mono uppercase tracking-[0.3em] text-white/50 hover:text-white transition-all group"
+            className="flex items-center gap-4 text-xs font-mono uppercase tracking-[0.3em] text-white/50 hover:text-white transition-all group"
           >
             <span>Powered by</span>
             <img 
