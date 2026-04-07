@@ -209,7 +209,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
                     <div className="flex items-center justify-between px-2">
                         <h3 className="text-2xl font-bold flex items-center gap-3">
                            Conteúdo da Prova
-                           <span className="text-xs font-mono bg-primary/10 text-primary px-3 py-1 rounded-full">{questions.length} itens</span>
+                           <span className="text-xs font-mono bg-primary/5 border border-white/5 text-primary px-3 py-1 rounded-full">{questions.length} itens</span>
                         </h3>
                         <div className="flex gap-4">
                             <button 
@@ -221,7 +221,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
                             </button>
                             <button 
                                 onClick={addQuestion}
-                                className="flex items-center gap-2 bg-primary/10 text-primary px-6 py-3 rounded-2xl font-bold hover:bg-primary hover:text-black transition-all group"
+                                className="flex items-center gap-2 bg-primary/5 border border-white/5 text-primary px-6 py-3 rounded-2xl font-bold hover:bg-primary hover:text-black transition-all group"
                             >
                                 <span className="material-symbols-outlined group-hover:scale-125 transition-transform">add_circle</span> 
                                 Adicionar Questão
@@ -234,7 +234,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
                           <div key={qIndex} className="liquid-glass p-12 rounded-[4rem] border border-outline-variant relative group/card animate-in slide-in-from-bottom-5 duration-700 hover:border-primary/30 transition-all">
                              <button 
                                 onClick={() => removeQuestion(qIndex)}
-                                className="absolute top-10 right-10 text-gray-600 hover:text-red-500 p-2 rounded-xl hover:bg-red-500/10 transition-all opacity-0 group-hover/card:opacity-100"
+                                className="absolute top-10 right-10 text-gray-600 hover:text-red-500 p-2 rounded-xl hover:bg-red-500/5 transition-all opacity-0 group-hover/card:opacity-100"
                              >
                                 <span className="material-symbols-outlined">delete</span>
                              </button>
@@ -242,7 +242,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
                              <div className="space-y-10">
                                 {/* Header da Questão: Número, Pontuação e Tipo */}
                                 <div className="flex items-center gap-8 border-b border-white/5 pb-8">
-                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center font-bold text-primary text-xl shadow-inner shrink-0">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-white/5 flex items-center justify-center font-bold text-primary text-xl shadow-inner shrink-0">
                                         {qIndex + 1}
                                     </div>
                                     
@@ -299,18 +299,19 @@ export default function NewExamClient({ userName }: { userName: string }) {
                                             setQuestions(newQs);
                                         }}
                                         placeholder="Clique aqui para digitar o enunciado da questão..."
+                                        isMath={q.type === 'MATH'}
                                     />
 
                                     {/* Gabarito de Referência para Dissertativas */}
                                     {(q.type === 'ESSAY' || q.type === 'MATH') && (
-                                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-amber-500/10">
+                                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
                                             <div className="flex items-center gap-3 text-amber-500">
                                                 <span className="material-symbols-outlined">auto_fix_high</span>
                                                 <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (Obrigatório para IA)</span>
                                             </div>
                                             <textarea 
                                                 placeholder="Digite aqui a resposta que você espera do aluno. A IA usará este texto para comparar com a resposta dele."
-                                                className="w-full bg-white/5 border border-amber-500/20 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 transition-all h-32 resize-none shadow-inner placeholder:text-amber-500/30"
+                                                className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 transition-all h-32 resize-none shadow-inner placeholder:text-amber-500/30"
                                                 value={q.referenceAnswer || ''}
                                                 onChange={e => {
                                                     const newQs = [...questions];

@@ -16,7 +16,12 @@ export async function getInstitutions() {
   }
 
   return await prisma.institution.findMany({
-    include: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      hasIntegratedAi: true,
+      customAiModel: true,
       _count: {
         select: { users: true }
       }
@@ -58,7 +63,14 @@ export async function getInstitutionUsers(institutionId: number, page: number = 
 /**
  * Cria uma nova instituição no banco de dados
  */
-export async function createInstitution(data: { name: string; slug: string; apiKeyOpenai?: string }) {
+export async function createInstitution(data: { 
+  name: string; 
+  slug: string; 
+  apiKeyOpenai?: string;
+  hasIntegratedAi?: boolean;
+  customAiModel?: string;
+  customAiKey?: string;
+}) {
   const session = await auth()
   if (!session || (session.user as any).role !== "ADMIN") {
     throw new Error("Não autorizado")
@@ -70,6 +82,9 @@ export async function createInstitution(data: { name: string; slug: string; apiK
         name: data.name,
         slug: data.slug.toLowerCase().trim().replace(/\s+/g, '-'),
         apiKeyOpenai: data.apiKeyOpenai || null,
+        hasIntegratedAi: data.hasIntegratedAi || false,
+        customAiModel: data.customAiModel || null,
+        customAiKey: data.customAiKey || null,
       }
     });
 
@@ -86,7 +101,14 @@ export async function createInstitution(data: { name: string; slug: string; apiK
 /**
  * Atualiza os dados de uma instituição
  */
-export async function updateInstitution(id: number, data: { name?: string; slug?: string; apiKeyOpenai?: string }) {
+export async function updateInstitution(id: number, data: { 
+  name?: string; 
+  slug?: string; 
+  apiKeyOpenai?: string;
+  hasIntegratedAi?: boolean;
+  customAiModel?: string;
+  customAiKey?: string;
+}) {
   const session = await auth()
   if (!session || (session.user as any).role !== "ADMIN") {
     throw new Error("Não autorizado")
@@ -97,6 +119,9 @@ export async function updateInstitution(id: number, data: { name?: string; slug?
     if (data.name) updateData.name = data.name;
     if (data.slug) updateData.slug = data.slug.toLowerCase().trim().replace(/\s+/g, '-');
     if (data.apiKeyOpenai !== undefined) updateData.apiKeyOpenai = data.apiKeyOpenai || null;
+    if (data.hasIntegratedAi !== undefined) updateData.hasIntegratedAi = data.hasIntegratedAi;
+    if (data.customAiModel !== undefined) updateData.customAiModel = data.customAiModel || null;
+    if (data.customAiKey !== undefined) updateData.customAiKey = data.customAiKey || null;
 
     const institution = await prisma.institution.update({
       where: { id },

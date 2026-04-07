@@ -2,13 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "katex/dist/katex.min.css";
+
 :root {
   /* Retornando para HEX Sólido para estabilidade total */
   --primary: #c0c1ff;
   --on-primary: #1000a9;
   --primary-container: #8083ff;
   --on-primary-container: #0d0096;
-  
+
   --secondary: #c4c6cc;
   --on-secondary: #2e3135;
   --secondary-container: #46494e;
@@ -19,10 +21,12 @@
   --surface: #121315;
   --on-surface: #e3e2e3;
   --on-surface-variant: #c7c4d7;
-  
-  --outline: #303032; /* Escurecido para ser discreto */
-  --outline-variant: #1a1b1e; /* QUASE INVISÍVEL contra o fundo #121315 */
-  
+
+  --outline: rgba(255, 255, 255, 0.1);
+  /* Brilho de contorno ultra-sutil */
+  --outline-variant: rgba(255, 255, 255, 0.02);
+  /* Borda quase invisível e minimalista */
+
   --error: #ffb4ab;
   --on-error: #690005;
 
@@ -42,7 +46,12 @@
     font-size: var(--font-size-base);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bold tracking-tight;
   }
 
@@ -53,14 +62,15 @@
 }
 
 @layer components {
-  /* Liquid Glass V2 - Standardized */
+
+  /* Liquid Glass V3 - Ultra Subtle & Minimalist */
   .liquid-glass {
-    background: rgba(255, 255, 255, 0.015);
+    background: rgba(255, 255, 255, 0.012);
     backdrop-filter: blur(50px) saturate(120%);
     -webkit-backdrop-filter: blur(50px) saturate(120%);
     border: 1px solid var(--outline-variant);
-    box-shadow: 
-      inset 1px 1px 4px rgba(255, 255, 255, 0.02), 
+    box-shadow:
+      inset 1px 1px 2px rgba(255, 255, 255, 0.01),
       0 20px 50px rgba(0, 0, 0, 0.4);
   }
 
@@ -73,15 +83,15 @@
     @apply bg-surface-container border border-outline-variant text-on-surface font-bold py-3.5 px-6 rounded-xl transition-all hover:bg-white/5 active:scale-[0.98] disabled:opacity-50;
     font-size: var(--font-size-base);
   }
-  
+
   .table-admin {
     @apply w-full text-left border-collapse;
   }
-  
+
   .table-admin th {
     @apply px-8 py-5 text-base uppercase tracking-widest text-gray-500 font-bold border-b border-outline-variant;
   }
-  
+
   .table-admin td {
     @apply px-8 py-6 text-base border-b border-outline-variant;
   }
@@ -91,11 +101,31 @@
   .glow-soft {
     box-shadow: 0 0 40px -10px rgba(192, 193, 255, 0.05);
   }
-  
-  .text-title { font-size: var(--font-size-xl); @apply font-bold; }
-  .text-subtitle { font-size: var(--font-size-lg); @apply font-semibold; }
-  .text-body-lg { font-size: var(--font-size-lg); }
-  .text-body { font-size: var(--font-size-base); }
-  .text-body-sm { font-size: var(--font-size-sm); }
-  .text-caption { font-size: var(--font-size-xs); @apply uppercase tracking-widest font-medium; }
+
+  .text-title {
+    font-size: var(--font-size-xl);
+    @apply font-bold;
+  }
+
+  .text-subtitle {
+    font-size: var(--font-size-lg);
+    @apply font-semibold;
+  }
+
+  .text-body-lg {
+    font-size: var(--font-size-lg);
+  }
+
+  .text-body {
+    font-size: var(--font-size-base);
+  }
+
+  .text-body-sm {
+    font-size: var(--font-size-sm);
+  }
+
+  .text-caption {
+    font-size: var(--font-size-xs);
+    @apply uppercase tracking-widest font-medium;
+  }
 }

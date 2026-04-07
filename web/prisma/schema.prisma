@@ -17,15 +17,26 @@ model Role {
 }
 
 model Institution {
-  id             Int      @id @default(autoincrement())
-  name           String
-  slug           String   @unique
-  apiKeyOpenai   String?  @map("api_key_openai")
-  users          User[]
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id              Int      @id @default(autoincrement())
+  name            String
+  slug            String   @unique
+  apiKeyOpenai    String?  @map("api_key_openai") // Depreciado, usar campos abaixo
+  hasIntegratedAi Boolean  @default(false) @map("has_integrated_ai")
+  customAiModel   String?  @map("custom_ai_model")
+  customAiKey     String?  @map("custom_ai_key")
+  users           User[]
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("institutions")
+}
+
+model GlobalSettings {
+  id            Int     @id @default(1)
+  globalAiModel String? @map("global_ai_model")
+  globalAiKey   String? @map("global_ai_key")
+
+  @@map("global_settings")
 }
 
 model User {

@@ -18,3 +18,7 @@ npm-debug.log*
 .vscode/
 .idea/
 .DS_Store
+
+# DB Connection Docs
+web/CONEXAO_BANCO.md
+CONEXAO_BANCO.md

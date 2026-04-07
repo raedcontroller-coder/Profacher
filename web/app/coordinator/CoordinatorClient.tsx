@@ -15,7 +15,7 @@ function MetricCard() {
       <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all" />
       <div className="relative z-10">
         <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-0.5 bg-primary/10 text-primary text-caption rounded">AI Intelligence Hub</span>
+          <span className="px-2 py-0.5 bg-primary/5 text-primary text-caption rounded border border-white/5">AI Intelligence Hub</span>
         </div>
         <h3 className="text-gray-400 font-medium text-body-sm mb-1">Total de Tokens Consumidos</h3>
         <p className="text-4xl font-bold tracking-tighter text-on-surface">
@@ -116,7 +116,7 @@ function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete:
                 <tr key={user.id} className="group hover:bg-[#343536]/40 transition-colors">
                   <td>
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center font-bold text-primary text-xl border border-primary/20 shadow-inner">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary/5 to-primary/5 flex items-center justify-center font-bold text-primary text-xl border border-white/5 shadow-inner">
                         {user.fullName.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
@@ -126,7 +126,7 @@ function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete:
                     </div>
                   </td>
                   <td>
-                    <span className="px-3 py-1 rounded-lg text-body font-bold border border-primary/20 bg-primary/5 text-primary uppercase tracking-wider">
+                    <span className="px-3 py-1 rounded-lg text-body font-bold border border-white/5 bg-primary/5 text-primary uppercase tracking-wider">
                       {user.role.name}
                     </span>
                   </td>
@@ -246,11 +246,11 @@ export default function CoordinatorClient({ initialUserName }: { initialUserName
             <UserTable users={users} onDelete={handleDelete} currentUserId={currentUserId} />
           )}
 
-          <section className="liquid-glass p-10 rounded-2xl flex items-center gap-10 relative overflow-hidden shadow-2xl border border-primary/10">
+          <section className="liquid-glass p-10 rounded-2xl flex items-center gap-10 relative overflow-hidden shadow-2xl border border-white/5">
             <div className="absolute -right-10 -bottom-10 opacity-10">
               <span className="material-symbols-outlined text-[240px]">shield_person</span>
             </div>
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
+            <div className="w-20 h-20 rounded-2xl bg-primary/5 flex items-center justify-center shrink-0 border border-white/5 shadow-inner">
               <span className="material-symbols-outlined text-4xl text-primary">security</span>
             </div>
             <div className="flex-1">

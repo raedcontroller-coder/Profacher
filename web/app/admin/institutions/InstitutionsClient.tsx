@@ -17,6 +17,9 @@ interface Institution {
   id: number;
   name: string;
   slug: string;
+  hasIntegratedAi: boolean;
+  customAiModel?: string | null;
+  customAiKey?: string | null;
   _count: { users: number };
 }
 
@@ -74,7 +77,7 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
           users.map(user => (
             <div key={user.id} className="flex items-center justify-between p-3 rounded-xl bg-[#0d0e0f]/50 border border-outline-variant">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-body font-bold text-primary border border-primary">
+                <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center text-body font-bold text-primary border border-white/5">
                    {user.fullName.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div>
@@ -111,6 +114,18 @@ function InstitutionCard({ institution, onEdit, onDelete }: { institution: Insti
                <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">slug: {institution.slug}</span>
                <div className="h-1 w-1 bg-gray-500 rounded-full opacity-30" />
                <span className="text-xs font-bold text-primary/70 uppercase tracking-widest">{institution._count.users} Usuários Totais</span>
+               <div className="h-1 w-1 bg-gray-500 rounded-full opacity-30" />
+               {institution.hasIntegratedAi ? (
+                 <span className="px-2 py-0.5 bg-primary/5 text-primary text-[10px] font-bold rounded border border-white/5 flex items-center gap-1">
+                   <span className="material-symbols-outlined text-[12px]">verified</span>
+                   IA INTEGRADA
+                 </span>
+               ) : (
+                 <span className="px-2 py-0.5 bg-amber-500/5 text-amber-500 text-[10px] font-bold rounded border border-white/5 flex items-center gap-1">
+                   <span className="material-symbols-outlined text-[12px]">key</span>
+                   IA PRÓPRIA
+                 </span>
+               )}
             </div>
           </div>
         </div>
@@ -148,6 +163,9 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [hasIntegratedAi, setHasIntegratedAi] = useState(false);
+  const [customAiModel, setCustomAiModel] = useState('gpt-4o');
+  const [customAiKey, setCustomAiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -156,8 +174,10 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
     if (institution) {
       setName(institution.name);
       setSlug(institution.slug);
-      // Nota: apiKey não vem no list, se precisasse teria que buscar
       setApiKey(''); 
+      setHasIntegratedAi(institution.hasIntegratedAi);
+      setCustomAiModel(institution.customAiModel || 'gpt-4o');
+      setCustomAiKey(''); // Nunca mostrar a chave atual por segurança
       setConfirming(false);
     }
   }, [institution]);
@@ -174,7 +194,14 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
     setLoading(true);
     setError(null);
 
-    const result = await updateInstitution(institution!.id, { name, slug, apiKeyOpenai: apiKey });
+    const result = await updateInstitution(institution!.id, { 
+      name, 
+      slug, 
+      apiKeyOpenai: apiKey,
+      hasIntegratedAi,
+      customAiModel,
+      customAiKey
+    });
 
     if (result.success) {
       onSuccess();
@@ -220,18 +247,55 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">OpenAI API Key (Opcional)</label>
-            <input 
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Novas alterações ou deixe vazio"
-              type="password"
-              className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary text-on-surface"
-            />
+          <div className="space-y-4 p-6 rounded-3xl bg-primary/5 border border-white/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-bold text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">verified</span>
+                  Plano com IA Integrada
+                </label>
+                <p className="text-[10px] text-gray-500 italic">Usa o motor de IA central do Profacher.</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setHasIntegratedAi(!hasIntegratedAi)}
+                className={`w-14 h-7 rounded-full transition-all relative ${hasIntegratedAi ? 'bg-primary' : 'bg-gray-800'}`}
+              >
+                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${hasIntegratedAi ? 'left-8' : 'left-1'}`} />
+              </button>
+            </div>
+
+            {!hasIntegratedAi && (
+              <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in duration-300">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Modelo de IA da Instituição</label>
+                  <select 
+                    value={customAiModel}
+                    onChange={(e) => setCustomAiModel(e.target.value)}
+                    className="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                  >
+                    <option value="gpt-4o">OpenAI GPT-4o</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                    <option value="deepseek-chat">Deepseek V3</option>
+                    <option value="openrouter">OpenRouter</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">API Key Própria</label>
+                  <input 
+                    type="password"
+                    value={customAiKey}
+                    onChange={(e) => setCustomAiKey(e.target.value)}
+                    placeholder="Mantenha vazio para não alterar"
+                    className="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {error && <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-white/5 text-red-500 text-sm">{error}</div>}
 
           <div className="pt-4 flex gap-4">
             <button type="button" onClick={() => confirming ? setConfirming(false) : onClose()} className="flex-1 p-4 rounded-2xl border border-outline-variant hover:bg-white/5 font-bold">
@@ -293,7 +357,7 @@ function DeleteInstitutionModal({ isOpen, onClose, onSuccess, institution }: { i
         </div>
 
         <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-on-surface leading-relaxed">
+          <div className="p-4 rounded-2xl bg-red-500/5 border border-white/5 text-on-surface leading-relaxed">
             Para confirmar a exclusão, digite o nome exato da instituição abaixo:
             <br />
             <strong className="text-red-400 select-none">{institution.name}</strong>
@@ -306,7 +370,7 @@ function DeleteInstitutionModal({ isOpen, onClose, onSuccess, institution }: { i
             className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-red-500 transition-all text-on-surface"
           />
 
-          {error && <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-white/5 text-red-500 text-sm">{error}</div>}
 
           <div className="pt-4 flex gap-4">
             <button onClick={onClose} className="flex-1 p-4 rounded-2xl border border-outline-variant hover:bg-white/5 font-bold transition-all">
@@ -335,6 +399,9 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [hasIntegratedAi, setHasIntegratedAi] = useState(false);
+  const [customAiModel, setCustomAiModel] = useState('gpt-4o');
+  const [customAiKey, setCustomAiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -345,7 +412,14 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
     setLoading(true);
     setError(null);
 
-    const result = await createInstitution({ name, slug, apiKeyOpenai: apiKey });
+    const result = await createInstitution({ 
+      name, 
+      slug, 
+      apiKeyOpenai: apiKey,
+      hasIntegratedAi,
+      customAiModel,
+      customAiKey
+    });
 
     if (result.success) {
       onSuccess();
@@ -407,19 +481,56 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
             <p className="text-[10px] text-gray-500 ml-1 italic">Este será usado na URL e deve ser único.</p>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">OpenAI API Key (Opcional)</label>
-            <input 
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              type="password"
-              className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-on-surface"
-            />
+          <div className="space-y-4 p-6 rounded-3xl bg-primary/5 border border-white/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-bold text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">verified</span>
+                  Plano com IA Integrada
+                </label>
+                <p className="text-[10px] text-gray-500 italic">Usa o motor de IA central do Profacher.</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setHasIntegratedAi(!hasIntegratedAi)}
+                className={`w-14 h-7 rounded-full transition-all relative ${hasIntegratedAi ? 'bg-primary' : 'bg-gray-800'}`}
+              >
+                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${hasIntegratedAi ? 'left-8' : 'left-1'}`} />
+              </button>
+            </div>
+
+            {!hasIntegratedAi && (
+              <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in duration-300">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Modelo de IA da Instituição</label>
+                  <select 
+                    value={customAiModel}
+                    onChange={(e) => setCustomAiModel(e.target.value)}
+                    className="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                  >
+                    <option value="gpt-4o">OpenAI GPT-4o</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                    <option value="deepseek-chat">Deepseek V3</option>
+                    <option value="openrouter">OpenRouter</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">API Key Própria</label>
+                  <input 
+                    type="password"
+                    value={customAiKey}
+                    onChange={(e) => setCustomAiKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3">
+            <div className="p-4 rounded-xl bg-red-500/5 border border-white/5 text-red-500 text-sm flex items-center gap-3">
               <span className="material-symbols-outlined text-sm">error</span>
               {error}
             </div>

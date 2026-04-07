@@ -13,7 +13,7 @@ function AdminMetricCard({ title, value, icon, subtitle }: { title: string, valu
         <div className="flex items-center justify-between mb-4">
           <span className="material-symbols-outlined text-primary text-3xl">{icon}</span>
           {subtitle && (
-            <span className="px-2 py-0.5 bg-primary/10 text-primary text-caption rounded">{subtitle}</span>
+            <span className="px-2 py-0.5 bg-primary/5 text-primary text-caption rounded">{subtitle}</span>
           )}
         </div>
         <h3 className="text-gray-400 font-medium text-body-sm mb-1">{title}</h3>
@@ -91,7 +91,7 @@ export default function AdminClient({ initialUserName }: { initialUserName?: str
           <section className="liquid-glass p-12 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-6 shadow-2xl border border-primary min-h-[400px] relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             
-            <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center relative z-10 mb-2">
+            <div className="w-24 h-24 rounded-3xl bg-primary/5 flex items-center justify-center relative z-10 mb-2">
               <span className="material-symbols-outlined text-primary text-6xl animate-bounce-slow">construction</span>
             </div>
             

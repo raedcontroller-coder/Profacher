@@ -308,7 +308,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                         </div>
                         <button 
                             onClick={() => setShowNewQuestionForm(!showNewQuestionForm)}
-                            className={`px-8 py-4 rounded-[2rem] font-bold flex items-center gap-3 transition-all transform active:scale-95 shadow-xl ${showNewQuestionForm ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-primary text-black hover:brightness-110 shadow-primary/20'}`}
+                            className={`px-8 py-4 rounded-[2rem] font-bold flex items-center gap-3 transition-all transform active:scale-95 shadow-xl ${showNewQuestionForm ? 'bg-red-500/5 text-red-500 border border-white/5' : 'bg-primary text-black hover:brightness-110 shadow-primary/20'}`}
                         >
                             <span className="material-symbols-outlined">{showNewQuestionForm ? 'close' : 'add_circle'}</span>
                             {showNewQuestionForm ? 'CANCELAR CADASTRO' : 'NOVA QUESTÃO'}
@@ -351,23 +351,23 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                     </div>
                                 </div>
                             </div>
-
                             <div className="space-y-8">
                                 <RichTextEditor 
                                     value={qContent}
                                     onChange={(val) => setQContent(val)}
                                     placeholder="Enunciado da nova questão para seu acervo..."
+                                    isMath={qType === 'MATH'}
                                 />
 
                                 {(qType === 'ESSAY' || qType === 'MATH') && (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-amber-500/10">
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
                                         <div className="flex items-center gap-3 text-amber-500">
                                             <span className="material-symbols-outlined">auto_fix_high</span>
                                             <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (Obrigatório)</span>
                                         </div>
                                         <textarea 
                                             placeholder="A IA usará este texto como única base de comparação para correção futura..."
-                                            className="w-full bg-white/5 border border-amber-500/20 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 h-32 resize-none shadow-inner placeholder:text-amber-500/30"
+                                            className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 h-32 resize-none shadow-inner placeholder:text-amber-500/30"
                                             value={qReferenceAnswer} onChange={e => setQReferenceAnswer(e.target.value)}
                                         />
                                     </div>
@@ -473,7 +473,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                         activeGroup.questions.map((q, idx) => (
                             <div key={q.id} className="liquid-glass p-10 rounded-[3rem] border border-outline-variant relative group/item animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
                                 <div className="flex items-center gap-6 mb-6">
-                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold text-primary border border-primary/20">
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold text-primary border border-white/5">
                                         {idx + 1}
                                     </div>
                                     <div className="flex gap-2">
@@ -493,7 +493,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                 />
                                 
                                 {q.referenceAnswer && (
-                                    <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-200/60 text-sm italic mb-6">
+                                    <div className="p-6 rounded-2xl bg-amber-500/5 border border-white/5 text-amber-200/60 text-sm italic mb-6">
                                         Gabarito de Referência: {q.referenceAnswer}
                                     </div>
                                 )}

@@ -56,7 +56,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
              {/* Card 1: Grupos */}
              <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant hover:border-primary/50 transition-all group">
                 <div className="flex items-start justify-between mb-6">
-                   <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 group-hover:scale-110 transition-transform">
+                   <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-white/5 group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined text-3xl">category</span>
                    </div>
                    <div className="text-right">
@@ -82,7 +82,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
              </div>
 
              {/* Card 3: Acesso Rápido */}
-             <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant bg-primary/5 border-primary/20 flex flex-col justify-center items-center text-center gap-4 group cursor-pointer hover:bg-primary/10 transition-all">
+             <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant bg-primary/5 flex flex-col justify-center items-center text-center gap-4 group cursor-pointer transition-all">
                 <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-black shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
                    <span className="material-symbols-outlined text-3xl font-bold">add</span>
                 </div>
@@ -120,7 +120,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
                   <p className="text-gray-400 leading-relaxed">
                       Sua conta está integrada com o GPT-4o para auxiliar na criação de questões e correção de textos. Use o menu ao lado para acessar o banco inteligente.
                   </p>
-                  <button className="w-full py-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-bold flex items-center justify-center gap-3 hover:bg-primary hover:text-black transition-all">
+                  <button className="w-full py-4 rounded-2xl bg-primary/5 border border-white/5 text-primary font-bold flex items-center justify-center gap-3 hover:bg-primary hover:text-black transition-all">
                       <span className="material-symbols-outlined">explore</span>
                       Explorar banco inteligente
                   </button>

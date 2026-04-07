@@ -4,7 +4,8 @@ import React, { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
-import Image from '@tiptap/extension-image'
+import ImageResize from 'tiptap-extension-resize-image'
+import { MathExtension } from './MathExtension'
 import { 
   Bold, 
   Italic, 
@@ -21,9 +22,10 @@ interface RichTextEditorProps {
   value: string;
   onChange: (content: string) => void;
   placeholder?: string;
+  isMath?: boolean;
 }
 
-const MenuBar = ({ editor, onImageUpload, isUploading }: { editor: any, onImageUpload: () => void, isUploading: boolean }) => {
+const MenuBar = ({ editor, onImageUpload, isUploading, isMath, onMathClick }: { editor: any, onImageUpload: () => void, isUploading: boolean, isMath?: boolean, onMathClick?: () => void }) => {
   if (!editor) return null
 
   const items = [
@@ -85,46 +87,69 @@ const MenuBar = ({ editor, onImageUpload, isUploading }: { editor: any, onImageU
     },
   ]
 
+  if (isMath) {
+    items.push({
+      type: 'divider',
+    } as any)
+    items.push({
+      icon: <span className="material-symbols-outlined text-[18px]">calculate</span>,
+      title: 'Inserir Equação com IA',
+      action: () => onMathClick && onMathClick(),
+      isActive: () => false,
+      isGolden: true, 
+    } as any);
+  }
+
+
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2 mb-2 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md sticky top-0 z-20">
-      {items.map((item: any, index) => (
-        item.type === 'divider' ? (
-          <div key={index} className="w-[1px] h-6 bg-white/10 mx-1" />
-        ) : (
-          <button
-            key={index}
-            disabled={item.disabled}
-            onClick={(e) => {
-                e.preventDefault();
-                item.action();
-            }}
-            title={item.title}
-            className={`p-2 rounded-xl transition-all hover:bg-primary/20 hover:text-primary disabled:opacity-50 ${
-              item.isActive?.() ? 'bg-primary text-black hover:bg-primary hover:text-black' : 'text-gray-400'
-            }`}
-          >
-            {item.icon}
-          </button>
-        )
-      ))}
+    <div className="space-y-2 mb-2 sticky top-0 z-20">
+      <div className="flex flex-wrap items-center gap-1 p-2 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+        {items.map((item: any, index) => (
+          item.type === 'divider' ? (
+            <div key={index} className="w-[1px] h-6 bg-white/10 mx-1" />
+          ) : (
+            <button
+              key={index}
+              disabled={item.disabled}
+              onClick={(e) => {
+                  e.preventDefault();
+                  item.action();
+              }}
+              title={item.title}
+              className={`p-2 rounded-xl transition-all outline-none focus:outline-none disabled:opacity-50 ${
+                item.isGolden 
+                  ? 'text-amber-500 hover:bg-transparent hover:text-amber-400 hover:scale-110' 
+                  : item.isActive?.() 
+                        ? 'bg-primary text-black hover:bg-primary hover:text-black' 
+                        : 'text-gray-400 hover:bg-primary/20 hover:text-primary'
+              }`}
+            >
+              {item.icon}
+            </button>
+          )
+        ))}
+      </div>
     </div>
   )
 }
 
-export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+export default function RichTextEditor({ value, onChange, placeholder, isMath }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = React.useState(false)
+  const [showMathPrompt, setShowMathPrompt] = React.useState(false)
+  const [mathInput, setMathInput] = React.useState('')
+  const [isGeneratingMath, setIsGeneratingMath] = React.useState(false)
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
-      Image.configure({
-        allowBase64: true,
+      MathExtension,
+      (ImageResize.configure({
         HTMLAttributes: {
-          class: 'rounded-2xl border border-white/10 my-4 max-w-full h-auto shadow-xl',
+          class: 'rounded-2xl border border-white/10 my-4 max-w-full h-auto shadow-xl transition-all',
         },
-      }),
+      } as any) as any),
     ],
     immediatelyRender: false,
     content: value,
@@ -138,7 +163,6 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     },
   })
 
-  // Sincronizar valor externo se necessário (ex: importação do banco)
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value)
@@ -162,6 +186,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
       const data = await response.json()
 
       if (data.success && data.url) {
+        // @ts-ignore
         editor.chain().focus().setImage({ src: data.url }).run()
       } else {
         alert('Erro ao fazer upload da imagem: ' + (data.error || 'Erro desconhecido'))
@@ -172,6 +197,32 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleGenerateMath = async () => {
+    if (!mathInput.trim() || !editor) return;
+    setIsGeneratingMath(true);
+    try {
+      const { generateMathEquation } = await import('../../app/actions/aiAction');
+      const res = await generateMathEquation(mathInput);
+      if (res.success && res.latex) {
+        // Tiptap processa a injeção do componente de View com o motor HTML de KaTeX
+        editor.chain().focus().insertContent({ 
+           type: 'math', 
+           attrs: { latex: res.latex } 
+        }).run();
+        
+        setShowMathPrompt(false);
+        setMathInput('');
+      } else {
+        alert(res.error || "Erro ao processar equação");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao contatar API de cálculo matemático.");
+    } finally {
+      setIsGeneratingMath(false);
     }
   }
 
@@ -189,9 +240,52 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
         editor={editor} 
         onImageUpload={() => fileInputRef.current?.click()} 
         isUploading={isUploading}
+        isMath={isMath}
+        onMathClick={() => setShowMathPrompt(!showMathPrompt)}
       />
 
-      <div className="bg-white/5 border border-outline-variant rounded-[2.5rem] overflow-hidden focus-within:border-primary transition-all group-hover/editor:border-white/20 relative">
+      {showMathPrompt && (
+        <div className="absolute z-30 ml-4 p-5 rounded-3xl bg-[#121315]/90 backdrop-blur-xl border border-white/10 shadow-2xl w-full max-w-lg mb-2">
+           <div className="flex items-center gap-3 mb-3">
+             <span className="material-symbols-outlined text-primary text-xl">auto_awesome</span>
+             <h4 className="font-bold text-sm text-primary uppercase tracking-widest">Transformador Matemático</h4>
+           </div>
+           <p className="text-xs text-gray-400 mb-4 font-mono leading-relaxed">
+              Escreva como você leria o cálculo. A IA gerará a fórmula perfeita.<br/> 
+              Ex: "função f de t igual a integral de 2 em r".
+           </p>
+           <textarea
+             value={mathInput}
+             onChange={e => setMathInput(e.target.value)}
+             placeholder="Digite seu cálculo natural aqui..."
+             className="w-full h-24 mb-3 bg-[#0d0e0f]/50 border border-white/5 rounded-2xl p-4 text-sm text-on-surface outline-none focus:border-primary transition-all resize-none"
+             onKeyDown={(e) => {
+               if(e.key === 'Enter' && !e.shiftKey) {
+                 e.preventDefault();
+                 handleGenerateMath();
+               }
+             }}
+           />
+           <div className="flex justify-end gap-3 rounded-2xl">
+              <button 
+                onClick={() => setShowMathPrompt(false)} 
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-white"
+              >
+                 Cancelar
+              </button>
+              <button 
+                onClick={handleGenerateMath}
+                disabled={isGeneratingMath || !mathInput.trim()}
+                className="px-5 py-2 rounded-xl bg-primary text-black font-bold text-xs flex items-center gap-2 hover:brightness-110 disabled:opacity-50"
+              >
+                 {isGeneratingMath ? <Loader2 size={14} className="animate-spin" /> : <span className="material-symbols-outlined text-[14px]">psychology</span>}
+                 {isGeneratingMath ? 'Processando...' : 'Gerar Equação'}
+              </button>
+           </div>
+        </div>
+      )}
+
+      <div className={`bg-white/5 border border-outline-variant rounded-[2.5rem] overflow-hidden focus-within:border-primary transition-all group-hover/editor:border-white/20 relative`}>
         <EditorContent editor={editor} />
         {!editor?.getText() && placeholder && (
             <div className="absolute top-4 left-4 pointer-events-none text-gray-700 text-lg transition-opacity">
@@ -220,18 +314,46 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
           font-style: italic;
           opacity: 0.8;
         }
+        
         .ProseMirror img {
-          display: block;
-          margin-left: auto;
-          margin-right: auto;
+          display: inline-block;
+          float: none;
+          max-width: 100% !important;
+          height: auto;
           cursor: pointer;
-          transition: transform 0.2s;
+          transition: border-color 0.2s;
         }
-        .ProseMirror img:hover {
-          transform: scale(1.01);
-        }
-        .ProseMirror img.ProseMirror-selectednode {
+
+        .ProseMirror-selectednode img {
           outline: 3px solid #00F5D4;
+        }
+
+        .resizer {
+          position: relative;
+          display: inline-block;
+          line-height: 0;
+          max-width: 100% !important;
+        }
+
+        .resizer__handler {
+          display: block;
+          position: absolute;
+          width: 12px;
+          height: 12px;
+          background: #00F5D4;
+          border: 2px solid #000;
+          border-radius: 50%;
+          z-index: 10;
+        }
+
+        .resizer__handler--top-left { top: -6px; left: -6px; cursor: nwse-resize; }
+        .resizer__handler--top-right { top: -6px; right: -6px; cursor: nesw-resize; }
+        .resizer__handler--bottom-left { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .resizer__handler--bottom-right { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+        .resizer__image {
+          max-width: 100% !important;
+          height: auto !important;
         }
       `}</style>
     </div>
