@@ -186,6 +186,8 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!institution) return;
+    
     if (!confirming) {
         setConfirming(true);
         return;
@@ -194,7 +196,7 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
     setLoading(true);
     setError(null);
 
-    const result = await updateInstitution(institution!.id, { 
+    const result = await updateInstitution(institution.id, { 
       name, 
       slug, 
       apiKeyOpenai: apiKey,
@@ -328,11 +330,11 @@ function DeleteInstitutionModal({ isOpen, onClose, onSuccess, institution }: { i
   if (!isOpen || !institution) return null;
 
   async function handleDelete() {
-    if (confirmName !== institution.name) return;
+    if (!institution || confirmName !== institution.name) return;
     
     setLoading(true);
     setError(null);
-    const result = await deleteInstitution(institution!.id);
+    const result = await deleteInstitution(institution.id);
     if (result.success) {
       onSuccess();
       onClose();
