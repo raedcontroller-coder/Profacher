@@ -4,8 +4,9 @@ import { authConfig } from "./auth.config";
 export default NextAuth(authConfig).auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
+  const isPublicPage = req.nextUrl.pathname.startsWith("/prova");
 
-  if (!isLoggedIn && !isAuthPage) {
+  if (!isLoggedIn && !isAuthPage && !isPublicPage) {
     // Usa o AUTH_URL do ambiente se disponível, senão cai pro origin. 
     // Evita redirecionamentos para hostnames internos do Docker que o cliente não consegue resolver.
     const baseUrl = process.env.AUTH_URL || req.nextUrl.origin;

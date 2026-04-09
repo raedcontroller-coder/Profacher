@@ -109,11 +109,30 @@ model Exam {
   description String?
   teacherId   Int            @map("teacher_id")
   teacher     User           @relation(fields: [teacherId], references: [id])
+  accessCode  String?        @unique @map("access_code")
+  status      ExamStatus     @default(DRAFT)
   questions   ExamQuestion[]
+  submissions ExamSubmission[]
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
   @@map("exams")
+}
+
+model ExamSubmission {
+  id          Int       @id @default(autoincrement())
+  examId      Int       @map("exam_id")
+  exam        Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentName String    @map("student_name")
+  studentRa   String    @map("student_ra")
+  answers     Json?     // Armazena as respostas do aluno
+  score       Float?
+  isExpelled  Boolean   @default(false) @map("is_expelled")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  @@unique([examId, studentRa]) // Garante um registro por aluno por prova
+  @@map("exam_submissions")
 }
 
 model ExamQuestion {
@@ -132,4 +151,11 @@ enum QuestionType {
   TRUE_FALSE      // Verdadeiro ou Falso
   ESSAY           // Dissertativa (corrigida pela IA)
   MATH            // Cálculo/KaTeX (corrigida pela IA)
+}
+
+enum ExamStatus {
+  DRAFT
+  WAITING
+  STARTED
+  FINISHED
 }

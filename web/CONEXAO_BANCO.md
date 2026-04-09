@@ -43,3 +43,4 @@ npm run dev
 
 ### Dica de Ouro:
 Se você trocar o `.env`, sempre pare o `npm run dev` com Ctrl+C e limpe a pasta `.next` antes de subir de novo.
+Raedr93D

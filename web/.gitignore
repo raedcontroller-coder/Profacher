@@ -1,3 +1,21 @@
+# Next.js
+.next/
+out/
+build/
+
+# Production
+.env
+.env.local
+.env.production
+.env.test
+
+# Database / Prisma
+/prisma/*.db
+/prisma/*.db-journal
+
+# Internal Assistant
+.gemini/
+
 # Logs
 logs
 *.log
@@ -7,10 +25,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependencies
+node_modules/
 
 # Editor directories and files
 .vscode/*
@@ -23,11 +39,11 @@ dist-ssr
 *.sln
 *.sw?
 
-/app/generated/prisma
-
 # Credentials
 user.md
 
 # Test scripts
 test-prisma.ts
 test-pg.ts
+check-data.ts
+create-professor.ts

@@ -9,6 +9,7 @@ import {
     deleteQuestionGroup, 
     getGroupWithQuestions,
     createQuestionInBank,
+    updateQuestionInBank,
     deleteQuestionInBank
 } from './actions';
 import RichTextEditor from '@/components/shared/RichTextEditor';
@@ -51,8 +52,9 @@ export default function QuestionsClient({ userName }: { userName: string }) {
   const [activeGroup, setActiveGroup] = useState<QuestionGroup | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(false);
   
-  // Estados da Nova Questão
+  // Estados da Nova Questão / Edição
   const [showNewQuestionForm, setShowNewQuestionForm] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
   const [qContent, setQContent] = useState('');
   const [qType, setQType] = useState<"MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH">('MULTIPLE_CHOICE');
   const [qPoints, setQPoints] = useState(1.0);
@@ -120,18 +122,32 @@ export default function QuestionsClient({ userName }: { userName: string }) {
   function exitGroup() {
     setViewingGroupId(null);
     setActiveGroup(null);
-    setShowNewQuestionForm(false);
+    resetQuestionForm();
     loadGroups(); // Atualiza contadores na volta
   }
 
   // --- Handlers de Questão ---
+  function resetQuestionForm() {
+    setQContent('');
+    setQType('MULTIPLE_CHOICE');
+    setQPoints(1.0);
+    setQReferenceAnswer('');
+    setQOptions([
+      { content: '', isCorrect: true },
+      { content: '', isCorrect: false },
+      { content: '', isCorrect: false },
+      { content: '', isCorrect: false }
+    ]);
+    setEditingQuestionId(null);
+    setShowNewQuestionForm(false);
+  }
+
   function handleTypeChange(newType: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH") {
     setQType(newType);
     if (newType === 'TRUE_FALSE') {
       setQOptions([
         { content: '', isCorrect: true },
-        { content: '', isCorrect: false },
-        { content: '', isCorrect: true }
+        { content: '', isCorrect: false }
       ]);
     } else if (newType === 'MULTIPLE_CHOICE') {
       setQOptions([
@@ -153,6 +169,19 @@ export default function QuestionsClient({ userName }: { userName: string }) {
     setQOptions(qOptions.filter((_, i) => i !== oIndex));
   }
 
+  function handleEditQuestion(q: Question) {
+    setEditingQuestionId(q.id);
+    setQContent(q.content);
+    setQType(q.type);
+    setQPoints(q.points);
+    setQReferenceAnswer(q.referenceAnswer || '');
+    setQOptions(q.options.map(opt => ({ content: opt.content, isCorrect: opt.isCorrect })));
+    setShowNewQuestionForm(true);
+    
+    // Scroll suave para o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   async function handleSaveQuestion() {
     if (!qContent.trim()) {
         alert("Digite o enunciado da questão.");
@@ -165,19 +194,21 @@ export default function QuestionsClient({ userName }: { userName: string }) {
 
     setIsSavingQuestion(true);
     try {
-        const res = await createQuestionInBank({
-            groupId: viewingGroupId!,
-            content: qContent,
-            type: qType,
-            points: qPoints,
-            referenceAnswer: qReferenceAnswer,
-            options: qOptions
-        });
+        const questionData = {
+          groupId: viewingGroupId!,
+          content: qContent,
+          type: qType,
+          points: qPoints,
+          referenceAnswer: qReferenceAnswer,
+          options: qOptions
+        };
+
+        const res = editingQuestionId 
+            ? await updateQuestionInBank(editingQuestionId, questionData)
+            : await createQuestionInBank(questionData);
 
         if (res.success) {
-            setQContent('');
-            setQReferenceAnswer('');
-            setShowNewQuestionForm(false);
+            resetQuestionForm();
             const updated = await getGroupWithQuestions(viewingGroupId!);
             setActiveGroup(updated as any);
         } else {
@@ -306,51 +337,64 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                             <h2 className="text-5xl font-bold text-on-surface">{activeGroup?.name}</h2>
                             <p className="text-gray-500 text-lg italic">{activeGroup?.description || 'Repositório de questões específicas para este tema.'}</p>
                         </div>
-                        <button 
-                            onClick={() => setShowNewQuestionForm(!showNewQuestionForm)}
-                            className={`px-8 py-4 rounded-[2rem] font-bold flex items-center gap-3 transition-all transform active:scale-95 shadow-xl ${showNewQuestionForm ? 'bg-red-500/5 text-red-500 border border-white/5' : 'bg-primary text-black hover:brightness-110 shadow-primary/20'}`}
-                        >
-                            <span className="material-symbols-outlined">{showNewQuestionForm ? 'close' : 'add_circle'}</span>
-                            {showNewQuestionForm ? 'CANCELAR CADASTRO' : 'NOVA QUESTÃO'}
-                        </button>
+                        {!showNewQuestionForm && (
+                          <button 
+                              onClick={() => setShowNewQuestionForm(true)}
+                              className="bg-primary text-black px-8 py-4 rounded-[2rem] font-bold flex items-center gap-3 transition-all transform active:scale-95 shadow-xl hover:brightness-110 shadow-primary/20"
+                          >
+                              <span className="material-symbols-outlined">add_circle</span>
+                              NOVA QUESTÃO
+                          </button>
+                        )}
                     </div>
                 </header>
 
                 <div className="space-y-8">
-                    {/* Form de Nova Questão Inline */}
+                    {/* Form de Nova Questão / Edição Inline */}
                     {showNewQuestionForm && (
-                        <div className="liquid-glass p-12 rounded-[4rem] border-2 border-primary/30 animate-in zoom-in-95 duration-500 space-y-10">
-                             <div className="flex items-center gap-8 border-b border-white/5 pb-8">
-                                <div className="w-14 h-14 rounded-2xl bg-primary text-black flex items-center justify-center font-bold text-xl shadow-lg shadow-primary/20">
-                                    +
+                        <div className={`liquid-glass p-12 rounded-[4rem] border-2 animate-in zoom-in-95 duration-500 space-y-10 ${editingQuestionId ? 'border-amber-500/30' : 'border-primary/30'}`}>
+                             <div className="flex items-center justify-between border-b border-white/5 pb-8">
+                                <div className="flex items-center gap-8">
+                                  <div className={`w-14 h-14 rounded-2xl text-black flex items-center justify-center font-bold text-xl shadow-lg ${editingQuestionId ? 'bg-amber-500 shadow-amber-500/20' : 'bg-primary shadow-primary/20'}`}>
+                                      {editingQuestionId ? <span className="material-symbols-outlined font-black">edit</span> : '+'}
+                                  </div>
+                                  <div>
+                                    <h3 className="text-2xl font-black">{editingQuestionId ? 'EDITAR QUESTÃO' : 'NOVA QUESTÃO'}</h3>
+                                    <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">{editingQuestionId ? 'Alterando questão existente no acervo' : 'Adicionando item ao repositório'}</p>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-8 flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="material-symbols-outlined text-gray-500 text-lg">star</span>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Pontos:</span>
-                                        <input 
-                                            type="number" step="0.1" 
-                                            className="w-16 bg-white/5 border border-outline-variant rounded-xl p-2.5 text-center font-bold text-primary outline-none focus:border-primary"
-                                            value={qPoints} onChange={e => setQPoints(parseFloat(e.target.value))}
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Tipo:</span>
-                                        <div className="flex flex-wrap gap-2">
-                                            {typeOptions.map(opt => (
-                                                <button 
-                                                    key={opt.value}
-                                                    onClick={() => handleTypeChange(opt.value)}
-                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${qType === opt.value ? 'bg-primary text-black border-primary' : 'bg-white/5 border-outline-variant text-gray-500 hover:border-primary/40'}`}
-                                                >
-                                                    <span className="material-symbols-outlined text-sm">{opt.icon}</span>
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                <button onClick={resetQuestionForm} className="p-4 rounded-full bg-white/5 text-gray-500 hover:text-white transition-all">
+                                  <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-8 pt-2">
+                                <div className="flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-gray-500 text-lg">star</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Pontos:</span>
+                                    <input 
+                                        type="number" step="0.1" 
+                                        className="w-16 bg-white/5 border border-outline-variant rounded-xl p-2.5 text-center font-bold text-primary outline-none focus:border-primary"
+                                        value={qPoints} onChange={e => setQPoints(parseFloat(e.target.value))}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Tipo:</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {typeOptions.map(opt => (
+                                            <button 
+                                                key={opt.value}
+                                                onClick={() => handleTypeChange(opt.value)}
+                                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${qType === opt.value ? 'bg-primary text-black border-primary' : 'bg-white/5 border-outline-variant text-gray-500 hover:border-primary/40'}`}
+                                            >
+                                                <span className="material-symbols-outlined text-sm">{opt.icon}</span>
+                                                {opt.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
+
                             <div className="space-y-8">
                                 <RichTextEditor 
                                     value={qContent}
@@ -453,11 +497,18 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                 <div className="flex justify-end gap-4 pt-6">
                                     <button 
                                         disabled={isSavingQuestion}
-                                        onClick={handleSaveQuestion}
-                                        className="bg-primary text-black font-bold px-12 py-4 rounded-2xl flex items-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+                                        onClick={resetQuestionForm}
+                                        className="text-gray-500 font-bold px-8 py-4 rounded-2xl hover:bg-white/5 transition-all"
                                     >
-                                        {isSavingQuestion ? <span className="animate-spin material-symbols-outlined">sync</span> : <span className="material-symbols-outlined">verified</span>}
-                                        GUARDAR NO ACERVO
+                                        DESCARTAR
+                                    </button>
+                                    <button 
+                                        disabled={isSavingQuestion}
+                                        onClick={handleSaveQuestion}
+                                        className={`${editingQuestionId ? 'bg-amber-500 shadow-amber-500/20' : 'bg-primary shadow-primary/20'} text-black font-bold px-12 py-4 rounded-2xl flex items-center gap-2 hover:brightness-110 transition-all shadow-lg disabled:opacity-50`}
+                                    >
+                                        {isSavingQuestion ? <span className="animate-spin material-symbols-outlined">sync</span> : <span className="material-symbols-outlined">{editingQuestionId ? 'save' : 'verified'}</span>}
+                                        {editingQuestionId ? 'ATUALIZAR QUESTÃO' : 'GUARDAR NO ACERVO'}
                                     </button>
                                 </div>
                             </div>
@@ -477,18 +528,29 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                         {idx + 1}
                                     </div>
                                     <div className="flex gap-2">
-                                        <span className="text-[9px] font-bold uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-full">{q.type}</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-full">{typeOptions.find(t => t.value === q.type)?.label || q.type}</span>
                                         <span className="text-[9px] font-bold uppercase tracking-widest bg-white/5 text-gray-500 px-3 py-1 rounded-full">{q.points} PTS</span>
                                     </div>
-                                    <button 
-                                        onClick={() => handleDeleteQuestion(q.id)}
-                                        className="absolute top-8 right-8 text-gray-600 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                                    >
-                                        <span className="material-symbols-outlined">delete</span>
-                                    </button>
+                                    
+                                    <div className="absolute top-8 right-8 flex items-center gap-2">
+                                      <button 
+                                          onClick={() => handleEditQuestion(q)}
+                                          className="w-10 h-10 rounded-xl bg-white/5 text-gray-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all flex items-center justify-center opacity-0 group-hover/item:opacity-100"
+                                          title="Editar Questão"
+                                      >
+                                          <span className="material-symbols-outlined text-lg">edit</span>
+                                      </button>
+                                      <button 
+                                          onClick={() => handleDeleteQuestion(q.id)}
+                                          className="w-10 h-10 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-all flex items-center justify-center opacity-0 group-hover/item:opacity-100"
+                                          title="Excluir Questão"
+                                      >
+                                          <span className="material-symbols-outlined text-lg">delete</span>
+                                      </button>
+                                    </div>
                                 </div>
                                 <div 
-                                    className="text-xl text-on-surface leading-normal mb-8 prose prose-invert max-w-none"
+                                    className="text-xl text-on-surface leading-normal mb-8 exam-content prose prose-invert max-w-none"
                                     dangerouslySetInnerHTML={{ __html: q.content }}
                                 />
                                 

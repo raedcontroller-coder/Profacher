@@ -128,4 +128,52 @@
     font-size: var(--font-size-xs);
     @apply uppercase tracking-widest font-medium;
   }
+
+  /* Animações Premium Customizadas */
+  .animate-modal-rise {
+    animation: modal-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
+  }
+
+  @keyframes modal-rise {
+    0% {
+      transform: translateY(100%);
+      opacity: 0;
+      backdrop-filter: blur(0px);
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+      backdrop-filter: blur(50px);
+    }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Blindagem para conteúdo de provas */
+  .exam-content {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    @apply leading-relaxed;
+  }
+
+  .exam-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 1rem;
+    @apply my-6 shadow-xl border border-white/5;
+  }
+
+  .exam-content table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    @apply my-6 border-collapse border border-white/5 rounded-xl;
+  }
 }

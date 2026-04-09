@@ -17,19 +17,32 @@ export async function saveExam(data: {
   }>;
 }) {
   const session = await auth()
-  const userId = (session?.user as any)?.id
+  const userId = session?.user ? Number((session.user as any).id) : null
 
-  if (!session || (session.user as any).role !== "PROFESSOR") {
-    throw new Error("Não autorizado")
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    throw new Error("Não autorizado ou sessão inválida")
   }
 
   try {
-    // 1. Criar o Exame
+    // 1. Gerar Código Único de 5 caracteres (ex: FD42G)
+    const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+    let accessCode = '';
+    let isUnique = false;
+    
+    while (!isUnique) {
+      accessCode = Array.from({ length: 5 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+      const existing = await prisma.exam.findUnique({ where: { accessCode: accessCode } });
+      if (!existing) isUnique = true;
+    }
+
+    // 2. Criar o Exame
     const exam = await prisma.exam.create({
       data: {
         title: data.title,
         description: data.description,
         teacherId: Number(userId),
+        accessCode: accessCode,
+        status: 'WAITING', // Já nasce aguardando alunos
       }
     });
 

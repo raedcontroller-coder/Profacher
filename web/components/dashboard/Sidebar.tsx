@@ -30,9 +30,9 @@ const adminNavItems: NavItem[] = [
 
 const professorNavItems: NavItem[] = [
   { icon: 'dashboard', label: 'Dashboard', href: '/professor' },
+  { icon: 'description', label: 'Minhas provas', href: '/professor/exams' },
   { icon: 'inventory_2', label: 'Banco de Questões', href: '/professor/questions' },
   { icon: 'school', label: 'Minhas Classes', href: '/professor/classes' },
-  { icon: 'description', label: 'Provas', href: '/professor/exams' },
   { icon: 'analytics', label: 'Desempenho', href: '/professor/analytics' },
 ];
 
