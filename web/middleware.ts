@@ -7,9 +7,12 @@ export default NextAuth(authConfig).auth((req) => {
   const isPublicPage = req.nextUrl.pathname.startsWith("/prova");
 
   if (!isLoggedIn && !isAuthPage && !isPublicPage) {
-    // Usa o AUTH_URL do ambiente se disponível, senão cai pro origin. 
-    // Evita redirecionamentos para hostnames internos do Docker que o cliente não consegue resolver.
-    const baseUrl = process.env.AUTH_URL || req.nextUrl.origin;
+    // Usa o AUTH_URL do ambiente se disponível.
+    // Tenta detectar a URL pública via headers de proxy (X-Forwarded) para evitar 0.0.0.0 em containers.
+    const forwardedHost = req.headers.get("x-forwarded-host");
+    const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
+    const baseUrl = process.env.AUTH_URL || (forwardedHost ? `${forwardedProto}://${forwardedHost}` : req.nextUrl.origin);
+
     return Response.redirect(new URL("/login", baseUrl));
   }
 });
