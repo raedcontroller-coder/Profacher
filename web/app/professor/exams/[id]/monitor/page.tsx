@@ -108,7 +108,7 @@ export default function ExamMonitorPage() {
         const update = await getExamForMonitor(idAsNumber);
         if (update.success) {
           setExam(update.exam);
-          console.log(`[MONITOR] Status atualizado para:`, update.exam.status);
+          console.log(`[MONITOR] Status atualizado para:`, update.exam?.status);
         }
       } else {
         alert("Erro na operação: " + result.error);
@@ -305,7 +305,7 @@ export default function ExamMonitorPage() {
                   <div className="space-y-4">
                     <div className="flex justify-between text-sm py-2 border-b border-white/5">
                       <span className="text-gray-500">Total de Questões</span>
-                      <span className="font-bold text-primary">{exam?._count.questions}</span>
+                      <span className="font-bold text-primary">{exam?._count?.questions || 0}</span>
                     </div>
                     <div className="flex justify-between text-sm py-2 border-b border-white/5">
                       <span className="text-gray-500">Status Atual</span>

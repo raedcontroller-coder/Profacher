@@ -16,7 +16,7 @@ export default function UnifiedStudentExamPage() {
   const [examData, setExamData] = useState<any>(null);
   const [submissionId, setSubmissionId] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<number, any>>({});
-  const [savingStatus, setSavingStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
+  const [savingStatus, setSavingStatus] = useState<Record<number, 'saving' | 'saved' | 'error' | undefined>>({});
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,11 +91,11 @@ export default function UnifiedStudentExamPage() {
         console.log("[PLAYER] Questões carregadas:", result);
         if (result.success) {
           setExamData(result.exam);
-          setSubmissionId(result.submissionId);
+          setSubmissionId(result.submissionId ?? null);
           
           // NOVO: Restaurar respostas anteriores se existirem (Reconexão)
           if (result.previousAnswers) {
-            setAnswers(result.previousAnswers);
+            setAnswers((result.previousAnswers as Record<number, any>) || {});
             console.log("[PLAYER] Respostas restauradas:", result.previousAnswers);
           }
           
@@ -347,12 +347,18 @@ export default function UnifiedStudentExamPage() {
                               
                               (window as any)[`timeout_${q.id}`] = setTimeout(async () => {
                                 const result = await saveLiveAnswer(submissionId!, q.id, val);
-                                if (result.success) {
-                                  setSavingStatus(prev => ({ ...prev, [q.id]: 'saved' }));
-                                  setTimeout(() => setSavingStatus(prev => ({ ...prev, [q.id]: undefined })), 2000);
-                                } else {
-                                  setSavingStatus(prev => ({ ...prev, [q.id]: 'error' }));
-                                }
+                                  if (result.success) {
+                                    setSavingStatus(prev => ({ ...prev, [q.id]: 'saved' }));
+                                    setTimeout(() => {
+                                      setSavingStatus(prev => {
+                                        const newStatus = { ...prev };
+                                        delete newStatus[q.id];
+                                        return newStatus;
+                                      });
+                                    }, 2000);
+                                  } else {
+                                    setSavingStatus(prev => ({ ...prev, [q.id]: 'error' }));
+                                  }
                               }, 1000); // Salva após 1 segundo de pausa
                             }}
                           />
