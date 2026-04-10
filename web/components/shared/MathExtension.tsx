@@ -62,13 +62,14 @@ export const MathExtension = Node.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    // Ao salvar/exportar documento (getHTML()), transformamos de volta em um span.
-    // Isso garante que alunos possam ver na tela de resposta de maneira idêntica.
-    // Para simplificar a visualização (sem precisar renderizar na interface do aluno de novo),
-    // poderíamos injetar o HTML renderizado do katex aqui, mas para manter a performance,
-    // usamos o placeholder data-latex.
-    return ['span', mergeAttributes(HTMLAttributes, { 'data-latex': HTMLAttributes.latex, class: 'math-node' })];
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      'span', 
+      mergeAttributes(HTMLAttributes, { 
+        'data-latex': node.attrs.latex, 
+        class: 'math-node' 
+      })
+    ];
   },
 
   addNodeView() {

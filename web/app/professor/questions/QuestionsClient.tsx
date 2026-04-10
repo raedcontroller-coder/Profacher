@@ -13,6 +13,7 @@ import {
     deleteQuestionInBank
 } from './actions';
 import RichTextEditor from '@/components/shared/RichTextEditor';
+import MathRenderer from '@/components/shared/MathRenderer';
 
 interface Question {
   id: number;
@@ -549,9 +550,9 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                       </button>
                                     </div>
                                 </div>
-                                <div 
+                                <MathRenderer 
                                     className="text-xl text-on-surface leading-normal mb-8 exam-content prose prose-invert max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: q.content }}
+                                    content={q.content}
                                 />
                                 
                                 {q.referenceAnswer && (

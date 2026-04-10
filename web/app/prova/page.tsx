@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPusherClient } from '@/lib/pusher';
 import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus } from '@/app/professor/exams/actions';
+import MathRenderer from '@/components/shared/MathRenderer';
 
 export default function UnifiedStudentExamPage() {
   const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'LIVE' | 'FINISHED' | 'EXPULLED'>('ID');
@@ -326,7 +327,7 @@ export default function UnifiedStudentExamPage() {
                        </div>
                     </div>
 
-                    <div className="text-2xl font-medium leading-relaxed exam-content" dangerouslySetInnerHTML={{ __html: q.content }} />
+                    <MathRenderer className="text-2xl font-medium leading-relaxed exam-content" content={q.content} />
 
                     <div className="space-y-6">
                       {/* TIPO: DISSERTATIVA OU CÁLCULO */}
