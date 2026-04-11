@@ -76,3 +76,4 @@ A interface do Profacher 2.0 segue os princípios de design moderno de alta fide
 
 ---
 *Profacher 2.0 — Desenvolvido para simplificar a vida do professor e garantir a integridade do conhecimento.*
+ ssh vps-profacher   

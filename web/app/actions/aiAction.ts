@@ -114,3 +114,114 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
         return { success: false, error: "Falha de comunicação com o serviço de IA. " + error.message };
     }
 }
+
+export async function gradeStudentAnswer(questionContent: string, referenceAnswer: string, studentAnswer: string, teacherId?: number) {
+    try {
+        let user;
+        
+        if (teacherId) {
+            // Se o ID do professor for fornecido (ex: entrega de aluno), buscamos direto
+            user = await prisma.user.findUnique({
+                where: { id: teacherId },
+                include: { institution: true }
+            });
+        } else {
+            // Fallback para sessão (ex: professor testando ou criando questões)
+            const session = await auth();
+            if (!session?.user?.email) return { success: false, error: "Não autorizado" };
+            user = await prisma.user.findUnique({
+                where: { email: session.user.email },
+                include: { institution: true }
+            });
+        }
+
+        if (!user) return { success: false, error: "Usuário/Professor não encontrado" };
+
+        let aiKey = "";
+        let aiModel = "";
+
+        if (user.institution?.hasIntegratedAi) {
+            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
+            aiKey = globalSettings?.globalAiKey || "";
+            aiModel = globalSettings?.globalAiModel || "gpt-4o";
+        } else if (user.institution) {
+            aiKey = user.institution.customAiKey || "";
+            aiModel = user.institution.customAiModel || "gpt-4o";
+        } else if (user.roleId === 1) {
+            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
+            aiKey = globalSettings?.globalAiKey || "";
+            aiModel = globalSettings?.globalAiModel || "gpt-4o";
+        } else {
+            return { success: false, error: "Sem acesso a uma IA configurada." };
+        }
+
+        if (!aiKey) return { success: false, error: "IA não configurada." };
+
+        let endpoint = "https://api.openai.com/v1/chat/completions";
+        let bodyModel = aiModel;
+
+        if (aiModel === 'openrouter') {
+            endpoint = "https://openrouter.ai/api/v1/chat/completions";
+            bodyModel = "openai/gpt-4o-mini";
+        } else if (aiModel.includes('deepseek')) {
+            endpoint = "https://api.deepseek.com/chat/completions";
+        } else if (aiModel.includes('gemini')) {
+            endpoint = "https://openrouter.ai/api/v1/chat/completions";
+            bodyModel = "google/gemini-1.5-pro";
+        }
+
+        const headers: Record<string, string> = {
+            "Authorization": `Bearer ${aiKey}`,
+            "Content-Type": "application/json",
+        };
+
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+                model: bodyModel,
+                messages: [
+                    {
+                        role: "system",
+                        content: `Você é um avaliador de provas ultrapreciso. Sua missão é dar uma nota para a resposta de um aluno baseando-se EXCLUSIVAMENTE no "Gabarito de Referência" fornecido pelo professor.
+                        
+REGRAS CRÍTICAS DE AVALIAÇÃO:
+1. AUTORIDADE DO PROFESSOR: O Gabarito de Referência é a verdade absoluta. Se o gabarito disser que 2+2=5, e o aluno responder 5, ele está 100% correto. Se ele responder 4, ele errou. Ignore seu próprio conhecimento científico ou matemático caso ele divirja do gabarito.
+2. ANÁLISE SEMÂNTICA: Em questões dissertativas, o aluno não precisa usar as mesmas palavras do professor, mas deve expressar a mesma ideia ou conceito central.
+3. ESCALA: Retorne uma nota de 0 a 100.
+   - 100: Resposta perfeita ou equivalente ao gabarito.
+   - 0: Resposta totalmente errada, em branco ou sem relação com o gabarito.
+   - 1 a 99: Respostas parcialmente corretas proporcionalmente ao conteúdo do gabarito.
+
+OUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota baseada no gabarito.`
+                    },
+                    {
+                        role: "user",
+                        content: `QUESTÃO: ${questionContent}\nGABARITO DO PROFESSOR: ${referenceAnswer}\nRESPOSTA DO ALUNO: ${studentAnswer}`
+                    }
+                ],
+                temperature: 0,
+                max_tokens: 300
+            })
+        });
+
+        if (!response.ok) return { success: false, error: "IA indisponível no momento" };
+
+        const data = await response.json();
+        let content = data.choices?.[0]?.message?.content || "{\"score\": 0, \"feedback\": \"Falha na análise.\"}";
+        
+        // Limpeza básica caso a IA coloque markdown
+        content = content.replace(/```json/g, "").replace(/```/g, "").trim();
+        
+        const result = JSON.parse(content);
+
+        return { 
+            success: true, 
+            score: Math.min(100, Math.max(0, Number(result.score) || 0)),
+            feedback: result.feedback || "Sem comentários adicionais."
+        };
+    } catch (e: any) {
+        console.error("AI Grade Error:", e);
+        return { success: false, error: e.message };
+    }
+}

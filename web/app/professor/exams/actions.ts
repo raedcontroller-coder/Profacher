@@ -368,6 +368,7 @@ export async function getLiveExamQuestions(accessCode: string, studentName: stri
       exam: {
         id: exam.id,
         title: exam.title,
+        showScore: exam.showScore,
         questions: formattedQuestions
       },
       submissionId: submission.id,
@@ -411,14 +412,140 @@ export async function saveLiveAnswer(submissionId: number, questionId: number, a
 
 export async function finishExamLive(submissionId: number) {
   try {
-    await prisma.examSubmission.update({
+    const { gradeStudentAnswer } = await import("@/app/actions/aiAction");
+
+    // 1. Buscar a submissão com a prova e questões (incluindo gabaritos)
+    const submission = await prisma.examSubmission.findUnique({
       where: { id: submissionId },
-      data: {
-        finishedAt: new Date()
+      include: {
+        exam: {
+          include: {
+            questions: {
+              include: {
+                question: {
+                  include: {
+                    options: true
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     });
 
-    return { success: true };
+    if (!submission) return { success: false, error: "Submissão não encontrada" };
+    
+    const answers = (submission.answers as any) || {};
+    let totalScore = 0;
+    let maxScore = 0;
+    const details: any[] = [];
+    const aiCorrections: { index: number, promise: Promise<any> }[] = [];
+
+    // 2. Calcular pontuação
+    submission.exam.questions.forEach((eq, index) => {
+      const q = eq.question;
+      const studentAnswer = answers[q.id];
+      maxScore += q.points;
+
+      const detail: any = {
+        question: q.content,
+        type: q.type,
+        studentAnswer: studentAnswer || "Não respondida",
+        pointsTotal: q.points,
+        pointsObtained: 0,
+        feedback: ""
+      };
+
+      if (!studentAnswer) {
+        detail.feedback = "Questão não respondida.";
+        details.push(detail);
+        return;
+      }
+
+      if (q.type === 'MULTIPLE_CHOICE') {
+        const correctOption = q.options.find(opt => opt.isCorrect);
+        detail.correctAnswer = correctOption?.content || "---";
+        if (correctOption && Number(studentAnswer) === correctOption.id) {
+          totalScore += q.points;
+          detail.pointsObtained = q.points;
+          detail.feedback = "Parabéns! Você selecionou a alternativa correta.";
+        } else {
+          detail.feedback = `Resposta incorreta. A alternativa correta era a "${detail.correctAnswer}".`;
+        }
+        details.push(detail);
+      } 
+      else if (q.type === 'TRUE_FALSE') {
+        let correctCount = 0;
+        const correctLabels: string[] = [];
+        q.options.forEach(opt => {
+          const expected = opt.isCorrect ? 'V' : 'F';
+          correctLabels.push(`${opt.content}: ${expected}`);
+          if (studentAnswer[opt.id] === expected) {
+            correctCount++;
+          }
+        });
+        detail.correctAnswer = correctLabels.join(" | ");
+        if (q.options.length > 0) {
+          const earned = (correctCount / q.options.length) * q.points;
+          totalScore += earned;
+          detail.pointsObtained = earned;
+          detail.feedback = `Você acertou ${correctCount} de ${q.options.length} afirmações.`;
+        }
+        details.push(detail);
+      }
+      else if (q.type === 'ESSAY' || q.type === 'MATH') {
+        detail.correctAnswer = q.referenceAnswer || "---";
+        // Prepara espaço no array final, mas o conteúdo vem da IA
+        const currentDetailIndex = details.length;
+        details.push(detail);
+        
+        if (q.referenceAnswer) {
+          aiCorrections.push({
+            index: currentDetailIndex,
+            promise: (async () => {
+              const result = await gradeStudentAnswer(
+                q.content, 
+                q.referenceAnswer || "", 
+                String(studentAnswer),
+                submission.exam.teacherId // Passa o ID do professor para rotear a chave de IA
+              );
+              if (result.success) {
+                const earned = (result.score! / 100) * q.points;
+                return { points: earned, feedback: result.feedback || "Corrigido pela IA." };
+              }
+              return { points: 0, feedback: "A IA não pôde processar esta resposta." };
+            })()
+          });
+        }
+      }
+    });
+
+    // Aguardar correções da IA e injetar nos detalhes
+    const aiResults = await Promise.all(aiCorrections.map(c => c.promise));
+    aiCorrections.forEach((cor, i) => {
+      const res = aiResults[i];
+      totalScore += res.points;
+      details[cor.index].pointsObtained = res.points;
+      details[cor.index].feedback = res.feedback;
+    });
+
+    // 3. Atualizar submissão
+    await prisma.examSubmission.update({
+      where: { id: submissionId },
+      data: {
+        finishedAt: new Date(),
+        score: totalScore
+      }
+    });
+
+    return { 
+      success: true, 
+      showScore: submission.exam.showScore,
+      score: totalScore,
+      maxScore: maxScore,
+      details: details
+    };
   } catch (e: any) {
     console.error("Erro ao finalizar prova live:", e);
     return { success: false, error: e.message };

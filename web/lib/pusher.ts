@@ -20,7 +20,7 @@ export const pusherServer = new PusherServer({
  * Permite assinar canais e ouvir eventos em tempo real
  */
 export const getPusherClient = (customAuthEndpoint?: string) => {
-  return new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
+  const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
     cluster: 'mt1',
     authEndpoint: customAuthEndpoint || '/api/pusher/auth',
     wsHost: process.env.NEXT_PUBLIC_PUSHER_HOST!,
@@ -28,6 +28,10 @@ export const getPusherClient = (customAuthEndpoint?: string) => {
     forceTLS: false,
     disableStats: true,
     enabledTransports: ['ws', 'wss'],
-    // Removido o cluster para garantir compatibilidade total com Soketi local
   });
+
+  // Habilitar logging global para depuração profunda se necessário
+  // PusherClient.logToConsole = true; 
+
+  return pusher;
 };

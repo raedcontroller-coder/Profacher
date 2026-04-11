@@ -27,6 +27,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [showScore, setShowScore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [questions, setQuestions] = useState<QuestionInput[]>([]);
@@ -122,7 +123,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
 
     setLoading(true);
     try {
-        const result = await saveExam({ title, description, questions });
+        const result = await saveExam({ title, description, showScore, questions });
         if (result.success) {
           alert("Prova salva com sucesso! Um grupo de questões com o nome desta prova foi criado automaticamente no seu banco.");
           router.push("/professor");
@@ -200,6 +201,24 @@ export default function NewExamClient({ userName }: { userName: string }) {
                                   placeholder="Ex: Não é permitido o uso de calculadora..."
                                   className="w-full bg-white/5 border border-outline-variant rounded-2xl p-6 outline-none focus:border-primary transition-all h-32 resize-none text-gray-300"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Configurações da Prova */}
+                        <div className="pt-6 border-t border-white/5 space-y-6">
+                            <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group" onClick={() => setShowScore(!showScore)}>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`material-symbols-outlined ${showScore ? 'text-primary' : 'text-gray-500'}`}>
+                                            {showScore ? 'visibility' : 'visibility_off'}
+                                        </span>
+                                        <span className="font-bold text-on-surface">Feedback de Nota em Tempo Real</span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">O aluno ao entregar a prova vai poder ver em tempo real quanto ele tirou.</p>
+                                </div>
+                                <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${showScore ? 'bg-primary' : 'bg-gray-700'}`}>
+                                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300 transform ${showScore ? 'translate-x-6' : 'translate-x-0'}`} />
+                                </div>
                             </div>
                         </div>
                     </div>

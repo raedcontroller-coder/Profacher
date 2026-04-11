@@ -263,3 +263,16 @@ Visualização clara de hierarquia (Admin vs Coord vs Prof).
 
 
 Liquid Glass style
+
+
+uero que na pagina do professor Minhas Provas tenha um botao na prova "Iniciar prova"
+e quue a prova contenha um codigo
+exe. "FD42G"
+
+-devemos criar uma pagina para o aluno
+-o aluno nao vai precisar criar login
+-o aluno deve inserir nome completo, RA, e codigo da prova
+-ao inserir esses dados, ele deve ser levado para uma wating room. aguardando o professor a clicar no iniciar prova
+-quando o professor clicar, deve iniciar para todos os alunos conectado a essa prova
+
+-devemos preparar o banco e garantir que o websocket funcione e dispare para todos os alunos

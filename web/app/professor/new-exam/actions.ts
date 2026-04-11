@@ -8,6 +8,7 @@ import { redirect } from "next/navigation"
 export async function saveExam(data: {
   title: string;
   description?: string;
+  showScore?: boolean;
   questions: Array<{
     content: string;
     type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
@@ -40,6 +41,7 @@ export async function saveExam(data: {
       data: {
         title: data.title,
         description: data.description,
+        showScore: data.showScore ?? false,
         teacherId: Number(userId),
         accessCode: accessCode,
         status: 'WAITING', // Já nasce aguardando alunos

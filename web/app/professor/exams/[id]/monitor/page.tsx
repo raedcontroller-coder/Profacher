@@ -45,8 +45,10 @@ export default function ExamMonitorPage() {
 
     const pusher = getPusherClient();
     pusherRef.current = pusher;
-    const channelName = `presence-exam-${exam.accessCode}`;
+    const channelName = `presence-exam-${exam.accessCode.toUpperCase()}`;
     const channel = pusher.subscribe(channelName);
+
+    console.log("[MONITOR] Assinando canal:", channelName);
 
     // Evento: Conexão bem-sucedida (pega lista inicial)
     channel.bind('pusher:subscription_succeeded', (members: any) => {
@@ -56,8 +58,11 @@ export default function ExamMonitorPage() {
           list.push(member.info);
         }
       });
-      console.log("[MONITOR] Lista inicial de participantes:", list);
       setParticipants(list);
+    });
+
+    channel.bind('pusher:subscription_error', (status: any) => {
+      console.error("[MONITOR] Erro de assinatura no canal de presença:", status);
     });
 
     // Evento: Novo aluno entrou (ou reconectou)
@@ -75,6 +80,10 @@ export default function ExamMonitorPage() {
     channel.bind('pusher:member_removed', (member: any) => {
       console.log("[MONITOR] Aluno saiu:", member.info);
       setParticipants(prev => prev.filter(p => p.ra !== member.info.ra));
+    });
+
+    pusher.connection.bind('state_change', (states: any) => {
+      console.log("[MONITOR] Estado da conexão Socket:", states.current);
     });
 
     return () => {

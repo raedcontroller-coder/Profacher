@@ -16,8 +16,6 @@ export async function POST(req: Request) {
     const studentRa = url.searchParams.get("student_ra") || params.get("student_ra");
     const studentName = url.searchParams.get("student_name") || params.get("student_name");
 
-    console.log(`[PUSHER AUTH] Tentando autenticar: RA=${studentRa}, Nome=${studentName}`);
-
     if (!socketId || !channelName) {
       return new NextResponse("Invalid socket_id or channel_name", { status: 400 });
     }
@@ -27,24 +25,25 @@ export async function POST(req: Request) {
       user_info: {}
     };
 
-    // 1. Cenário: Professor Logado
-    if (session?.user) {
-      presenceData = {
-        user_id: (session.user as any).email || (session.user as any).id.toString(),
-        user_info: {
-          name: session.user.name,
-          role: "teacher"
-        }
-      };
-    } 
-    // 2. Cenário: Aluno (Convidado)
-    else if (studentRa && studentName) {
+    // 1. Prioridade: Se houver parâmetros de Aluno (Convidado), trata como aluno
+    // Isso permite que professores testem a prova no mesmo navegador.
+    if (studentRa && studentName) {
       presenceData = {
         user_id: `student-${studentRa}`,
         user_info: {
           name: studentName,
           ra: studentRa,
           role: "student"
+        }
+      };
+    } 
+    // 2. Cenário Secundário: Professor Logado (Monitoramento)
+    else if (session?.user) {
+      presenceData = {
+        user_id: (session.user as any).email || (session.user as any).id.toString(),
+        user_info: {
+          name: session.user.name,
+          role: "teacher"
         }
       };
     } else {
