@@ -465,8 +465,19 @@ export async function finishExamLive(submissionId: number) {
 
       if (q.type === 'MULTIPLE_CHOICE') {
         const correctOption = q.options.find(opt => opt.isCorrect);
+        // Normalização estrita para garantir o match do ID
+        const selectedOption = q.options.find(opt => String(opt.id).trim() === String(studentAnswer).trim());
+        
+        if (selectedOption) {
+          detail.studentAnswer = selectedOption.content;
+        } else {
+          // Se não achar pelo ID, pode ser que o valor já seja o texto (fallback)
+          detail.studentAnswer = studentAnswer;
+        }
+
         detail.correctAnswer = correctOption?.content || "---";
-        if (correctOption && Number(studentAnswer) === correctOption.id) {
+
+        if (correctOption && String(studentAnswer).trim() === String(correctOption.id).trim()) {
           totalScore += q.points;
           detail.pointsObtained = q.points;
           detail.feedback = "Parabéns! Você selecionou a alternativa correta.";
@@ -478,14 +489,23 @@ export async function finishExamLive(submissionId: number) {
       else if (q.type === 'TRUE_FALSE') {
         let correctCount = 0;
         const correctLabels: string[] = [];
+        const studentLabels: string[] = [];
+        
         q.options.forEach(opt => {
           const expected = opt.isCorrect ? 'V' : 'F';
+          const studentVal = studentAnswer[opt.id] || '?';
+          
           correctLabels.push(`${opt.content}: ${expected}`);
+          studentLabels.push(`${opt.content}: ${studentVal}`);
+          
           if (studentAnswer[opt.id] === expected) {
             correctCount++;
           }
         });
+
+        detail.studentAnswer = studentLabels.join(" | ");
         detail.correctAnswer = correctLabels.join(" | ");
+
         if (q.options.length > 0) {
           const earned = (correctCount / q.options.length) * q.points;
           totalScore += earned;

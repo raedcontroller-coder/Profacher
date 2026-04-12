@@ -25,7 +25,7 @@ export async function saveExam(data: {
   }
 
   try {
-    // 1. Gerar Código Único de 5 caracteres (ex: FD42G)
+    // 1. Gerar Código Único de 5 caracteres
     const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
     let accessCode = '';
     let isUnique = false;
@@ -36,24 +36,9 @@ export async function saveExam(data: {
       if (!existing) isUnique = true;
     }
 
-    // 2. Criar o Exame
-    const exam = await prisma.exam.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        showScore: data.showScore ?? false,
-        teacherId: Number(userId),
-        accessCode: accessCode,
-        status: 'WAITING', // Já nasce aguardando alunos
-      }
-    });
-
-    // 2. Lógica de auto-organização: Criar um grupo para esta prova se houver questões novas
+    // 2. Pré-gerenciar Grupo (Fora da transação paralela para evitar race conditions de criação de grupo)
     let group = await prisma.questionGroup.findFirst({
-      where: { 
-        name: data.title,
-        teacherId: Number(userId)
-      }
+      where: { name: data.title, teacherId: Number(userId) }
     });
 
     if (!group && data.questions.length > 0) {
@@ -66,42 +51,59 @@ export async function saveExam(data: {
       });
     }
 
-    // 3. Processar as questões
-    for (let i = 0; i < data.questions.length; i++) {
-        const qData = data.questions[i];
-        
-        // Criar a questão no banco de questões vinculada ao grupo recém-criado/encontrado
-        const question = await prisma.question.create({
-            data: {
-                content: qData.content,
-                type: qData.type,
-                points: qData.points,
-                referenceAnswer: qData.referenceAnswer,
-                teacherId: Number(userId),
-                groupId: group?.id,
-                options: {
-                    create: qData.options?.map(opt => ({
-                        content: opt.content,
-                        isCorrect: opt.isCorrect
-                    }))
-                }
-            }
-        });
+    // 3. Processar questões em PARALELO
+    const questionPromises = data.questions.map(async (qData) => {
+      const question = await prisma.question.create({
+        data: {
+          content: qData.content,
+          type: qData.type,
+          points: qData.points,
+          referenceAnswer: qData.referenceAnswer,
+          teacherId: Number(userId),
+          groupId: group?.id,
+          options: {
+            create: qData.options?.map(opt => ({
+              content: opt.content,
+              isCorrect: opt.isCorrect
+            }))
+          }
+        }
+      });
+      return question.id;
+    });
 
-        // Vincular a questão ao exame
-        await prisma.examQuestion.create({
-            data: {
-                examId: exam.id,
-                questionId: question.id,
-                order: i
-            }
+    const questionIds = await Promise.all(questionPromises);
+
+    // 4. Transação Atômica Relâmpago para o Exame e Vínculos
+    const examId = await prisma.$transaction(async (tx) => {
+      const exam = await tx.exam.create({
+        data: {
+          title: data.title,
+          description: data.description,
+          showScore: data.showScore ?? false,
+          teacherId: Number(userId),
+          accessCode: accessCode,
+          status: 'WAITING',
+        }
+      });
+
+      if (questionIds.length > 0) {
+        await tx.examQuestion.createMany({
+          data: questionIds.map((id, index) => ({
+            examId: exam.id,
+            questionId: id,
+            order: index
+          }))
         });
-    }
+      }
+
+      return exam.id;
+    }, { timeout: 30000 });
 
     revalidatePath("/professor/exams")
     revalidatePath("/professor/questions")
     
-    return { success: true, examId: exam.id };
+    return { success: true, examId };
   } catch (e: any) {
     console.error("Erro ao salvar prova:", e);
     return { success: false, error: e.message };
@@ -171,9 +173,58 @@ export async function updateExam(examId: number, data: {
       return { success: false, error: "Não é possível editar uma prova em andamento." };
     }
 
-    // 2. Atualizar Exame (Transaction para garantir atomicidade)
+    // 2. Processar questões em PARALELO (Otimização Extrema)
+    // Isso tira o peso do banco de dentro da transação sequencial
+    const questionPromises = data.questions.map(async (qData) => {
+      let questionId = qData.id;
+
+      if (questionId) {
+        // Atualizar questão existente
+        await prisma.question.update({
+          where: { id: questionId },
+          data: {
+            content: qData.content,
+            type: qData.type,
+            points: qData.points,
+            referenceAnswer: qData.referenceAnswer,
+            options: {
+              deleteMany: {},
+              create: qData.options?.map(opt => ({
+                content: opt.content,
+                isCorrect: opt.isCorrect
+              }))
+            }
+          }
+        });
+        return questionId;
+      } else {
+        // Criar nova questão
+        const newQ = await prisma.question.create({
+          data: {
+            content: qData.content,
+            type: qData.type,
+            points: qData.points,
+            referenceAnswer: qData.referenceAnswer,
+            teacherId: userId,
+            options: {
+              create: qData.options?.map(opt => ({
+                content: opt.content,
+                isCorrect: opt.isCorrect
+              }))
+            }
+          }
+        });
+        return newQ.id;
+      }
+    });
+
+    // Aguarda todas as questões serem salvas em paralelo
+    const questionIdList = await Promise.all(questionPromises);
+
+    // 3. Transação Atômica Relâmpago (Apenas para vínculos)
+    // Como as questões já estão no banco, isso aqui dura milissegundos
     await prisma.$transaction(async (tx) => {
-      // Update Básico
+      // Update do Exame
       await tx.exam.update({
         where: { id: examId },
         data: {
@@ -183,66 +234,19 @@ export async function updateExam(examId: number, data: {
         }
       });
 
-      // Remover vínculos antigos de questões
-      await tx.examQuestion.deleteMany({
-        where: { examId: examId }
-      });
+      // Recriar vínculos
+      await tx.examQuestion.deleteMany({ where: { examId: examId } });
 
-      // 3. Processar questões
-      for (let i = 0; i < data.questions.length; i++) {
-        const qData = data.questions[i];
-        let questionId = qData.id;
-
-        if (questionId) {
-          // Atualizar questão existente
-          await tx.question.update({
-            where: { id: questionId },
-            data: {
-              content: qData.content,
-              type: qData.type,
-              points: qData.points,
-              referenceAnswer: qData.referenceAnswer,
-              options: {
-                deleteMany: {},
-                create: qData.options?.map(opt => ({
-                  content: opt.content,
-                  isCorrect: opt.isCorrect
-                }))
-              }
-            }
-          });
-        } else {
-          // Criar nova questão (Opcional: vincular a um grupo se desejar)
-          const newQ = await tx.question.create({
-            data: {
-              content: qData.content,
-              type: qData.type,
-              points: qData.points,
-              referenceAnswer: qData.referenceAnswer,
-              teacherId: userId,
-              options: {
-                create: qData.options?.map(opt => ({
-                  content: opt.content,
-                  isCorrect: opt.isCorrect
-                }))
-              }
-            }
-          });
-          questionId = newQ.id;
-        }
-
-        // Criar novo vínculo
-        await tx.examQuestion.create({
-          data: {
+      if (questionIdList.length > 0) {
+        await tx.examQuestion.createMany({
+          data: questionIdList.map((qId, index) => ({
             examId: examId,
-            questionId: questionId,
-            order: i
-          }
+            questionId: qId,
+            order: index
+          }))
         });
       }
-    }, { timeout: 120000 });
-
-
+    }, { timeout: 30000 });
 
     revalidatePath("/professor/exams")
     return { success: true };
