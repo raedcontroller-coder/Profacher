@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
-import { saveExam } from './actions';
+import { updateExam } from '@/app/professor/new-exam/actions';
 import { useRouter } from 'next/navigation';
-import ImportQuestionModal from './ImportQuestionModal';
+import ImportQuestionModal from '@/app/professor/new-exam/ImportQuestionModal';
 import RichTextEditor from '@/components/shared/RichTextEditor';
 
 interface QuestionInput {
+  id?: number;
   content: string;
   type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
   points: number;
@@ -23,14 +24,26 @@ const typeOptions = [
   { value: 'MATH', label: 'Cálculo', icon: 'functions' },
 ] as const;
 
-export default function NewExamClient({ userName }: { userName: string }) {
+export default function EditExamClient({ 
+  userName, 
+  initialData 
+}: { 
+  userName: string;
+  initialData: {
+    id: number;
+    title: string;
+    description: string;
+    showScore: boolean;
+    questions: QuestionInput[];
+  }
+}) {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [showScore, setShowScore] = useState(false);
+  const [title, setTitle] = useState(initialData.title);
+  const [description, setDescription] = useState(initialData.description);
+  const [showScore, setShowScore] = useState(initialData.showScore);
   const [loading, setLoading] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [questions, setQuestions] = useState<QuestionInput[]>([]);
+  const [questions, setQuestions] = useState<QuestionInput[]>(initialData.questions);
 
   function addQuestion() {
     setQuestions([...questions, {
@@ -100,7 +113,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
     setQuestions(questions.filter((_, i) => i !== index));
   }
 
-  async function handleSave() {
+  async function handleUpdate() {
     if (!title) {
         alert("Por favor, insira o título da prova.");
         return;
@@ -123,12 +136,12 @@ export default function NewExamClient({ userName }: { userName: string }) {
 
     setLoading(true);
     try {
-        const result = await saveExam({ title, description, showScore, questions });
+        const result = await updateExam(initialData.id, { title, description, showScore, questions });
         if (result.success) {
-          alert("Prova salva com sucesso! Um grupo de questões com o nome desta prova foi criado automaticamente no seu banco.");
-          router.push("/professor");
+          alert("Prova atualizada com sucesso!");
+          router.push("/professor/exams");
         } else {
-          alert("Erro ao salvar: " + result.error);
+          alert("Erro ao atualizar: " + result.error);
         }
     } catch (e) {
         alert("Erro inesperado ao salvar.");
@@ -150,8 +163,8 @@ export default function NewExamClient({ userName }: { userName: string }) {
                 
                 <header className="flex justify-between items-center mb-4">
                     <div className="space-y-2">
-                        <h2 className="text-4xl font-bold tracking-tight text-on-surface">Nova <span className="text-primary">Avaliação</span></h2>
-                        <p className="text-gray-400">Monte sua prova do zero e alimente seu acervo automaticamente.</p>
+                        <h2 className="text-4xl font-bold tracking-tight text-on-surface">Editar <span className="text-primary">Avaliação</span></h2>
+                        <p className="text-gray-400">Altere o conteúdo da sua prova e salve as modificações.</p>
                     </div>
                     <div className="flex gap-4">
                         <button 
@@ -159,11 +172,11 @@ export default function NewExamClient({ userName }: { userName: string }) {
                           onClick={() => router.back()}
                           className="px-6 py-3 rounded-2xl border border-outline-variant hover:bg-white/5 transition-all font-bold text-gray-500"
                         >
-                            Cancelar
+                            Voltar
                         </button>
                         <button 
                           disabled={loading}
-                          onClick={handleSave}
+                          onClick={handleUpdate}
                           className="px-10 py-3 rounded-2xl bg-primary text-black font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
                         >
                             {loading ? (
@@ -173,8 +186,8 @@ export default function NewExamClient({ userName }: { userName: string }) {
                                 </>
                             ) : (
                                 <>
-                                    <span className="material-symbols-outlined">verified</span> 
-                                    SALVAR PROVA
+                                    <span className="material-symbols-outlined">check_circle</span> 
+                                    ATUALIZAR PROVA
                                 </>
                             )}
                         </button>

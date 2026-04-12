@@ -201,6 +201,15 @@ export default function ExamsClient({ userName }: { userName: string }) {
                               Monitorar
                             </Link>
                             
+                            <Link 
+                              href={`/professor/exams/${exam.id}/edit`}
+                              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${exam.status === 'STARTED' ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/5 text-gray-400 hover:bg-primary/20 hover:text-primary'}`}
+                              title={exam.status === 'STARTED' ? 'Não é possível editar em andamento' : 'Editar prova'}
+                              onClick={(e) => exam.status === 'STARTED' && e.preventDefault()}
+                            >
+                              <span className="material-symbols-outlined text-xl">edit</span>
+                            </Link>
+                            
                             <button 
                               onClick={() => handleDelete(exam.id, exam.title)}
                               className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all"

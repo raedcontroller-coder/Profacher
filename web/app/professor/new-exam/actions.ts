@@ -135,3 +135,119 @@ export async function getTeacherQuestions() {
     return { success: false, error: e.message };
   }
 }
+
+export async function updateExam(examId: number, data: {
+  title: string;
+  description?: string;
+  showScore?: boolean;
+  questions: Array<{
+    id?: number;
+    content: string;
+    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
+    points: number;
+    referenceAnswer?: string;
+    options?: Array<{ content: string; isCorrect: boolean }>;
+  }>;
+}) {
+  const session = await auth()
+  const userId = session?.user ? Number((session.user as any).id) : null
+
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    throw new Error("Não autorizado ou sessão inválida")
+  }
+
+  try {
+    // 1. Validar propriedade e status
+    const existingExam = await prisma.exam.findUnique({
+      where: { id: examId },
+      select: { teacherId: true, status: true }
+    });
+
+    if (!existingExam || existingExam.teacherId !== userId) {
+      return { success: false, error: "Prova não encontrada ou acesso negado" };
+    }
+
+    if (existingExam.status === 'STARTED') {
+      return { success: false, error: "Não é possível editar uma prova em andamento." };
+    }
+
+    // 2. Atualizar Exame (Transaction para garantir atomicidade)
+    await prisma.$transaction(async (tx) => {
+      // Update Básico
+      await tx.exam.update({
+        where: { id: examId },
+        data: {
+          title: data.title,
+          description: data.description,
+          showScore: data.showScore ?? false,
+        }
+      });
+
+      // Remover vínculos antigos de questões
+      await tx.examQuestion.deleteMany({
+        where: { examId: examId }
+      });
+
+      // 3. Processar questões
+      for (let i = 0; i < data.questions.length; i++) {
+        const qData = data.questions[i];
+        let questionId = qData.id;
+
+        if (questionId) {
+          // Atualizar questão existente
+          await tx.question.update({
+            where: { id: questionId },
+            data: {
+              content: qData.content,
+              type: qData.type,
+              points: qData.points,
+              referenceAnswer: qData.referenceAnswer,
+              options: {
+                deleteMany: {},
+                create: qData.options?.map(opt => ({
+                  content: opt.content,
+                  isCorrect: opt.isCorrect
+                }))
+              }
+            }
+          });
+        } else {
+          // Criar nova questão (Opcional: vincular a um grupo se desejar)
+          const newQ = await tx.question.create({
+            data: {
+              content: qData.content,
+              type: qData.type,
+              points: qData.points,
+              referenceAnswer: qData.referenceAnswer,
+              teacherId: userId,
+              options: {
+                create: qData.options?.map(opt => ({
+                  content: opt.content,
+                  isCorrect: opt.isCorrect
+                }))
+              }
+            }
+          });
+          questionId = newQ.id;
+        }
+
+        // Criar novo vínculo
+        await tx.examQuestion.create({
+          data: {
+            examId: examId,
+            questionId: questionId,
+            order: i
+          }
+        });
+      }
+    }, { timeout: 120000 });
+
+
+
+    revalidatePath("/professor/exams")
+    return { success: true };
+  } catch (e: any) {
+    console.error("Erro ao atualizar prova:", e);
+    return { success: false, error: e.message };
+  }
+}

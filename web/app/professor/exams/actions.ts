@@ -551,3 +551,65 @@ export async function finishExamLive(submissionId: number) {
     return { success: false, error: e.message };
   }
 }
+
+export async function getExamForEdit(examId: number) {
+  const session = await auth()
+  const userId = session?.user ? Number((session.user as any).id) : null
+
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  try {
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId },
+      include: {
+        questions: {
+          orderBy: { order: 'asc' },
+          include: {
+            question: {
+              include: {
+                options: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!exam || exam.teacherId !== userId) {
+      return { success: false, error: "Prova não encontrada" };
+    }
+
+    if (exam.status === 'STARTED') {
+      return { success: false, error: "Não é possível editar uma prova que está em andamento. Finalize a prova para editá-la." };
+    }
+
+    // Formatar para o frontend
+    const formattedQuestions = exam.questions.map(eq => ({
+      id: eq.question.id,
+      content: eq.question.content,
+      type: eq.question.type,
+      points: eq.question.points,
+      referenceAnswer: eq.question.referenceAnswer,
+      options: eq.question.options.map(opt => ({
+        content: opt.content,
+        isCorrect: opt.isCorrect
+      }))
+    }));
+
+    return {
+      success: true,
+      exam: {
+        id: exam.id,
+        title: exam.title,
+        description: exam.description || '',
+        showScore: exam.showScore,
+        questions: formattedQuestions
+      }
+    };
+  } catch (e: any) {
+    console.error("Erro ao buscar prova para edição:", e);
+    return { success: false, error: e.message };
+  }
+}
