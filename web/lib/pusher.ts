@@ -20,11 +20,23 @@ export const pusherServer = new PusherServer({
  * Permite assinar canais e ouvir eventos em tempo real
  */
 export const getPusherClient = (customAuthEndpoint?: string) => {
-  const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_APP_KEY!, {
+  const key = process.env.NEXT_PUBLIC_PUSHER_APP_KEY;
+  const host = process.env.NEXT_PUBLIC_PUSHER_HOST;
+  const port = process.env.NEXT_PUBLIC_PUSHER_PORT;
+
+  if (!key || !host || !port) {
+    console.error("❌ PUSHER CONFIG ERROR: Variáveis de ambiente faltando no CLIENTE!", {
+      key: !!key,
+      host: !!host,
+      port: !!port
+    });
+  }
+
+  const pusher = new PusherClient(key!, {
     cluster: 'mt1',
     authEndpoint: customAuthEndpoint || '/api/pusher/auth',
-    wsHost: process.env.NEXT_PUBLIC_PUSHER_HOST!,
-    wsPort: Number(process.env.NEXT_PUBLIC_PUSHER_PORT!),
+    wsHost: host!,
+    wsPort: Number(port!),
     forceTLS: false,
     disableStats: true,
     enabledTransports: ['ws', 'wss'],
