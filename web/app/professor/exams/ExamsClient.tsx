@@ -194,11 +194,19 @@ export default function ExamsClient({ userName }: { userName: string }) {
                           <div className="flex items-center justify-end gap-3">
                             <Link 
                               href={`/professor/exams/${exam.id}/monitor`}
-                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-secondary text-black font-black hover:scale-105 transition-all shadow-xl shadow-secondary/20"
-                              title="Entrar na Sala de Espera"
+                              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-secondary text-black font-black hover:scale-105 transition-all shadow-xl shadow-secondary/20"
+                              title="Monitorar Sala (Waiting Room)"
                             >
                               <span className="material-symbols-outlined text-xl">monitor</span>
-                              Monitorar
+                            </Link>
+
+                            <Link 
+                              href={`/professor/exams/${exam.id}/results`}
+                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-black font-black hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                              title="Ver Resultados e Entregas"
+                            >
+                              <span className="material-symbols-outlined text-xl">analytics</span>
+                              Resultados
                             </Link>
                             
                             <Link 

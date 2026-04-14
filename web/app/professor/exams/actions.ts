@@ -214,11 +214,14 @@ export async function getExamForMonitor(examId: number) {
         },
         submissions: {
           select: {
+            id: true,
             studentName: true,
             studentRa: true,
+            startedAt: true,
             finishedAt: true,
             score: true,
-            isExpelled: true
+            isExpelled: true,
+            answers: true
           }
         }
       }
@@ -231,6 +234,72 @@ export async function getExamForMonitor(examId: number) {
     return { success: true, exam };
   } catch (e: any) {
     console.error("Erro ao buscar detalhes para monitoria:", e);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Busca os detalhes completos de uma submissão para o modal do professor.
+ */
+export async function getSubmissionDetails(submissionId: number) {
+  const session = await auth()
+  const userId = session?.user ? Number((session.user as any).id) : null
+
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  try {
+    const submission = await prisma.examSubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        exam: {
+          include: {
+            questions: {
+              include: {
+                question: {
+                  include: {
+                    options: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!submission || submission.exam.teacherId !== userId) {
+      return { success: false, error: "Submissão não encontrada" };
+    }
+
+    // Mapear respostas com enunciados
+    const answers = (submission.answers as any) || {};
+    const report = submission.exam.questions.map(eq => {
+      const q = eq.question;
+      const studentAns = answers[q.id];
+      
+      return {
+        questionId: q.id,
+        content: q.content,
+        type: q.type,
+        studentAnswer: studentAns,
+        correctAnswer: q.referenceAnswer,
+        points: q.points,
+        options: q.options
+      };
+    });
+
+    return { 
+      success: true, 
+      studentName: submission.studentName,
+      studentRa: submission.studentRa,
+      score: submission.score,
+      maxScore: submission.exam.questions.reduce((acc, q) => acc + q.question.points, 0),
+      report 
+    };
+  } catch (e: any) {
+    console.error("Erro ao buscar detalhes da submissão:", e);
     return { success: false, error: e.message };
   }
 }

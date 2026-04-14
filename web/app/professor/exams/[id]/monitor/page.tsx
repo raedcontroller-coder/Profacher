@@ -1,7 +1,8 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { getPusherClient } from '@/lib/pusher';
@@ -10,6 +11,7 @@ import { startExamLive, stopExamLive, getExamForMonitor, kickStudent } from '../
 export default function ExamMonitorPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const examId = Number(params.id);
 
   const [exam, setExam] = useState<any>(null);
@@ -21,127 +23,72 @@ export default function ExamMonitorPage() {
   // 1. Carregar dados da prova
   useEffect(() => {
     async function loadData() {
-      if (!examId) return;
-      try {
-        const result = await getExamForMonitor(examId);
-        if (result.success) {
-          setExam(result.exam);
-        }
-      } catch (e) {
-        console.error("Erro no loadData:", e);
-      } finally {
-        setLoading(false);
+      const res = await getExamForMonitor(examId);
+      if (res.success) {
+        setExam(res.exam);
       }
+      setLoading(false);
     }
-    
     loadData();
-    const interval = setInterval(loadData, 10000); // Atualiza a cada 10s
-    return () => clearInterval(interval);
   }, [examId]);
 
-  // 2. Lógica do Socket (Presence Channel)
+  // 2. Configurar Pusher Presence
   useEffect(() => {
-    if (!exam?.accessCode) return;
+    if (!exam?.accessCode || pusherRef.current) return;
 
     const pusher = getPusherClient();
     pusherRef.current = pusher;
-    const channelName = `presence-exam-${exam.accessCode.toUpperCase()}`;
-    const channel = pusher.subscribe(channelName);
+    const channel = pusher.subscribe(`presence-exam-${exam.accessCode}`);
 
-    console.log("[MONITOR] Assinando canal:", channelName);
-
-    // Evento: Conexão bem-sucedida (pega lista inicial)
     channel.bind('pusher:subscription_succeeded', (members: any) => {
       const list: any[] = [];
-      members.each((member: any) => {
-        if (member.info.role === 'student') {
-          list.push(member.info);
-        }
-      });
+      members.each((member: any) => list.push(member.info));
       setParticipants(list);
     });
 
-    channel.bind('pusher:subscription_error', (status: any) => {
-      console.error("[MONITOR] Erro de assinatura no canal de presença:", status);
-    });
-
-    // Evento: Novo aluno entrou (ou reconectou)
     channel.bind('pusher:member_added', (member: any) => {
-      if (member.info.role !== 'student') return;
-      console.log("[MONITOR] Aluno entrou/reconectou:", member.info);
       setParticipants(prev => {
-        // Remove qualquer entrada antiga do mesmo RA (evita ghosting) e adiciona a nova
-        const filtered = prev.filter(p => p.ra !== member.info.ra);
-        return [...filtered, member.info];
+        if (prev.find(p => p.ra === member.info.ra)) return prev;
+        return [...prev, member.info];
       });
     });
 
-    // Evento: Aluno saiu
     channel.bind('pusher:member_removed', (member: any) => {
-      console.log("[MONITOR] Aluno saiu:", member.info);
       setParticipants(prev => prev.filter(p => p.ra !== member.info.ra));
     });
 
-    pusher.connection.bind('state_change', (states: any) => {
-      console.log("[MONITOR] Estado da conexão Socket:", states.current);
-    });
-
     return () => {
-      console.log("[MONITOR] Desconectando Socket do Monitor...");
-      channel.unbind_all();
-      pusher.unsubscribe(channelName);
-      pusher.disconnect();
+      pusher.unsubscribe(`presence-exam-${exam.accessCode}`);
       pusherRef.current = null;
     };
   }, [exam?.accessCode]);
 
   const handleToggleExamStatus = async () => {
-    const isStarted = exam?.status === 'STARTED';
-    const idAsNumber = Number(examId);
-
-    const message = isStarted 
-      ? "Deseja encerrar esta prova? Os alunos não poderão mais enviar respostas."
-      : "Deseja iniciar a prova para todos os alunos conectados agora?";
-
-    if (!confirm(message)) return;
-    
     setStarting(true);
-    console.log(`[MONITOR] Solicitando ${isStarted ? 'STOP' : 'START'} para prova ID:`, idAsNumber);
-
-    try {
-      const result = isStarted ? await stopExamLive(idAsNumber) : await startExamLive(idAsNumber);
-      
-      console.log(`[MONITOR] Resultado da operação:`, result);
-
-      if (result.success) {
-        const update = await getExamForMonitor(idAsNumber);
-        if (update.success) {
-          setExam(update.exam);
-          console.log(`[MONITOR] Status atualizado para:`, update.exam?.status);
-        }
-      } else {
-        alert("Erro na operação: " + result.error);
-      }
-    } catch (e) {
-      console.error("[MONITOR] Erro catastrófico no comando:", e);
-      alert("Erro ao processar comando.");
-    } finally {
-      setStarting(false);
+    const isStarted = exam?.status === 'STARTED';
+    const res = isStarted ? await stopExamLive(examId) : await startExamLive(examId);
+    
+    if (res.success) {
+      const update = await getExamForMonitor(examId);
+      if (update.success) setExam(update.exam);
+    } else {
+      alert("Erro ao alterar status: " + res.error);
     }
+    setStarting(false);
   };
 
   if (loading) {
     return (
-      <div className="bg-[#121315] min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="bg-[#121315] min-h-screen text-on-surface font-['Inter'] relative overflow-hidden">
+    <div className="min-h-screen bg-surface text-on-surface selection:bg-primary/30 selection:text-primary font-['Inter']">
       <Sidebar role="PROFESSOR" />
-      <TopBar userName="Professor" roleLabel="Monitoramento Real-Time" />
+      <TopBar userName={session?.user?.name || "Professor"} roleLabel="Professor" />
 
       <main className="pl-64 pt-16 min-h-screen relative z-10">
         <div className="p-12 max-w-[1200px] mx-auto space-y-12">
@@ -161,7 +108,15 @@ export default function ExamMonitorPage() {
               <h1 className="text-4xl font-black">
                 {exam?.title}
               </h1>
-              <p className="text-gray-400">Acompanhe a entrada dos alunos no sistema Profacher 2.0.</p>
+              <p className="text-gray-400">Acompanhe a entrada dos alunos na sala de espera.</p>
+              
+              <button 
+                onClick={() => router.push(`/professor/exams/${examId}/results`)}
+                className="mt-4 flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl text-xs font-black hover:scale-105 transition-all shadow-lg shadow-primary/20"
+              >
+                <span className="material-symbols-outlined text-sm">analytics</span>
+                IR PARA PAINEL DE RESULTADOS E ENTREGAS
+              </button>
             </div>
 
             <button 
@@ -180,7 +135,7 @@ export default function ExamMonitorPage() {
                   <span className="material-symbols-outlined text-3xl">
                     {exam?.status === 'STARTED' ? 'cancel' : 'rocket_launch'}
                   </span>
-                  {exam?.status === 'STARTED' ? 'FINALIZAR PROVA AGORA' : 'INICIAR PROVA AGORA'}
+                  {exam?.status === 'STARTED' ? 'FINALIZAR PROVA' : 'INICIAR PROVA AGORA'}
                 </>
               )}
             </button>
@@ -204,7 +159,6 @@ export default function ExamMonitorPage() {
                   const allSubs = exam?.submissions || [];
                   const activeRAs = new Set(participants.map(p => p.ra));
                   
-                  // Mesclar participantes ativos com submissões do banco
                   const merged = [...participants.map(p => ({ ...p, isOnline: true }))];
                   
                   allSubs.forEach((sub: any) => {
@@ -218,7 +172,6 @@ export default function ExamMonitorPage() {
                         isExpelled: isExpelled
                       } as any);
                     } else {
-                      // Atualizar status de finalização e expulsão na lista ativa
                       const subInActive = merged.find(m => m.ra === sub.studentRa);
                       if (subInActive) {
                         subInActive.finishedAt = sub.finishedAt;
@@ -227,21 +180,7 @@ export default function ExamMonitorPage() {
                     }
                   });
 
-                  // Ordenar por nome
                   merged.sort((a, b) => a.name.localeCompare(b.name));
-
-                  const handleKick = async (ra: string, name: string) => {
-                    if (!confirm(`TEM CERTEZA? Expulsar o aluno "${name}" (RA: ${ra}) bloqueará o acesso dele permanentemente desta prova.`)) return;
-                    
-                    const res = await kickStudent(examId, ra);
-                    if (res.success) {
-                       // Atualização local imediata será refletida no próximo poll/socket
-                       const update = await getExamForMonitor(examId);
-                       if (update.success) setExam(update.exam);
-                    } else {
-                       alert("Erro ao expulsar: " + res.error);
-                    }
-                  };
 
                   if (merged.length === 0) {
                     return (
@@ -253,10 +192,10 @@ export default function ExamMonitorPage() {
                   }
 
                   return merged.map((p, i) => (
-                    <div key={i} className={`flex items-center justify-between p-5 rounded-2xl border transition-all animate-in fade-in slide-in-from-left-4 duration-300 ${p.isExpelled ? 'bg-red-500/10 border-red-500/30' : p.finishedAt ? 'bg-blue-500/5 border-blue-500/20' : 'bg-white/5 border-white/5'}`}>
+                    <div key={i} className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${p.isExpelled ? 'bg-red-500/10 border-red-500/30' : p.finishedAt ? 'bg-blue-500/5 border-blue-500/20' : 'bg-white/5 border-white/5'}`}>
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl ${p.isExpelled ? 'bg-red-500/20 text-red-400' : p.finishedAt ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20 text-primary'}`}>
-                          {p.name?.charAt(0) || 'A'}
+                          {p.name?.charAt(0)}
                         </div>
                         <div>
                           <p className={`font-bold text-lg ${p.isExpelled ? 'text-red-200 line-through' : p.finishedAt ? 'text-blue-200' : 'text-on-surface'}`}>{p.name}</p>
@@ -266,9 +205,7 @@ export default function ExamMonitorPage() {
                       
                       <div className="flex items-center gap-4">
                         {p.isExpelled ? (
-                          <span className="px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full shadow-lg shadow-red-500/20">
-                             BLOQUEADO
-                          </span>
+                          <span className="px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full shadow-lg shadow-red-500/20">BLOQUEADO</span>
                         ) : p.finishedAt ? (
                           <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase rounded-full border border-blue-500/20 flex items-center gap-2">
                              <span className="material-symbols-outlined text-xs">verified</span>
@@ -282,11 +219,15 @@ export default function ExamMonitorPage() {
                             </span>
                             
                             <button 
-                              onClick={() => handleKick(p.ra, p.name)}
-                              className="w-10 h-10 rounded-full bg-white/5 hover:bg-red-500 hover:text-white text-gray-400 flex items-center justify-center transition-all border border-white/5 hover:border-red-500 active:scale-95 group"
-                              title="Expulsar Aluno"
+                              onClick={async () => {
+                                if (!confirm(`Expulsar "${p.name}"?`)) return;
+                                await kickStudent(examId, p.ra);
+                                const update = await getExamForMonitor(examId);
+                                if (update.success) setExam(update.exam);
+                              }}
+                              className="w-10 h-10 rounded-full bg-white/5 hover:bg-red-500 hover:text-white text-gray-400 flex items-center justify-center transition-all border border-white/5"
                             >
-                              <span className="material-symbols-outlined text-lg group-hover:animate-bounce">person_remove</span>
+                              <span className="material-symbols-outlined text-lg">person_remove</span>
                             </button>
                           </div>
                         )}
@@ -305,27 +246,9 @@ export default function ExamMonitorPage() {
                   </div>
                   <p className="text-xs text-gray-500 font-medium">Instrua os alunos a acessarem:<br/> <span className="text-gray-300">/prova/{exam?.accessCode}</span></p>
                </div>
-
-               <div className="liquid-glass rounded-[2.5rem] border border-outline-variant p-8 space-y-6">
-                  <h4 className="font-bold flex items-center gap-2">
-                    <span className="material-symbols-outlined text-secondary">info</span>
-                    Resumo do Exame
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm py-2 border-b border-white/5">
-                      <span className="text-gray-500">Total de Questões</span>
-                      <span className="font-bold text-primary">{exam?._count?.questions || 0}</span>
-                    </div>
-                    <div className="flex justify-between text-sm py-2 border-b border-white/5">
-                      <span className="text-gray-500">Status Atual</span>
-                      <span className="font-bold">{exam?.status}</span>
-                    </div>
-                  </div>
-               </div>
             </div>
 
           </div>
-
         </div>
       </main>
     </div>

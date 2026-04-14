@@ -340,7 +340,7 @@ export default function UnifiedStudentExamPage() {
                         <div className="space-y-4">
                           {q.options.map((opt: any) => (
                             <button key={opt.id} onClick={() => handleSelectOption(q.id, opt.id)} className={`w-full p-6 rounded-[1.5rem] border-2 text-left transition-all flex items-center gap-4 ${answers[q.id] === opt.id ? 'bg-primary/10 border-primary text-primary' : 'bg-white/5 border-transparent text-gray-400'}`}>
-                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${answers[q.id] === opt.id ? 'border-primary bg-primary' : 'border-gray-700'}`}>{answers[q.id] === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}</div>
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${answers[q.id] === opt.id ? 'border-primary bg-primary' : 'border-gray-700'}`}>{answers[q.id] === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}</div>
                               <span className="text-lg font-medium">{opt.content}</span>
                             </button>
                           ))}
