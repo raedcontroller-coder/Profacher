@@ -5,14 +5,18 @@ import PusherClient from 'pusher-js';
  * Instância para uso no SERVIDOR (Server Actions / API Routes)
  * Usado para disparar eventos (ex: "Iniciar Prova")
  */
+const serverHost = process.env.PUSHER_HOST_INTERNAL || process.env.NEXT_PUBLIC_PUSHER_HOST!;
+const serverPort = process.env.NEXT_PUBLIC_PUSHER_PORT!;
+const serverUseTLS = serverPort === '443' || serverHost.includes('sslip.io');
+
 export const pusherServer = new PusherServer({
   appId: process.env.PUSHER_APP_ID!,
   key: process.env.NEXT_PUBLIC_PUSHER_APP_KEY!,
   secret: process.env.PUSHER_SECRET!,
-  host: process.env.NEXT_PUBLIC_PUSHER_HOST!,
-  port: process.env.NEXT_PUBLIC_PUSHER_PORT!,
-  useTLS: false, // Soketi costuma usar HTTP em ambientes de dev/Docker
-  cluster: 'mt1', // Requisito do Pusher, mas ignorado pelo Soketi
+  host: serverHost,
+  port: serverPort,
+  useTLS: serverUseTLS,
+  cluster: 'mt1',
 });
 
 /**
