@@ -22,3 +22,4 @@ npm-debug.log*
 # DB Connection Docs
 web/CONEXAO_BANCO.md
 CONEXAO_BANCO.md
+REGRAS_NEGOCIO.md

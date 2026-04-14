@@ -238,17 +238,30 @@ export default function UnifiedStudentExamPage() {
             )}
 
             {step === 'WAITING' && (
-              <div className="text-center space-y-10 py-10 animate-in fade-in zoom-in duration-700">
-                <div className="relative w-32 h-32 mx-auto">
-                  <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-                  <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <div className="text-center space-y-12 py-10 animate-in fade-in zoom-in duration-1000">
+                <div className="relative w-40 h-40 mx-auto">
+                  {/* Glow de Fundo */}
+                  <div className="absolute inset-4 bg-primary/20 rounded-full blur-3xl animate-glow-pulse" />
+                  
+                  {/* Anéis de Carregamento */}
+                  <div className="absolute inset-0 border-[3px] border-white/5 rounded-full" />
+                  <div className="absolute inset-0 border-[3px] border-primary border-t-transparent rounded-full animate-premium-spin shadow-[0_0_15px_rgba(192,193,255,0.3)]" />
+                  <div className="absolute inset-4 border-[1px] border-white/10 rounded-full animate-[premium-spin_3s_linear_infinite_reverse]" />
+                  
+                  {/* Ícone Central */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-4xl text-primary animate-pulse">hourglass_top</span>
+                    <div className="w-16 h-16 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-xl">
+                      <span className="material-symbols-outlined text-4xl text-primary animate-pulse">hourglass_empty</span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <h2 className="text-2xl font-black text-white px-2 uppercase">Aguardando o Professor...</h2>
-                  <p className="text-gray-500 font-medium px-4 leading-relaxed">Sua conexão foi estabelecida. <br/> A prova iniciará automaticamente para todos.</p>
+                
+                <div className="space-y-4">
+                  <div className="inline-block px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] animate-pulse">Sincronizando com o Professor</p>
+                  </div>
+                  <h2 className="text-3xl font-black text-white tracking-tight">AGUARDE UM MOMENTO...</h2>
+                  <p className="text-gray-500 font-medium px-4 leading-relaxed max-w-sm mx-auto">Sua conexão foi estabelecida com sucesso. <br/>Aguarde o comando de início do professor.</p>
                 </div>
               </div>
             )}

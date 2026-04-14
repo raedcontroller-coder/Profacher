@@ -32,12 +32,15 @@ export const getPusherClient = (customAuthEndpoint?: string) => {
     });
   }
 
+  const isSecure = host?.includes('sslip.io') || port === '443';
+
   const pusher = new PusherClient(key!, {
     cluster: 'mt1',
     authEndpoint: customAuthEndpoint || '/api/pusher/auth',
     wsHost: host!,
     wsPort: Number(port!),
-    forceTLS: false,
+    wssPort: Number(port!),
+    forceTLS: isSecure,
     disableStats: true,
     enabledTransports: ['ws', 'wss'],
   });
