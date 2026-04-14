@@ -360,7 +360,11 @@ export async function getLiveExamQuestions(accessCode: string, studentName: stri
       content: eq.question.content,
       type: eq.question.type,
       points: eq.question.points,
-      options: eq.question.options
+      // IMPORTANTE: Filtrar isCorrect para não vazar o gabarito para o aluno
+      options: eq.question.options.map(opt => ({
+        id: opt.id,
+        content: opt.content
+      }))
     }));
 
     return { 
@@ -372,11 +376,14 @@ export async function getLiveExamQuestions(accessCode: string, studentName: stri
         questions: formattedQuestions
       },
       submissionId: submission.id,
-      previousAnswers: submission.answers || {}
+      previousAnswers: (submission.answers as any) || {}
     };
   } catch (e: any) {
-    console.error("Erro ao carregar questões da prova:", e);
-    return { success: false, error: e.message };
+    console.error("❌ ERRO CRÍTICO em getLiveExamQuestions:", e);
+    return { 
+      success: false, 
+      error: e?.message || "Erro desconhecido ao carregar questões." 
+    };
   }
 }
 

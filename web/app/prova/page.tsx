@@ -109,21 +109,36 @@ export default function UnifiedStudentExamPage() {
   useEffect(() => {
     if (step === 'STARTED') {
       const timer = setTimeout(async () => {
-        const result = await getLiveExamQuestions(formData.code, formData.name, formData.ra);
-        if (result.success) {
-          setExamData(result.exam);
-          setSubmissionId(result.submissionId ?? null);
-          if (result.previousAnswers) {
-            setAnswers((result.previousAnswers as Record<number, any>) || {});
-          }
-          setStep('LIVE');
-        } else {
-          if (result.error?.includes("revogado")) {
-            setStep('EXPULLED');
-          } else {
-            alert(result.error || "Erro ao carregar questões.");
+        try {
+          const result = await getLiveExamQuestions(formData.code, formData.name, formData.ra);
+          
+          if (!result) {
+            console.error("❌ Erro de Rede: A Server Action retornou indefinido.");
+            alert("Erro de conexão com o servidor. Por favor, recarregue a página.");
             setStep('ID');
+            return;
           }
+
+          if (result.success) {
+            setExamData(result.exam);
+            setSubmissionId(result.submissionId ?? null);
+            if (result.previousAnswers) {
+              setAnswers((result.previousAnswers as Record<number, any>) || {});
+            }
+            setStep('LIVE');
+          } else {
+            console.warn("⚠️ Falha ao carregar questões:", result.error);
+            if (result.error?.includes("revogado")) {
+              setStep('EXPULLED');
+            } else {
+              alert(result.error || "Erro ao carregar questões.");
+              setStep('ID');
+            }
+          }
+        } catch (error) {
+          console.error("❌ Falha fatal ao carregar questões:", error);
+          alert("Ocorreu um erro inesperado ao carregar sua prova.");
+          setStep('ID');
         }
       }, 1500);
       return () => clearTimeout(timer);
