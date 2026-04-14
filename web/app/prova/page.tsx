@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getPusherClient } from '@/lib/pusher';
 import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus } from '@/app/professor/exams/actions';
 import MathRenderer from '@/components/shared/MathRenderer';
+import { generateExamPdf } from '@/lib/utils/pdf-generator';
 
 export default function UnifiedStudentExamPage() {
   const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED'>('ID');
@@ -17,7 +18,7 @@ export default function UnifiedStudentExamPage() {
   const [submissionId, setSubmissionId] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [savingStatus, setSavingStatus] = useState<Record<number, 'saving' | 'saved' | 'error' | undefined>>({});
-  const [scoreData, setScoreData] = useState<{ score: number, maxScore: number, details: any[] } | null>(null);
+  const [scoreData, setScoreData] = useState<{ score: number, maxScore: number, details: any[], showScore: boolean } | null>(null);
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
 
@@ -196,13 +197,12 @@ export default function UnifiedStudentExamPage() {
     try {
       const result = await finishExamLive(submissionId!);
       if (result.success) {
-        if (result.showScore) {
-          setScoreData({ 
-            score: result.score!, 
-            maxScore: result.maxScore!,
-            details: result.details || []
-          });
-        }
+        setScoreData({ 
+          score: result.score!, 
+          maxScore: result.maxScore!,
+          details: result.details || [],
+          showScore: result.showScore ?? false
+        });
         setStep('FINISHED');
       } else {
         alert("Erro ao finalizar prova: " + result.error);
@@ -381,7 +381,7 @@ export default function UnifiedStudentExamPage() {
                   </div>
                 </div>
 
-                {scoreData ? (
+                {scoreData?.showScore ? (
                   <div className="space-y-20">
                     {/* Dashboard de Performance */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
@@ -443,24 +443,26 @@ export default function UnifiedStudentExamPage() {
 
                           return (
                             <div key={idx} className="liquid-glass p-12 rounded-[4rem] border border-white/5 space-y-10 hover:border-white/10 transition-all group">
-                              {/* Topo do Card */}
-                              <div className="flex flex-wrap items-start justify-between gap-8">
-                                <div className="flex items-start gap-8 flex-1">
-                                   <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center font-black text-2xl text-gray-500 shrink-0 border border-white/10">
-                                      {idx + 1}
-                                   </div>
-                                   <div className="space-y-3 flex-1 min-w-0">
-                                      <div className="overflow-x-auto pb-2 scrollbar-hide">
-                                         <MathRenderer content={detail.question} className="text-2xl font-bold text-gray-100 leading-tight !p-0" />
-                                      </div>
-                                      <span className="inline-block px-4 py-1.5 bg-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{detail.type}</span>
-                                   </div>
-                                </div>
-                                <div className={`px-8 py-4 rounded-[2rem] font-black text-lg flex items-center gap-3 shrink-0 ${isCorrect ? 'bg-green-500/10 text-green-500' : isPartial ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'}`}>
-                                   <span className="material-symbols-outlined text-2xl">{isCorrect ? 'check_circle' : isPartial ? 'hourglass_top' : 'cancel'}</span>
-                                   {detail.pointsObtained.toFixed(1)} / {detail.pointsTotal} PTS
-                                </div>
-                              </div>
+                               {/* Topo do Card Refatorado */}
+                               <div className="space-y-6">
+                                  <div className="flex flex-col md:flex-row items-start gap-6">
+                                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center font-black text-xl text-gray-500 shrink-0 border border-white/10">
+                                        {idx + 1}
+                                     </div>
+                                     <div className="flex-1 min-w-0 w-full overflow-hidden">
+                                        <div className="break-words whitespace-pre-wrap w-full max-w-full">
+                                           <MathRenderer content={detail.question} className="text-xl md:text-2xl font-bold text-gray-100 leading-tight !p-0 block w-full overflow-hidden" />
+                                        </div>
+                                        <div className="mt-4 flex flex-wrap items-center gap-4">
+                                           <span className="inline-block px-4 py-1.5 bg-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{detail.type}</span>
+                                           <div className={`px-6 py-2 rounded-full font-black text-sm flex items-center gap-2 ${isCorrect ? 'bg-green-500/10 text-green-500' : isPartial ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'}`}>
+                                              <span className="material-symbols-outlined text-base">{isCorrect ? 'check_circle' : isPartial ? 'hourglass_top' : 'cancel'}</span>
+                                              {detail.pointsObtained.toFixed(1)} / {detail.pointsTotal} PTS
+                                           </div>
+                                        </div>
+                                     </div>
+                                  </div>
+                               </div>
 
                               {/* Conteúdo da Resposta */}
                               <div className="space-y-8 flex flex-col">
@@ -468,10 +470,10 @@ export default function UnifiedStudentExamPage() {
                                     <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                        <span className="material-symbols-outlined text-sm">person</span> sua resposta
                                     </p>
-                                    <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 text-gray-300 min-h-[100px] text-lg leading-relaxed overflow-x-auto scrollbar-hide">
+                                    <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 text-gray-300 min-h-[100px] text-lg leading-relaxed">
                                        {typeof detail.studentAnswer === 'object' ? 
                                           <pre className="text-sm font-mono whitespace-pre-wrap">{JSON.stringify(detail.studentAnswer, null, 2)}</pre> 
-                                          : <div className="break-words">{detail.studentAnswer}</div>
+                                          : <div className="break-words whitespace-pre-wrap">{detail.studentAnswer}</div>
                                        }
                                     </div>
                                  </div>
@@ -479,8 +481,10 @@ export default function UnifiedStudentExamPage() {
                                     <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                        <span className="material-symbols-outlined text-sm">school</span> gabarito oficial indicado
                                     </p>
-                                    <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 text-primary/90 min-h-[100px] text-lg leading-relaxed overflow-x-auto scrollbar-hide">
-                                       <MathRenderer content={detail.correctAnswer} className="!p-0 text-lg opacity-90" />
+                                    <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 text-primary/90 min-h-[100px] text-lg leading-relaxed">
+                                       <div className="break-words whitespace-pre-wrap">
+                                          <MathRenderer content={detail.correctAnswer} className="!p-0 text-lg opacity-90" />
+                                       </div>
                                     </div>
                                  </div>
                               </div>
@@ -515,8 +519,32 @@ export default function UnifiedStudentExamPage() {
                     </div>
                 )}
 
-                <div className="text-center pt-20 border-t border-white/5">
-                  <p className="text-xs text-gray-600 font-bold tracking-[0.3em] uppercase">Profacher 2.0 &bull; Sistema de Avaliação Inteligente</p>
+                <div className="flex flex-col items-center gap-8 pt-12">
+                  <button 
+                    onClick={() => generateExamPdf({
+                      studentName: formData.name,
+                      studentRa: formData.ra,
+                      examTitle: examData?.title || 'Prova',
+                      accessCode: formData.code,
+                      date: new Date().toLocaleString('pt-BR'),
+                      score: scoreData?.score || 0,
+                      maxScore: scoreData?.maxScore || 0,
+                      details: scoreData?.details || []
+                    })}
+                    className="group relative flex items-center gap-4 py-6 px-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[2rem] transition-all"
+                  >
+                    <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined font-black">download</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">Documento Oficial</p>
+                      <p className="text-xl font-black text-white">Baixar Comprovante (PDF)</p>
+                    </div>
+                  </button>
+
+                  <div className="text-center pt-8 border-t border-white/5 w-full">
+                    <p className="text-xs text-gray-600 font-bold tracking-[0.3em] uppercase">Profacher 2.0 &bull; Sistema de Avaliação Inteligente</p>
+                  </div>
                 </div>
               </div>
             </main>

@@ -47,7 +47,7 @@ export default function MathRenderer({ content, className = '' }: MathRendererPr
 
   return (
     <div 
-      className={`math-renderer-content ${className}`}
+      className={`math-renderer-content break-words overflow-wrap-anywhere whitespace-pre-wrap w-full ${className}`}
       dangerouslySetInnerHTML={{ __html: processedHtml }}
     />
   );
