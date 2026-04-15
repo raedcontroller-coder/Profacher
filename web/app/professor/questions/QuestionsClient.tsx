@@ -9,7 +9,7 @@ import {
     deleteQuestionGroup, 
     getGroupWithQuestions,
     createQuestionInBank, 
-    deleteQuestionFromBank,
+    deleteQuestionInBank,
     updateQuestionInBank
 } from './actions';
 import RichTextEditor from '@/components/shared/RichTextEditor';
@@ -196,7 +196,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
 
   async function handleDeleteQuestion(id: number) {
     if (confirm("Excluir esta questão permanentemente?")) {
-      const res = await deleteQuestionFromBank(id);
+      const res = await deleteQuestionInBank(id);
       if (res.success) {
         loadGroup(viewingGroupId!);
       }
