@@ -10,11 +10,16 @@ export async function getQuestionGroups() {
 
   if (!session || !userId) throw new Error("Não autorizado")
 
-  return await prisma.questionGroup.findMany({
-    where: { teacherId: userId },
-    include: { _count: { select: { questions: true } } },
-    orderBy: { updatedAt: 'desc' }
-  })
+  try {
+    const groups = await prisma.questionGroup.findMany({
+      where: { teacherId: userId },
+      include: { _count: { select: { questions: true } } },
+      orderBy: { updatedAt: 'desc' }
+    })
+    return { success: true, groups }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
 }
 
 export async function createQuestionGroup(data: { name: string; description?: string }) {

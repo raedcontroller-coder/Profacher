@@ -104,7 +104,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
   async function handleCreateGroup() {
     const name = prompt("Nome do Grupo:");
     if (!name) return;
-    const res = await createQuestionGroup(name);
+    const res = await createQuestionGroup({ name });
     if (res.success) {
       loadGroups();
     }
