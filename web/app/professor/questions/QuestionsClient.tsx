@@ -228,7 +228,8 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         options: qOptions
       });
       if (result.success) {
-        toast("Questão atualizada!");
+        // Notificação removida por falta de dependência
+
         resetQuestionForm();
         loadGroup(viewingGroupId!);
       }
@@ -241,7 +242,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         options: qOptions
       });
       if (result.success) {
-        toast("Questão criada!");
+// toast("Questão criada!");
         resetQuestionForm();
         loadGroup(viewingGroupId!);
       }
