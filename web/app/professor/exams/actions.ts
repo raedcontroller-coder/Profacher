@@ -4,6 +4,8 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 
+const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
+
 export async function getTeacherExams() {
   const session = await auth()
   const userId = session?.user ? Number((session.user as any).id) : null
@@ -277,13 +279,59 @@ export async function getSubmissionDetails(submissionId: number) {
     const answers = (submission.answers as any) || {};
     const report = submission.exam.questions.map(eq => {
       const q = eq.question;
-      const studentAns = answers[q.id];
-      
+      const rawAns = answers[q.id];
+      let studentAnswer: string = '';
+
+      if (rawAns === undefined || rawAns === null) {
+        studentAnswer = '— Não respondida —';
+      } else if (q.type === 'MULTIPLE_CHOICE') {
+        // rawAns é um ID numérico — busca o texto da opção correspondente
+        const optId = Number(rawAns);
+        const found = q.options.find((o: any) => o.id === optId);
+        studentAnswer = found ? found.content : `Opção ID: ${rawAns}`;
+      } else if (q.type === 'TRUE_FALSE') {
+        let tfResult: any[] = [];
+        // rawAns é um objeto { [optId]: 'V' | 'F' }
+        if (typeof rawAns === 'object' && rawAns !== null) {
+          const lines = Object.entries(rawAns as Record<string, string>).map(([optId, val]) => {
+            const opt = q.options.find((o: any) => o.id === Number(optId));
+            const label = opt ? opt.content : `Item ${optId}`;
+            const expected = opt ? (opt.isCorrect ? 'V' : 'F') : '?';
+            
+            tfResult.push({
+              statement: label,
+              studentVal: val,
+              expectedVal: expected,
+              isCorrect: val === expected
+            });
+
+            return `${label}: ${val}`;
+          });
+          studentAnswer = lines.join('\n');
+        } else {
+          studentAnswer = String(rawAns);
+        }
+
+        return {
+          questionId: q.id,
+          content: q.content,
+          type: q.type,
+          studentAnswer,
+          correctAnswer: q.referenceAnswer,
+          points: q.points,
+          options: q.options,
+          tfResult
+        };
+      } else {
+        // ESSAY / MATH — texto puro
+        studentAnswer = typeof rawAns === 'string' ? rawAns : JSON.stringify(rawAns);
+      }
+
       return {
         questionId: q.id,
         content: q.content,
         type: q.type,
-        studentAnswer: studentAns,
+        studentAnswer,
         correctAnswer: q.referenceAnswer,
         points: q.points,
         options: q.options
@@ -354,6 +402,31 @@ export async function kickStudent(examId: number, studentRa: string) {
     console.error("Erro ao expulsar aluno:", e);
     return { success: false, error: e.message };
   }
+}
+
+function seededShuffle(array: any[], seed: string) {
+  const shuffled = [...array];
+  let m = shuffled.length, t, i;
+  
+  // Converter seed string para um número
+  let seedNum = 0;
+  for (let j = 0; j < seed.length; j++) {
+    seedNum = (seedNum << 5) - seedNum + seed.charCodeAt(j);
+    seedNum |= 0; // Converter para inteiro de 32 bits
+  }
+  
+  const random = () => {
+    seedNum = (seedNum * 1664525 + 1013904223) | 0;
+    return (seedNum >>> 0) / 4294967296;
+  };
+
+  while (m) {
+    i = Math.floor(random() * m--);
+    t = shuffled[m];
+    shuffled[m] = shuffled[i];
+    shuffled[i] = t;
+  }
+  return shuffled;
 }
 
 export async function getLiveExamQuestions(accessCode: string, studentName: string, studentRa: string) {
@@ -442,7 +515,10 @@ export async function getLiveExamQuestions(accessCode: string, studentName: stri
         id: exam.id,
         title: exam.title,
         showScore: exam.showScore,
-        questions: formattedQuestions
+        randomizeOrder: exam.randomizeOrder,
+        questions: exam.randomizeOrder 
+          ? seededShuffle(formattedQuestions, `${studentRa}-${exam.id}`)
+          : formattedQuestions
       },
       submissionId: submission.id,
       previousAnswers: (submission.answers as any) || {}
@@ -521,7 +597,8 @@ export async function finishExamLive(submissionId: number) {
     // 2. Calcular pontuação
     submission.exam.questions.forEach((eq, index) => {
       const q = eq.question;
-      const studentAnswer = answers[q.id];
+      const studentAnswer = String(answers[q.id] || "").trim();
+      const referenceAnswer = String(q.referenceAnswer || "").trim();
       maxScore += q.points;
 
       const detail: any = {
@@ -539,21 +616,17 @@ export async function finishExamLive(submissionId: number) {
         return;
       }
 
+      // ATALHO: Resposta Exata (Fast-Track)
+      const isExactMatch = studentAnswer.toLowerCase() === referenceAnswer.toLowerCase();
+
       if (q.type === 'MULTIPLE_CHOICE') {
         const correctOption = q.options.find(opt => opt.isCorrect);
-        // Normalização estrita para garantir o match do ID
-        const selectedOption = q.options.find(opt => String(opt.id).trim() === String(studentAnswer).trim());
+        const selectedOption = q.options.find(opt => String(opt.id).trim() === studentAnswer);
         
-        if (selectedOption) {
-          detail.studentAnswer = selectedOption.content;
-        } else {
-          // Se não achar pelo ID, pode ser que o valor já seja o texto (fallback)
-          detail.studentAnswer = studentAnswer;
-        }
-
+        detail.studentAnswer = selectedOption?.content || studentAnswer;
         detail.correctAnswer = correctOption?.content || "---";
 
-        if (correctOption && String(studentAnswer).trim() === String(correctOption.id).trim()) {
+        if (correctOption && studentAnswer === String(correctOption.id).trim()) {
           totalScore += q.points;
           detail.pointsObtained = q.points;
           detail.feedback = "Parabéns! Você selecionou a alternativa correta.";
@@ -566,21 +639,30 @@ export async function finishExamLive(submissionId: number) {
         let correctCount = 0;
         const correctLabels: string[] = [];
         const studentLabels: string[] = [];
+        const tfResult: any[] = [];
+        const studentAnswersObj = answers[q.id] || {};
         
         q.options.forEach(opt => {
           const expected = opt.isCorrect ? 'V' : 'F';
-          const studentVal = studentAnswer[opt.id] || '?';
+          const studentVal = studentAnswersObj[opt.id] || '?';
+          const isCorrect = studentVal === expected;
           
           correctLabels.push(`${opt.content}: ${expected}`);
           studentLabels.push(`${opt.content}: ${studentVal}`);
           
-          if (studentAnswer[opt.id] === expected) {
-            correctCount++;
-          }
+          tfResult.push({
+            statement: opt.content,
+            studentVal,
+            expectedVal: expected,
+            isCorrect
+          });
+          
+          if (isCorrect) correctCount++;
         });
 
-        detail.studentAnswer = studentLabels.join(" | ");
+        detail.studentAnswer = "[DETEC_BACK] " + studentLabels.join(" | ");
         detail.correctAnswer = correctLabels.join(" | ");
+        detail.tfResult = tfResult;
 
         if (q.options.length > 0) {
           const earned = (correctCount / q.options.length) * q.points;
@@ -591,21 +673,19 @@ export async function finishExamLive(submissionId: number) {
         details.push(detail);
       }
       else if (q.type === 'ESSAY' || q.type === 'MATH') {
-        detail.correctAnswer = q.referenceAnswer || "---";
-        // Prepara espaço no array final, mas o conteúdo vem da IA
+        detail.correctAnswer = referenceAnswer || "---";
         const currentDetailIndex = details.length;
         details.push(detail);
         
-        if (q.referenceAnswer) {
+        if (isExactMatch && referenceAnswer) {
+          detail.pointsObtained = q.points;
+          detail.feedback = "Resposta idêntica ao gabarito esperado.";
+          totalScore += q.points;
+        } else if (referenceAnswer) {
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer(
-                q.content, 
-                q.referenceAnswer || "", 
-                String(studentAnswer),
-                submission.exam.teacherId // Passa o ID do professor para rotear a chave de IA
-              );
+              const result = await gradeStudentAnswer(q.content, referenceAnswer, studentAnswer, submission.exam.teacherId);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Corrigido pela IA." };
@@ -613,6 +693,36 @@ export async function finishExamLive(submissionId: number) {
               return { points: 0, feedback: "A IA não pôde processar esta resposta." };
             })()
           });
+        }
+      }
+      else if (q.type === 'CUSTOM_HTML') {
+        detail.studentAnswer = studentAnswer;
+        detail.correctAnswer = referenceAnswer || "---";
+        
+        const currentDetailIndex = details.length;
+        details.push(detail);
+
+        if (isExactMatch && referenceAnswer) {
+          detail.pointsObtained = q.points;
+          detail.feedback = "Interação perfeita com o resultado esperado.";
+          totalScore += q.points;
+        } else if (referenceAnswer) {
+          // Extrair apenas o enunciado para reduzir latência e custos
+          const enunciation = q.content.includes(CODE_SEPARATOR) ? q.content.split(CODE_SEPARATOR)[0] : q.content;
+
+          aiCorrections.push({
+            index: currentDetailIndex,
+            promise: (async () => {
+              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer, studentAnswer, submission.exam.teacherId);
+              if (result.success) {
+                const earned = (result.score! / 100) * q.points;
+                return { points: earned, feedback: result.feedback || "Interação avaliada pela IA." };
+              }
+              return { points: 0, feedback: "A IA não pôde avaliar esta interação." };
+            })()
+          });
+        } else {
+          detail.feedback = "Interação registrada com sucesso.";
         }
       }
     });
@@ -625,6 +735,7 @@ export async function finishExamLive(submissionId: number) {
       details[cor.index].pointsObtained = res.points;
       details[cor.index].feedback = res.feedback;
     });
+
 
     // 3. Atualizar submissão
     await prisma.examSubmission.update({
@@ -701,6 +812,8 @@ export async function getExamForEdit(examId: number) {
         title: exam.title,
         description: exam.description || '',
         showScore: exam.showScore,
+        randomizeOrder: exam.randomizeOrder,
+        saveToBank: exam.saveToBank,
         questions: formattedQuestions
       }
     };

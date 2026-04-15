@@ -34,6 +34,8 @@ export default function EditExamClient({
     title: string;
     description: string;
     showScore: boolean;
+    randomizeOrder: boolean;
+    saveToBank: boolean;
     questions: QuestionInput[];
   }
 }) {
@@ -41,6 +43,8 @@ export default function EditExamClient({
   const [title, setTitle] = useState(initialData.title);
   const [description, setDescription] = useState(initialData.description);
   const [showScore, setShowScore] = useState(initialData.showScore);
+  const [randomizeOrder, setRandomizeOrder] = useState(initialData.randomizeOrder);
+  const [saveToBank, setSaveToBank] = useState(initialData.saveToBank);
   const [loading, setLoading] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [questions, setQuestions] = useState<QuestionInput[]>(initialData.questions);
@@ -136,7 +140,7 @@ export default function EditExamClient({
 
     setLoading(true);
     try {
-        const result = await updateExam(initialData.id, { title, description, showScore, questions });
+        const result = await updateExam(initialData.id, { title, description, showScore, randomizeOrder, saveToBank, questions });
         if (result.success) {
           alert("Prova atualizada com sucesso!");
           router.push("/professor/exams");
@@ -231,6 +235,36 @@ export default function EditExamClient({
                                 </div>
                                 <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${showScore ? 'bg-primary' : 'bg-gray-700'}`}>
                                     <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300 transform ${showScore ? 'translate-x-6' : 'translate-x-0'}`} />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group" onClick={() => setRandomizeOrder(!randomizeOrder)}>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`material-symbols-outlined ${randomizeOrder ? 'text-primary' : 'text-gray-500'}`}>
+                                            {randomizeOrder ? 'shuffle' : 'sort'}
+                                        </span>
+                                        <span className="font-bold text-on-surface">Ordem aleatória</span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">Cada aluno receberá as questões em uma ordem diferente.</p>
+                                </div>
+                                <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${randomizeOrder ? 'bg-primary' : 'bg-gray-700'}`}>
+                                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300 transform ${randomizeOrder ? 'translate-x-6' : 'translate-x-0'}`} />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group" onClick={() => setSaveToBank(!saveToBank)}>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`material-symbols-outlined ${saveToBank ? 'text-primary' : 'text-gray-500'}`}>
+                                            {saveToBank ? 'inventory_2' : 'inventory'}
+                                        </span>
+                                        <span className="font-bold text-on-surface">Salvar no Banco de Questões</span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">As questões desta prova serão salvas no seu banco para uso futuro em outras avaliações.</p>
+                                </div>
+                                <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${saveToBank ? 'bg-primary' : 'bg-gray-700'}`}>
+                                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300 transform ${saveToBank ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </div>
                             </div>
                         </div>

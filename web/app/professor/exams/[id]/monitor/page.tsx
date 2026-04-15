@@ -42,11 +42,16 @@ export default function ExamMonitorPage() {
 
     channel.bind('pusher:subscription_succeeded', (members: any) => {
       const list: any[] = [];
-      members.each((member: any) => list.push(member.info));
+      members.each((member: any) => {
+        if (member.info.role !== 'teacher') {
+          list.push(member.info);
+        }
+      });
       setParticipants(list);
     });
 
     channel.bind('pusher:member_added', (member: any) => {
+      if (member.info.role === 'teacher') return;
       setParticipants(prev => {
         if (prev.find(p => p.ra === member.info.ra)) return prev;
         return [...prev, member.info];

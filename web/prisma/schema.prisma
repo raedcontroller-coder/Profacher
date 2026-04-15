@@ -10,7 +10,7 @@ datasource db {
 
 model Role {
   id    Int    @id @default(autoincrement())
-  name  String @unique // "ADMIN", "COORDINATOR", "PROFESSOR", "STUDENT"
+  name  String @unique
   users User[]
 
   @@map("roles")
@@ -20,13 +20,13 @@ model Institution {
   id              Int      @id @default(autoincrement())
   name            String
   slug            String   @unique
-  apiKeyOpenai    String?  @map("api_key_openai") // Depreciado, usar campos abaixo
-  hasIntegratedAi Boolean  @default(false) @map("has_integrated_ai")
-  customAiModel   String?  @map("custom_ai_model")
-  customAiKey     String?  @map("custom_ai_key")
-  users           User[]
+  apiKeyOpenai    String?  @map("api_key_openai")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+  customAiKey     String?  @map("custom_ai_key")
+  customAiModel   String?  @map("custom_ai_model")
+  hasIntegratedAi Boolean  @default(false) @map("has_integrated_ai")
+  users           User[]
 
   @@map("institutions")
 }
@@ -45,77 +45,75 @@ model User {
   passwordHash   String          @map("password_hash")
   fullName       String          @map("full_name")
   roleId         Int             @map("role_id")
-  role           Role            @relation(fields: [roleId], references: [id])
   institutionId  Int?            @map("institution_id")
-  institution    Institution?    @relation(fields: [institutionId], references: [id])
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
+  exams          Exam[]
   questionGroups QuestionGroup[]
   questions      Question[]
-  exams          Exam[]
+  institution    Institution?    @relation(fields: [institutionId], references: [id])
+  role           Role            @relation(fields: [roleId], references: [id])
 
   @@map("users")
 }
-
-// ─── Banco de Questões ──────────────────────────────────────────────────────
 
 model QuestionGroup {
   id          Int        @id @default(autoincrement())
   name        String
   description String?
   teacherId   Int        @map("teacher_id")
-  teacher     User       @relation(fields: [teacherId], references: [id])
-  questions   Question[]
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
+  teacher     User       @relation(fields: [teacherId], references: [id])
+  questions   Question[]
 
   @@map("question_groups")
 }
 
 model Question {
   id              Int              @id @default(autoincrement())
-  content         String           // Suporta HTML, KaTeX, Markdown
-  type            QuestionType     // Enum para o tipo da questão
+  content         String
+  type            QuestionType
   points          Float            @default(1.0)
   teacherId       Int              @map("teacher_id")
-  teacher         User             @relation(fields: [teacherId], references: [id])
-  groupId         Int?             @map("group_id") // NULL = Geral (sem grupo)
-  group           QuestionGroup?   @relation(fields: [groupId], references: [id])
-  referenceAnswer String?          @map("reference_answer") // Gabarito oficial para IA (Dissertativa/Math)
-  options         QuestionOption[]
-  exams           ExamQuestion[]
+  groupId         Int?             @map("group_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
+  referenceAnswer String?          @map("reference_answer")
+  exams           ExamQuestion[]
+  options         QuestionOption[]
+  group           QuestionGroup?   @relation(fields: [groupId], references: [id])
+  teacher         User             @relation(fields: [teacherId], references: [id])
 
   @@map("questions")
 }
 
 model QuestionOption {
   id         Int      @id @default(autoincrement())
-  content    String   // Texto da alternativa
+  content    String
   isCorrect  Boolean  @default(false) @map("is_correct")
   questionId Int      @map("question_id")
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now()) @map("created_at")
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@map("question_options")
 }
 
-// ─── Sistema de Provas ──────────────────────────────────────────────────────
-
 model Exam {
-  id          Int            @id @default(autoincrement())
-  title       String
-  description String?
-  teacherId   Int            @map("teacher_id")
-  teacher     User           @relation(fields: [teacherId], references: [id])
-  accessCode  String?        @unique @map("access_code")
-  status      ExamStatus     @default(DRAFT)
-  showScore   Boolean        @default(false) @map("show_score")
-  questions   ExamQuestion[]
-  submissions ExamSubmission[]
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+  id             Int              @id @default(autoincrement())
+  title          String
+  description    String?
+  teacherId      Int              @map("teacher_id")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  accessCode     String?          @unique @map("access_code")
+  status         ExamStatus       @default(DRAFT)
+  showScore      Boolean          @default(false) @map("show_score")
+  randomizeOrder Boolean          @default(false) @map("randomize_order")
+  saveToBank     Boolean          @default(false) @map("save_to_bank")
+  questions      ExamQuestion[]
+  submissions    ExamSubmission[]
+  teacher        User             @relation(fields: [teacherId], references: [id])
 
   @@map("exams")
 }
@@ -123,35 +121,36 @@ model Exam {
 model ExamSubmission {
   id          Int       @id @default(autoincrement())
   examId      Int       @map("exam_id")
-  exam        Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
   studentName String    @map("student_name")
   studentRa   String    @map("student_ra")
-  answers     Json?     // Armazena as respostas do aluno
+  answers     Json?
   score       Float?
-  isExpelled  Boolean   @default(false) @map("is_expelled")
   startedAt   DateTime  @default(now()) @map("started_at")
   finishedAt  DateTime? @map("finished_at")
+  isExpelled  Boolean   @default(false) @map("is_expelled")
+  exam        Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
 
-  @@unique([examId, studentRa]) // Garante um registro por aluno por prova
+  @@unique([examId, studentRa])
   @@map("exam_submissions")
 }
 
 model ExamQuestion {
   id         Int      @id @default(autoincrement())
   examId     Int      @map("exam_id")
-  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   questionId Int      @map("question_id")
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   order      Int      @default(0)
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@map("exam_questions")
 }
 
 enum QuestionType {
-  MULTIPLE_CHOICE // Múltipla escolha A/B/C/D
-  TRUE_FALSE      // Verdadeiro ou Falso
-  ESSAY           // Dissertativa (corrigida pela IA)
-  MATH            // Cálculo/KaTeX (corrigida pela IA)
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  ESSAY
+  MATH
+  CUSTOM_HTML
 }
 
 enum ExamStatus {

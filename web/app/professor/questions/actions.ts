@@ -84,7 +84,7 @@ export async function getGroupWithQuestions(id: number) {
 export async function createQuestionInBank(data: {
   groupId: number;
   content: string;
-  type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
+  type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
   points: number;
   referenceAnswer?: string;
   options?: Array<{ content: string; isCorrect: boolean }>;
@@ -122,7 +122,7 @@ export async function createQuestionInBank(data: {
 
 export async function updateQuestionInBank(id: number, data: {
     content: string;
-    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
+    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
     options?: Array<{ content: string; isCorrect: boolean }>;

@@ -9,9 +9,11 @@ export async function saveExam(data: {
   title: string;
   description?: string;
   showScore?: boolean;
+  randomizeOrder?: boolean;
+  saveToBank?: boolean;
   questions: Array<{
     content: string;
-    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
+    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
     options?: Array<{ content: string; isCorrect: boolean }>;
@@ -36,19 +38,23 @@ export async function saveExam(data: {
       if (!existing) isUnique = true;
     }
 
-    // 2. Pré-gerenciar Grupo (Fora da transação paralela para evitar race conditions de criação de grupo)
-    let group = await prisma.questionGroup.findFirst({
-      where: { name: data.title, teacherId: Number(userId) }
-    });
-
-    if (!group && data.questions.length > 0) {
-      group = await prisma.questionGroup.create({
-        data: {
-          name: data.title,
-          description: `Questões criadas automaticamente a partir da prova: ${data.title}`,
-          teacherId: Number(userId)
-        }
+    // 2. Gerenciar Grupo se solicitado
+    let groupId: number | null = null;
+    if (data.saveToBank) {
+      let group = await prisma.questionGroup.findFirst({
+        where: { name: data.title, teacherId: Number(userId) }
       });
+
+      if (!group && data.questions.length > 0) {
+        group = await prisma.questionGroup.create({
+          data: {
+            name: data.title,
+            description: `Questões criadas automaticamente a partir da prova: ${data.title}`,
+            teacherId: Number(userId)
+          }
+        });
+      }
+      groupId = group?.id || null;
     }
 
     // 3. Processar questões em PARALELO
@@ -60,7 +66,7 @@ export async function saveExam(data: {
           points: qData.points,
           referenceAnswer: qData.referenceAnswer,
           teacherId: Number(userId),
-          groupId: group?.id,
+          groupId: groupId,
           options: {
             create: qData.options?.map(opt => ({
               content: opt.content,
@@ -81,6 +87,8 @@ export async function saveExam(data: {
           title: data.title,
           description: data.description,
           showScore: data.showScore ?? false,
+          randomizeOrder: data.randomizeOrder ?? false,
+          saveToBank: data.saveToBank ?? false,
           teacherId: Number(userId),
           accessCode: accessCode,
           status: 'WAITING',
@@ -142,10 +150,12 @@ export async function updateExam(examId: number, data: {
   title: string;
   description?: string;
   showScore?: boolean;
+  randomizeOrder?: boolean;
+  saveToBank?: boolean;
   questions: Array<{
     id?: number;
     content: string;
-    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
+    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
     options?: Array<{ content: string; isCorrect: boolean }>;
@@ -173,8 +183,27 @@ export async function updateExam(examId: number, data: {
       return { success: false, error: "Não é possível editar uma prova em andamento." };
     }
 
-    // 2. Processar questões em PARALELO (Otimização Extrema)
-    // Isso tira o peso do banco de dentro da transação sequencial
+    // 2. Gerenciar Grupo se solicitado
+    let groupId: number | null = null;
+    if (data.saveToBank) {
+      const group = await prisma.questionGroup.upsert({
+        where: { id: -1 }, // Truque para tentar encontrar pelo nome se não passar ID, mas aqui usaremos findFirst + create
+        update: {},
+        create: {
+          name: data.title,
+          teacherId: userId,
+          description: `Questões da prova: ${data.title}`
+        }
+      }).catch(async () => {
+         // Se o upsert falhar ou não for ideal, busca/cria manual
+         const existing = await prisma.questionGroup.findFirst({ where: { name: data.title, teacherId: userId } });
+         if (existing) return existing;
+         return await prisma.questionGroup.create({ data: { name: data.title, teacherId: userId } });
+      });
+      groupId = group.id;
+    }
+
+    // 3. Processar questões em PARALELO
     const questionPromises = data.questions.map(async (qData) => {
       let questionId = qData.id;
 
@@ -187,6 +216,7 @@ export async function updateExam(examId: number, data: {
             type: qData.type,
             points: qData.points,
             referenceAnswer: qData.referenceAnswer,
+            groupId: groupId,
             options: {
               deleteMany: {},
               create: qData.options?.map(opt => ({
@@ -206,6 +236,7 @@ export async function updateExam(examId: number, data: {
             points: qData.points,
             referenceAnswer: qData.referenceAnswer,
             teacherId: userId,
+            groupId: groupId,
             options: {
               create: qData.options?.map(opt => ({
                 content: opt.content,
@@ -231,6 +262,8 @@ export async function updateExam(examId: number, data: {
           title: data.title,
           description: data.description,
           showScore: data.showScore ?? false,
+          randomizeOrder: data.randomizeOrder ?? false,
+          saveToBank: data.saveToBank ?? false,
         }
       });
 

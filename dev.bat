@@ -4,4 +4,3 @@ start "SSH Tunnel" ssh -N vps-profacher
 echo Iniciando Servidor Web...
 cd web
 npm run dev
-Raedr93D

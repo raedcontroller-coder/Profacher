@@ -6,6 +6,8 @@ import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatu
 import MathRenderer from '@/components/shared/MathRenderer';
 import { generateExamPdf } from '@/lib/utils/pdf-generator';
 
+const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
+
 export default function UnifiedStudentExamPage() {
   const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED'>('ID');
   const [formData, setFormData] = useState({
@@ -21,6 +23,7 @@ export default function UnifiedStudentExamPage() {
   const [scoreData, setScoreData] = useState<{ score: number, maxScore: number, details: any[], showScore: boolean } | null>(null);
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
+  const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +111,22 @@ export default function UnifiedStudentExamPage() {
   }, [step]);
 
   useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'profacher_answer') {
+        const { answer } = event.data;
+        if (event.data.questionId) {
+          handleSelectOption(event.data.questionId, answer);
+        } else {
+          console.warn("Mensagem profacher_answer recebida sem questionId", event.data);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [submissionId]);
+
+  useEffect(() => {
     if (step === 'STARTED') {
       const timer = setTimeout(async () => {
         try {
@@ -165,6 +184,7 @@ export default function UnifiedStudentExamPage() {
 
   const handleSelectOption = async (questionId: number, optionIdOrValue: any) => {
     if (!submissionId) return;
+    
     let finalAnswer: any;
     if (typeof optionIdOrValue === 'string' && (optionIdOrValue.endsWith('_V') || optionIdOrValue.endsWith('_F'))) {
       const [optIdStr, val] = optionIdOrValue.split('_');
@@ -174,22 +194,38 @@ export default function UnifiedStudentExamPage() {
     } else {
       finalAnswer = optionIdOrValue;
     }
+
+    // 1. Atualização Instantânea da UI (Optimistic Update)
     setAnswers(prev => ({ ...prev, [questionId]: finalAnswer }));
     setSavingStatus(prev => ({ ...prev, [questionId]: 'saving' }));
-    const result = await saveLiveAnswer(submissionId, questionId, finalAnswer);
-    if (result.success) {
-      setSavingStatus(prev => ({ ...prev, [questionId]: 'saved' }));
-      setTimeout(() => {
-        setSavingStatus(prev => {
-          const newStatus = { ...prev };
-          delete newStatus[questionId];
-          return newStatus;
-        });
-      }, 2000);
-    } else {
-      setSavingStatus(prev => ({ ...prev, [questionId]: 'error' }));
+
+    // 2. Debouncing: Limpar gravação agendada anteriormente para esta questão
+    if (saveTimeoutsRef.current[questionId]) {
+      clearTimeout(saveTimeoutsRef.current[questionId]);
     }
+
+    // 3. Agendar gravação no servidor (800ms de inatividade)
+    saveTimeoutsRef.current[questionId] = setTimeout(async () => {
+      const result = await saveLiveAnswer(submissionId, questionId, finalAnswer);
+      
+      if (result.success) {
+        setSavingStatus(prev => ({ ...prev, [questionId]: 'saved' }));
+        setTimeout(() => {
+          setSavingStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[questionId];
+            return newStatus;
+          });
+        }, 2000);
+      } else {
+        setSavingStatus(prev => ({ ...prev, [questionId]: 'error' }));
+      }
+      
+      // Limpar referência do timeout concluído
+      delete saveTimeoutsRef.current[questionId];
+    }, 800);
   };
+
 
   const handleFinish = async () => {
     if (!submissionId) return;
@@ -233,16 +269,16 @@ export default function UnifiedStudentExamPage() {
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-500 ml-4 uppercase tracking-widest">Seu Nome Completo</label>
-                    <input type="text" required placeholder="Ex: JOÃO SILVA DE ALMEIDA" className="w-full bg-white/5 border border-white/5 rounded-[1.5rem] py-5 px-6 focus:outline-none focus:border-primary/50 transition-all text-lg font-medium uppercase" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value.toUpperCase()})} />
+                    <input type="text" required placeholder="Ex: JOÃO SILVA DE ALMEIDA" className="w-full bg-white/5 border border-outline rounded-[1.5rem] py-5 px-6 focus:outline-none focus:border-primary/50 transition-all text-lg font-medium uppercase" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value.toUpperCase()})} />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-500 ml-4 uppercase tracking-widest">RA (Matrícula)</label>
-                      <input type="text" required placeholder="Ex: 123456" className="w-full bg-white/5 border border-white/5 rounded-[1.5rem] py-5 px-6 focus:outline-none focus:border-primary/50 transition-all text-lg font-medium" value={formData.ra} onChange={(e) => setFormData({...formData, ra: e.target.value})} />
+                      <input type="text" required placeholder="Ex: 123456" className="w-full bg-white/5 border border-outline rounded-[1.5rem] py-5 px-6 focus:outline-none focus:border-primary/50 transition-all text-lg font-medium" value={formData.ra} onChange={(e) => setFormData({...formData, ra: e.target.value})} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-500 ml-4 uppercase tracking-widest">Código da Prova</label>
-                      <input type="text" required maxLength={5} placeholder="Ex: AX78B" className="w-full bg-white/5 border border-white/5 rounded-[1.5rem] py-5 px-6 focus:outline-none focus:border-primary/50 transition-all text-lg font-medium uppercase tracking-[0.3em] text-primary" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} />
+                      <input type="text" required maxLength={5} placeholder="Ex: AX78B" className="w-full bg-white/5 border border-outline rounded-[1.5rem] py-5 px-6 focus:outline-none focus:border-primary/50 transition-all text-lg font-medium uppercase tracking-[0.3em] text-primary" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} />
                     </div>
                   </div>
                 </div>
@@ -255,22 +291,16 @@ export default function UnifiedStudentExamPage() {
             {step === 'WAITING' && (
               <div className="text-center space-y-12 py-10 animate-in fade-in zoom-in duration-1000">
                 <div className="relative w-40 h-40 mx-auto">
-                  {/* Glow de Fundo */}
                   <div className="absolute inset-4 bg-primary/20 rounded-full blur-3xl animate-glow-pulse" />
-                  
-                  {/* Anéis de Carregamento */}
-                  <div className="absolute inset-0 border-[3px] border-white/5 rounded-full" />
+                  <div className="absolute inset-0 border-[3px] border-outline-variant rounded-full" />
                   <div className="absolute inset-0 border-[3px] border-primary border-t-transparent rounded-full animate-premium-spin shadow-[0_0_15px_rgba(192,193,255,0.3)]" />
-                  <div className="absolute inset-4 border-[1px] border-white/10 rounded-full animate-[premium-spin_3s_linear_infinite_reverse]" />
-                  
-                  {/* Ícone Central */}
+                  <div className="absolute inset-4 border-[1px] border-outline rounded-full animate-[premium-spin_3s_linear_infinite_reverse]" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-xl">
+                    <div className="w-16 h-16 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-outline shadow-xl">
                       <span className="material-symbols-outlined text-4xl text-primary animate-pulse">hourglass_empty</span>
                     </div>
                   </div>
                 </div>
-                
                 <div className="space-y-4">
                   <div className="inline-block px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] animate-pulse">Sincronizando com o Professor</p>
@@ -309,46 +339,104 @@ export default function UnifiedStudentExamPage() {
             </header>
             <main className="flex-1 overflow-y-auto p-10 custom-scrollbar">
               <div className="max-w-[1400px] mx-auto space-y-12 pb-24">
-                {examData.questions.map((q: any, index: number) => (
-                  <div key={q.id} className="liquid-glass p-10 rounded-[2.5rem] border border-white/5 space-y-8 animate-modal-rise">
-                    <div className="flex items-start justify-between">
-                       <span className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg border border-white/5">{index + 1}</span>
-                       <div className="flex items-center gap-2">
-                          {savingStatus[q.id] === 'saving' && <span className="text-[10px] font-bold text-gray-500 uppercase animate-pulse">Sincronizando...</span>}
-                          {savingStatus[q.id] === 'saved' && <span className="text-[10px] font-bold text-green-500 uppercase flex items-center gap-1"><span className="material-symbols-outlined text-xs">check_circle</span> Salvo</span>}
-                       </div>
-                    </div>
-                    <MathRenderer className="text-2xl font-medium leading-relaxed exam-content" content={q.content} />
-                    <div className="space-y-6">
-                      {(q.type === 'ESSAY' || q.type === 'MATH') && (
-                        <textarea className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-8 text-lg text-on-surface outline-none focus:border-primary/40 transition-all min-h-[250px] resize-none" placeholder="Escreva sua resposta aqui..." value={answers[q.id] || ''} onChange={(e) => handleSelectOption(q.id, e.target.value)} />
+                {examData.questions.map((q: any, index: number) => {
+                  const [enunciation, code] = q.type === 'CUSTOM_HTML' 
+                    ? (q.content.includes(CODE_SEPARATOR) ? q.content.split(CODE_SEPARATOR) : ["", q.content])
+                    : [q.content, ""];
+
+                  return (
+                    <div key={q.id} className="liquid-glass p-10 rounded-[2.5rem] border border-outline-variant space-y-8 animate-modal-rise">
+                      <div className="flex items-start justify-between">
+                         <span className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg border border-outline-variant">{index + 1}</span>
+                         <div className="flex items-center gap-2">
+                            {savingStatus[q.id] === 'saving' && <span className="text-[10px] font-bold text-gray-500 uppercase animate-pulse">Sincronizando...</span>}
+                            {savingStatus[q.id] === 'saved' && <span className="text-[10px] font-bold text-green-500 uppercase flex items-center gap-1"><span className="material-symbols-outlined text-xs">check_circle</span> Salvo</span>}
+                         </div>
+                      </div>
+
+                      {/* Enunciado (Sempre renderizado se não estiver vazio) */}
+                      {enunciation && enunciation.trim() !== "" && (
+                          <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                             <MathRenderer className="text-2xl font-medium leading-relaxed exam-content" content={enunciation} />
+                          </div>
                       )}
-                      {q.type === 'TRUE_FALSE' && (
-                        <div className="grid grid-cols-1 gap-6">
-                          {q.options.map((opt: any) => (
-                            <div key={opt.id} className="flex items-center gap-6 bg-white/[0.03] p-6 rounded-[2rem] border border-white/5">
-                              <div className="flex gap-2">
-                                <button onClick={() => handleSelectOption(q.id, opt.id + "_V")} className={`w-12 h-12 rounded-xl border-2 transition-all font-black ${answers[q.id]?.[opt.id] === 'V' ? 'bg-green-500 text-black border-green-500' : 'border-white/10 text-gray-600'}`}>V</button>
-                                <button onClick={() => handleSelectOption(q.id, opt.id + "_F")} className={`w-12 h-12 rounded-xl border-2 transition-all font-black ${answers[q.id]?.[opt.id] === 'F' ? 'bg-red-500 text-black border-red-500' : 'border-white/10 text-gray-600'}`}>F</button>
+
+                      <div className="space-y-6">
+                        {(q.type === 'ESSAY' || q.type === 'MATH') && (
+                          <textarea className="w-full bg-white/5 border border-outline rounded-[2rem] p-8 text-lg text-on-surface outline-none focus:border-primary/40 transition-all min-h-[250px] resize-none" placeholder="Escreva sua resposta aqui..." value={answers[q.id] || ''} onChange={(e) => handleSelectOption(q.id, e.target.value)} />
+                        )}
+                        {q.type === 'TRUE_FALSE' && (
+                          <div className="grid grid-cols-1 gap-6">
+                            {q.options.map((opt: any) => (
+                              <div key={opt.id} className="flex items-center gap-6 bg-white/[0.03] p-6 rounded-[2rem] border border-outline-variant">
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleSelectOption(q.id, opt.id + "_V")} className={`w-12 h-12 rounded-xl border-2 transition-all font-black ${answers[q.id]?.[opt.id] === 'V' ? 'bg-green-500 text-black border-green-500' : 'border-outline text-gray-600'}`}>V</button>
+                                  <button onClick={() => handleSelectOption(q.id, opt.id + "_F")} className={`w-12 h-12 rounded-xl border-2 transition-all font-black ${answers[q.id]?.[opt.id] === 'F' ? 'bg-red-500 text-black border-red-500' : 'border-outline text-gray-600'}`}>F</button>
+                                </div>
+                                <span className="text-xl font-medium text-gray-200">{opt.content}</span>
                               </div>
-                              <span className="text-xl font-medium text-gray-200">{opt.content}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {q.type === 'MULTIPLE_CHOICE' && (
-                        <div className="space-y-4">
-                          {q.options.map((opt: any) => (
-                            <button key={opt.id} onClick={() => handleSelectOption(q.id, opt.id)} className={`w-full p-6 rounded-[1.5rem] border-2 text-left transition-all flex items-center gap-4 ${answers[q.id] === opt.id ? 'bg-primary/10 border-primary text-primary' : 'bg-white/5 border-transparent text-gray-400'}`}>
-                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${answers[q.id] === opt.id ? 'border-primary bg-primary' : 'border-gray-700'}`}>{answers[q.id] === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}</div>
-                              <span className="text-lg font-medium">{opt.content}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        )}
+                        {q.type === 'MULTIPLE_CHOICE' && (
+                          <div className="space-y-4">
+                            {q.options.map((opt: any) => (
+                              <button key={opt.id} onClick={() => handleSelectOption(q.id, opt.id)} className={`w-full p-6 rounded-[1.5rem] border-2 text-left transition-all flex items-center gap-4 ${answers[q.id] === opt.id ? 'bg-primary/10 border-primary text-primary' : 'bg-white/5 border-transparent text-gray-400'}`}>
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${answers[q.id] === opt.id ? 'border-primary bg-primary' : 'border-gray-700'}`}>{answers[q.id] === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}</div>
+                                <span className="text-lg font-medium">{opt.content}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {q.type === 'CUSTOM_HTML' && (
+                          <div className="w-full space-y-4">
+                             <div className="flex items-center justify-between px-6 py-3 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl">
+                                <div className="flex items-center gap-2 text-cyan-500 font-bold text-[10px] uppercase tracking-widest">
+                                   <span className="material-symbols-outlined text-sm">animation</span> Componente Interativo
+                                </div>
+                                <div className="text-[9px] text-gray-500 font-medium">Área de interação segura</div>
+                             </div>
+                             <div className="relative rounded-[2.5rem] overflow-hidden border border-outline-variant bg-black/40 shadow-2xl group/interactive h-[650px]">
+                                <iframe 
+                                   title={`interactive-q-${q.id}`}
+                                   className="w-full h-full border-none"
+                                   sandbox="allow-scripts allow-modals allow-popups"
+                                   srcDoc={`
+                                      <!DOCTYPE html>
+                                      <html>
+                                      <head>
+                                        <style>
+                                          body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+                                        </style>
+                                      </head>
+                                      <body>
+                                        <script>
+                                          const QUESTION_ID = ${q.id};
+                                          window.PROFACHER_QUESTION_ID = QUESTION_ID;
+                                          window.setAnswer = function(val) {
+                                            window.parent.postMessage({ 
+                                              type: 'profacher_answer', 
+                                              questionId: QUESTION_ID, 
+                                              answer: val 
+                                            }, '*');
+                                          };
+                                          window.parent.postMessage({ type: 'profacher_ready', questionId: QUESTION_ID }, '*');
+                                        </script>
+                                        ${code}
+                                      </body>
+                                      </html>
+                                   `}
+                                />
+                                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover/interactive:opacity-100 transition-opacity">
+                                   <p className="text-[10px] text-center text-gray-400">Interaja com o componente acima para responder</p>
+                                </div>
+                             </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </main>
           </div>
@@ -370,7 +458,6 @@ export default function UnifiedStudentExamPage() {
 
             <main className="flex-1 overflow-y-auto p-10 custom-scrollbar">
               <div className="max-w-[1400px] mx-auto w-full space-y-16 pb-32">
-                {/* Cabeçalho Principal */}
                 <div className="text-center space-y-6 pt-10">
                   <div className="w-24 h-24 bg-green-500/10 rounded-[2.5rem] flex items-center justify-center text-green-500 mx-auto border border-green-500/20 shadow-2xl">
                     <span className="material-symbols-outlined text-5xl">verified</span>
@@ -383,12 +470,9 @@ export default function UnifiedStudentExamPage() {
 
                 {scoreData?.showScore ? (
                   <div className="space-y-20">
-                    {/* Dashboard de Performance */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                      {/* Gráfico Radial de Pontuação */}
                       <div className="lg:col-span-12 xl:col-span-4 liquid-glass p-12 rounded-[4rem] border border-white/5 flex flex-col items-center justify-center space-y-8 min-h-[450px]">
                         <div className="relative w-72 h-72 flex items-center justify-center">
-                           {/* SVG Progress Circle */}
                            <svg className="w-full h-full -rotate-90">
                               <circle cx="144" cy="144" r="128" stroke="currentColor" strokeWidth="20" fill="transparent" className="text-white/5" />
                               <circle 
@@ -408,7 +492,6 @@ export default function UnifiedStudentExamPage() {
                         </div>
                       </div>
 
-                      {/* Métricas Rápidas */}
                       <div className="lg:col-span-12 xl:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="md:col-span-2 liquid-glass p-12 rounded-[3rem] border border-white/5 flex flex-col justify-center space-y-4">
                            <p className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">Sua Pontuação Final</p>
@@ -426,7 +509,6 @@ export default function UnifiedStudentExamPage() {
                       </div>
                     </div>
 
-                    {/* Lista Detalhada - Raio-X */}
                     <div className="space-y-10">
                       <div className="flex items-center justify-between border-b border-white/5 pb-8">
                         <h3 className="text-4xl font-black text-white tracking-tighter flex items-center gap-6">
@@ -442,16 +524,18 @@ export default function UnifiedStudentExamPage() {
                           const isPartial = percentage > 0 && percentage < 100;
 
                           return (
-                            <div key={idx} className="liquid-glass p-12 rounded-[4rem] border border-white/5 space-y-10 hover:border-white/10 transition-all group">
-                               {/* Topo do Card Refatorado */}
+                            <div key={idx} className="liquid-glass p-12 rounded-[4rem] border border-outline-variant space-y-10 hover:border-outline transition-all group">
                                <div className="space-y-6">
                                   <div className="flex flex-col md:flex-row items-start gap-6">
-                                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center font-black text-xl text-gray-500 shrink-0 border border-white/10">
+                                     <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center font-black text-xl text-gray-500 shrink-0 border border-outline">
                                         {idx + 1}
                                      </div>
                                      <div className="flex-1 min-w-0 w-full overflow-hidden">
                                         <div className="break-words whitespace-pre-wrap w-full max-w-full">
-                                           <MathRenderer content={detail.question} className="text-xl md:text-2xl font-bold text-gray-100 leading-tight !p-0 block w-full overflow-hidden" />
+                                           <MathRenderer 
+                                              content={detail.question.includes(CODE_SEPARATOR) ? detail.question.split(CODE_SEPARATOR)[0] : detail.question} 
+                                              className="text-xl md:text-2xl font-bold text-gray-100 leading-tight !p-0 block w-full overflow-hidden" 
+                                           />
                                         </div>
                                         <div className="mt-4 flex flex-wrap items-center gap-4">
                                            <span className="inline-block px-4 py-1.5 bg-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{detail.type}</span>
@@ -464,43 +548,78 @@ export default function UnifiedStudentExamPage() {
                                   </div>
                                </div>
 
-                              {/* Conteúdo da Resposta */}
-                              <div className="space-y-8 flex flex-col">
-                                 <div className="space-y-4">
-                                    <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                                       <span className="material-symbols-outlined text-sm">person</span> sua resposta
-                                    </p>
-                                    <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 text-gray-300 min-h-[100px] text-lg leading-relaxed">
-                                       {typeof detail.studentAnswer === 'object' ? 
-                                          <pre className="text-sm font-mono whitespace-pre-wrap">{JSON.stringify(detail.studentAnswer, null, 2)}</pre> 
-                                          : <div className="break-words whitespace-pre-wrap">{detail.studentAnswer}</div>
-                                       }
-                                    </div>
-                                 </div>
-                                 <div className="space-y-4">
-                                    <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                                       <span className="material-symbols-outlined text-sm">school</span> gabarito oficial indicado
-                                    </p>
-                                    <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 text-primary/90 min-h-[100px] text-lg leading-relaxed">
-                                       <div className="break-words whitespace-pre-wrap">
-                                          <MathRenderer content={detail.correctAnswer} className="!p-0 text-lg opacity-90" />
-                                       </div>
-                                    </div>
-                                 </div>
-                              </div>
+                               <div className="space-y-8 flex flex-col">
+                                  {detail.tfResult && detail.tfResult.length > 0 ? (
+                                     <div className="space-y-4">
+                                        <p className="text-xs font-black text-cyan-500 uppercase tracking-widest flex items-center gap-2">
+                                           <span className="material-symbols-outlined text-sm">checklist</span> análise premium (v/f)
+                                        </p>
+                                        <div className="grid grid-cols-1 gap-4">
+                                           {detail.tfResult.map((tf: any, tfIdx: number) => (
+                                              <div key={tfIdx} className={`p-6 rounded-[2rem] border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${tf.isCorrect ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                                                 <div className="flex items-center gap-4">
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${tf.isCorrect ? 'bg-green-500 text-black shadow-lg shadow-green-500/20' : 'bg-red-500 text-white shadow-lg shadow-red-500/20'}`}>
+                                                       {tf.isCorrect ? <span className="material-symbols-outlined text-sm">done</span> : <span className="material-symbols-outlined text-sm">close</span>}
+                                                    </div>
+                                                    <span className={`text-md font-medium ${tf.isCorrect ? 'text-green-100' : 'text-red-100'}`}>{tf.statement}</span>
+                                                 </div>
+                                                 <div className="flex items-center gap-3 shrink-0">
+                                                    <div className="flex flex-col items-center">
+                                                       <span className="text-[8px] font-black text-gray-500 uppercase mb-1">Você</span>
+                                                       <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold border-2 ${tf.studentVal === 'V' ? 'bg-green-500/20 border-green-500 text-green-400' : tf.studentVal === 'F' ? 'bg-red-500/20 border-red-500 text-red-400' : 'border-gray-700 text-gray-600'}`}>
+                                                          {tf.studentVal}
+                                                       </span>
+                                                    </div>
+                                                    <div className="w-4 h-[2px] bg-white/10 mt-4" />
+                                                    <div className="flex flex-col items-center">
+                                                       <span className="text-[8px] font-black text-gray-500 uppercase mb-1">Gabarito</span>
+                                                       <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold border-2 ${tf.expectedVal === 'V' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-red-500/20 border-red-500 text-red-400'}`}>
+                                                          {tf.expectedVal}
+                                                       </span>
+                                                    </div>
+                                                 </div>
+                                              </div>
+                                           ))}
+                                        </div>
+                                     </div>
+                                  ) : (
+                                     <>
+                                        <div className="space-y-4">
+                                           <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                              <span className="material-symbols-outlined text-sm">person</span> sua resposta
+                                           </p>
+                                           <div className="p-8 rounded-[2.5rem] bg-white/5 border border-outline-variant text-gray-300 min-h-[100px] text-lg leading-relaxed">
+                                              {typeof detail.studentAnswer === 'object' ? 
+                                                 <pre className="text-sm font-mono whitespace-pre-wrap">{JSON.stringify(detail.studentAnswer, null, 2)}</pre> 
+                                                 : <div className="break-words whitespace-pre-wrap">{detail.studentAnswer}</div>
+                                              }
+                                           </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                           <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                              <span className="material-symbols-outlined text-sm">school</span> gabarito oficial indicado
+                                           </p>
+                                           <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 text-primary/90 min-h-[100px] text-lg leading-relaxed">
+                                              <div className="break-words whitespace-pre-wrap">
+                                                 <MathRenderer content={detail.correctAnswer} className="!p-0 text-lg opacity-90" />
+                                              </div>
+                                           </div>
+                                        </div>
+                                     </>
+                                  )}
+                               </div>
 
-                              {/* Feedback da IA / Sistema */}
-                              <div className="pt-10 border-t border-white/5 flex items-start gap-8">
-                                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-2xl ${detail.type === 'ESSAY' || detail.type === 'MATH' ? 'bg-primary/20 text-primary shadow-primary/10' : 'bg-white/5 text-gray-600'}`}>
-                                    <span className="material-symbols-outlined text-3xl">{detail.type === 'ESSAY' || detail.type === 'MATH' ? 'auto_awesome' : 'info'}</span>
-                                 </div>
-                                 <div className="space-y-2">
-                                    <p className="text-sm font-black text-gray-300 uppercase tracking-widest">Análise do Avaliador:</p>
-                                    <p className="text-gray-400 leading-relaxed text-lg italic opacity-80">
-                                       "{detail.feedback}"
-                                    </p>
-                                 </div>
-                              </div>
+                               <div className="pt-10 border-t border-white/5 flex items-start gap-8">
+                                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-2xl ${detail.type === 'ESSAY' || detail.type === 'MATH' ? 'bg-primary/20 text-primary shadow-primary/10' : 'bg-white/5 text-gray-600'}`}>
+                                     <span className="material-symbols-outlined text-3xl">{detail.type === 'ESSAY' || detail.type === 'MATH' ? 'auto_awesome' : 'info'}</span>
+                                  </div>
+                                  <div className="space-y-2">
+                                     <p className="text-sm font-black text-gray-300 uppercase tracking-widest">Análise do Avaliador:</p>
+                                     <p className="text-gray-400 leading-relaxed text-lg italic opacity-80">
+                                        "{detail.feedback}"
+                                     </p>
+                                  </div>
+                               </div>
                             </div>
                           );
                         })}
@@ -531,7 +650,7 @@ export default function UnifiedStudentExamPage() {
                       maxScore: scoreData?.maxScore || 0,
                       details: scoreData?.details || []
                     })}
-                    className="group relative flex items-center gap-4 py-6 px-12 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[2rem] transition-all"
+                    className="group relative flex items-center gap-4 py-6 px-12 bg-white/5 hover:bg-white/10 border border-outline rounded-[2rem] transition-all"
                   >
                     <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined font-black">download</span>
@@ -564,7 +683,7 @@ export default function UnifiedStudentExamPage() {
               <div className="max-w-[1400px] mx-auto space-y-12 pb-20">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {examData.questions.map((q: any, index: number) => (
-                    <button key={q.id} onClick={() => setStep('LIVE')} className="p-8 rounded-[2.5rem] border border-white/10 bg-white/5 flex items-center gap-6 text-left hover:border-primary/50 transition-all group">
+                    <button key={q.id} onClick={() => setStep('LIVE')} className="p-8 rounded-[2.5rem] border border-outline bg-white/5 flex items-center gap-6 text-left hover:border-primary/50 transition-all group">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl ${answers[q.id] ? 'bg-primary/20 text-primary' : 'bg-white/5 text-gray-700'}`}>{index + 1}</div>
                       <div className="flex-1 min-w-0">
                          <p className={`text-[10px] font-black uppercase tracking-widest ${answers[q.id] ? 'text-primary' : 'text-gray-500'}`}>{answers[q.id] ? 'Concluída' : 'Pendente'}</p>
@@ -574,8 +693,19 @@ export default function UnifiedStudentExamPage() {
                   ))}
                 </div>
                 <div className="flex justify-center pt-10">
-                   <button onClick={handleFinish} className="w-full max-w-md py-8 bg-primary text-black rounded-[2.5rem] font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                      FINALIZAR E ENTREGAR
+                   <button 
+                      onClick={handleFinish} 
+                      disabled={loading}
+                      className={`w-full max-w-md py-8 rounded-[2.5rem] font-black text-2xl shadow-2xl transition-all flex items-center justify-center gap-4 ${loading ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-primary text-black shadow-primary/20 hover:scale-105 active:scale-95'}`}
+                   >
+                      {loading ? (
+                        <>
+                          <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                          PROCESSANDO...
+                        </>
+                      ) : (
+                        "FINALIZAR E ENTREGAR"
+                      )}
                    </button>
                 </div>
               </div>

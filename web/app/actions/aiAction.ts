@@ -186,14 +186,15 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
                         content: `Você é um avaliador de provas ultrapreciso. Sua missão é dar uma nota para a resposta de um aluno baseando-se EXCLUSIVAMENTE no "Gabarito de Referência" fornecido pelo professor.
                         
 REGRAS CRÍTICAS DE AVALIAÇÃO:
-1. AUTORIDADE DO PROFESSOR: O Gabarito de Referência é a verdade absoluta. Se o gabarito disser que 2+2=5, e o aluno responder 5, ele está 100% correto. Se ele responder 4, ele errou. Ignore seu próprio conhecimento científico ou matemático caso ele divirja do gabarito.
-2. ANÁLISE SEMÂNTICA: Em questões dissertativas, o aluno não precisa usar as mesmas palavras do professor, mas deve expressar a mesma ideia ou conceito central.
+1. AUTORIDADE DO PROFESSOR: O Gabarito de Referência é a verdade absoluta. Se o gabarito disser que 2+2=5, e o aluno responder 5, ele está 100% correto.
+2. ANÁLISE SEMÂNTICA E LÓGICA: O aluno não precisa usar as mesmas palavras do professor. Se o gabarito contiver critérios lógicos (ex: "deve ser entre 10 e 20", "maior que 50", "aceitar variações de X a Y"), valide se a resposta do aluno atende matematicamente a esse critério.
 3. ESCALA: Retorne uma nota de 0 a 100.
-   - 100: Resposta perfeita ou equivalente ao gabarito.
-   - 0: Resposta totalmente errada, em branco ou sem relação com o gabarito.
-   - 1 a 99: Respostas parcialmente corretas proporcionalmente ao conteúdo do gabarito.
+   - 100: Resposta correta, equivalente ou que atenda aos critérios lógicos do gabarito.
+   - 0: Resposta errada, em branco ou sem relação.
+   - 1 a 99: Parcialmente correto.
 
-OUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota baseada no gabarito.`
+OUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota.
+`
                     },
                     {
                         role: "user",

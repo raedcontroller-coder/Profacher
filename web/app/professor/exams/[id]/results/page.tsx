@@ -270,7 +270,7 @@ export default function ExamResultsPage() {
       {selectedSubmission && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 md:p-12 animate-in fade-in duration-300">
            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedSubmission(null)} />
-           <div className="relative w-full max-w-[1000px] h-[90vh] liquid-glass rounded-[3rem] border border-white/10 flex flex-col overflow-hidden">
+           <div className="relative w-full max-w-[1000px] h-[90vh] liquid-glass rounded-[3rem] border border-white/10 flex flex-col overflow-hidden min-w-0">
               
               <header className="p-10 border-b border-white/5 flex items-center justify-between shrink-0">
                  <div className="space-y-1">
@@ -285,24 +285,48 @@ export default function ExamResultsPage() {
               <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar bg-black/20">
                  {selectedSubmission.report.map((it: any, idx: number) => (
                     <div key={idx} className="space-y-4 p-8 rounded-3xl bg-white/5 border border-white/5">
-                       <div className="flex items-start gap-4">
+                       <div className="flex items-start gap-4 min-w-0">
                           <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center text-xs font-black shrink-0">{idx + 1}</span>
-                          <div className="space-y-4 flex-1">
-                             <div className="text-lg font-bold text-gray-100 break-words whitespace-pre-wrap">
-                                <MathRenderer content={it.content} className="!p-0" />
+                          <div className="space-y-4 flex-1 min-w-0 overflow-hidden">
+                             <div className="text-lg font-bold text-gray-100 break-words max-w-full overflow-hidden">
+                                <MathRenderer content={it.content} className="!p-0 max-w-full overflow-x-hidden" />
                              </div>
                              <div className="space-y-4 pt-4 border-t border-white/5">
-                                <div>
-                                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Resposta do Aluno</p>
-                                   <div className="p-4 rounded-xl bg-white/5 text-gray-300 text-sm italic break-words whitespace-pre-wrap">
-                                      {it.studentAnswer ? (typeof it.studentAnswer === 'object' ? JSON.stringify(it.studentAnswer) : it.studentAnswer) : 'Sem resposta'}
+                                {it.tfResult && it.tfResult.length > 0 ? (
+                                   <div className="space-y-4">
+                                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Detalhamento V/F</p>
+                                      <div className="grid grid-cols-1 gap-2">
+                                         {it.tfResult.map((tf: any, tfIdx: number) => (
+                                            <div key={tfIdx} className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${tf.isCorrect ? 'bg-green-500/5 border-green-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
+                                               <div className="flex items-center gap-3">
+                                                  <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black ${tf.isCorrect ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
+                                                     {tf.isCorrect ? '✓' : '✕'}
+                                                  </div>
+                                                  <span className="text-sm text-gray-200">{tf.statement}</span>
+                                               </div>
+                                               <div className="flex items-center gap-2 shrink-0">
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${tf.studentVal === 'V' ? 'bg-green-500/10 border-green-500/30 text-green-400' : tf.studentVal === 'F' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-gray-500/10 border-gray-500/30 text-gray-400'}`}>Aluno: {tf.studentVal}</span>
+                                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${tf.expectedVal === 'V' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>Gab: {tf.expectedVal}</span>
+                                               </div>
+                                            </div>
+                                         ))}
+                                      </div>
                                    </div>
-                                </div>
-                                {it.correctAnswer && (
-                                   <div>
-                                      <p className="text-[10px] font-black text-primary/50 uppercase tracking-widest mb-2">Gabarito Sugerido</p>
-                                      <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap">{it.correctAnswer}</div>
-                                   </div>
+                                ) : (
+                                   <>
+                                      <div>
+                                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Resposta do Aluno</p>
+                                         <div className="p-4 rounded-xl bg-white/5 text-gray-300 text-sm italic break-words whitespace-pre-wrap max-w-full overflow-hidden">
+                                            {it.studentAnswer || 'Sem resposta'}
+                                         </div>
+                                      </div>
+                                      {it.correctAnswer && (
+                                         <div>
+                                            <p className="text-[10px] font-black text-primary/50 uppercase tracking-widest mb-2">Gabarito Sugerido</p>
+                                            <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden">{it.correctAnswer}</div>
+                                         </div>
+                                      )}
+                                   </>
                                 )}
                              </div>
                           </div>

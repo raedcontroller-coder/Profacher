@@ -6,7 +6,7 @@ import { getTeacherQuestions } from './actions';
 interface Question {
   id: number;
   content: string;
-  type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
+  type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
   referenceAnswer?: string;
   options: Array<{ content: string; isCorrect: boolean }>;
 }
@@ -155,7 +155,7 @@ export default function ImportQuestionModal({ isOpen, onClose, onImport }: Impor
                             <p className="text-sm line-clamp-2 text-gray-300 italic">"{q.content}"</p>
                             <div className="flex gap-2 mt-2">
                                <span className="text-[9px] uppercase font-bold tracking-widest bg-white/10 px-2 py-0.5 rounded text-gray-400">
-                                  {q.type === 'MULTIPLE_CHOICE' ? 'Objetiva' : q.type === 'TRUE_FALSE' ? 'V/F' : q.type === 'ESSAY' ? 'Dissertativa' : 'Cálculo'}
+                                  {q.type === 'MULTIPLE_CHOICE' ? 'Objetiva' : q.type === 'TRUE_FALSE' ? 'V/F' : q.type === 'ESSAY' ? 'Dissertativa' : q.type === 'CUSTOM_HTML' ? 'Interativa' : 'Cálculo'}
                                </span>
                             </div>
                          </div>
