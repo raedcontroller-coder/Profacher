@@ -234,7 +234,8 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         loadGroup(viewingGroupId!);
       }
     } else {
-      const result = await createQuestionInBank(viewingGroupId!, {
+      const result = await createQuestionInBank({
+        groupId: viewingGroupId!,
         content: finalContent,
         type: qType,
         points: qPoints,
