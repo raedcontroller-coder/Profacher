@@ -13,7 +13,6 @@ import {
     updateQuestionInBank
 } from './actions';
 import RichTextEditor from '@/components/shared/RichTextEditor';
-import { toast } from 'sonner';
 
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
