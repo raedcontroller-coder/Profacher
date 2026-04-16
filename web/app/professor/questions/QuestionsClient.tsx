@@ -28,6 +28,7 @@ interface Question {
     type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
+    correctionMode?: "COMPARATIVE" | "CONCEPTUAL";
     options: QuestionOption[];
 }
 
@@ -71,6 +72,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
     { content: '', isCorrect: false },
     { content: '', isCorrect: false }
   ]);
+  const [qCorrectionMode, setQCorrectionMode] = useState<"COMPARATIVE" | "CONCEPTUAL">('CONCEPTUAL');
   
   // Estados para Prévia Interativa
   const [previewContent, setPreviewContent] = useState<string | null>(null);
@@ -160,6 +162,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
     setShowNewQuestionForm(false);
     setPreviewContent(null);
     setCapturedTestAnswer(null);
+    setQCorrectionMode('CONCEPTUAL');
   }
 
   function addOption() {
@@ -188,6 +191,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
 
     setQPoints(q.points);
     setQReferenceAnswer(q.referenceAnswer || '');
+    setQCorrectionMode(q.correctionMode || 'CONCEPTUAL');
     if (q.options) {
       setQOptions(q.options.map((opt: any) => ({ content: opt.content, isCorrect: opt.isCorrect })));
     }
@@ -225,6 +229,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         type: qType,
         points: qPoints,
         referenceAnswer: qReferenceAnswer,
+        correctionMode: qCorrectionMode,
         options: qOptions
       });
       if (result.success) {
@@ -240,6 +245,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         type: qType,
         points: qPoints,
         referenceAnswer: qReferenceAnswer,
+        correctionMode: qCorrectionMode,
         options: qOptions
       });
       if (result.success) {
@@ -317,7 +323,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                             <span className="material-symbols-outlined text-3xl">folder_zip</span>
                                         </div>
                                         <div>
-                                            <h3 className="text-2xl font-bold text-on-surface mb-1">{group.name}</h3>
+                                            <h3 className="text-2xl font-bold text-on-surface mb-1 line-clamp-1">{group.name}</h3>
                                             <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
                                                 {group.questions?.length || 0} questões cadastradas
                                             </p>
@@ -487,10 +493,36 @@ export default function QuestionsClient({ userName }: { userName: string }) {
 
                                     { (qType === 'ESSAY' || qType === 'MATH' || qType === 'CUSTOM_HTML') && (
                                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
-                                            <div className="flex items-center gap-3 text-amber-500">
-                                                <span className="material-symbols-outlined">auto_fix_high</span>
-                                                <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (IA)</span>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3 text-amber-500">
+                                                    <span className="material-symbols-outlined">auto_fix_high</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (IA)</span>
+                                                </div>
+                                                
+                                                <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setQCorrectionMode('CONCEPTUAL')}
+                                                        className={`px-4 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all ${qCorrectionMode === 'CONCEPTUAL' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'text-gray-500 hover:text-amber-500/70'}`}
+                                                    >
+                                                        CONCEITUAL
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setQCorrectionMode('COMPARATIVE')}
+                                                        className={`px-4 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all ${qCorrectionMode === 'COMPARATIVE' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'text-gray-500 hover:text-amber-500/70'}`}
+                                                    >
+                                                        COMPARATIVA
+                                                    </button>
+                                                </div>
                                             </div>
+
+                                            <p className="text-[10px] text-amber-500/40 mb-4 leading-relaxed max-w-xl">
+                                                {qCorrectionMode === 'CONCEPTUAL' 
+                                                    ? "A IA focará na essência da resposta e nas instruções pedagógicas que você escrever abaixo."
+                                                    : "A IA fará uma comparação mais rigorosa e literal entre a resposta do aluno e o seu gabarito."}
+                                            </p>
+
                                             <textarea 
                                                 placeholder={qType === 'CUSTOM_HTML' ? "Qual é o valor esperado da interação? Ex: 2021 | 50. A IA usará isso para avaliar a resposta capturada." : "Digite aqui a resposta que você espera do aluno..."}
                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 transition-all h-32 resize-none shadow-inner placeholder:text-amber-500/30"

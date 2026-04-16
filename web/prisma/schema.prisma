@@ -80,6 +80,7 @@ model Question {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   referenceAnswer String?          @map("reference_answer")
+  correctionMode  String           @default("CONCEPTUAL") @map("correction_mode")
   exams           ExamQuestion[]
   options         QuestionOption[]
   group           QuestionGroup?   @relation(fields: [groupId], references: [id])
@@ -128,6 +129,7 @@ model ExamSubmission {
   startedAt   DateTime  @default(now()) @map("started_at")
   finishedAt  DateTime? @map("finished_at")
   isExpelled  Boolean   @default(false) @map("is_expelled")
+  correctionDetails Json? @map("correction_details")
   exam        Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentRa])

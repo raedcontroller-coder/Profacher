@@ -8,6 +8,7 @@ interface Question {
   content: string;
   type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
   referenceAnswer?: string;
+  correctionMode?: string;
   options: Array<{ content: string; isCorrect: boolean }>;
 }
 

@@ -9,7 +9,7 @@ import { generateExamPdf } from '@/lib/utils/pdf-generator';
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
 export default function UnifiedStudentExamPage() {
-  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED'>('ID');
+  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'INSTRUCTIONS' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED'>('ID');
   const [formData, setFormData] = useState({
     name: '',
     ra: '',
@@ -145,7 +145,16 @@ export default function UnifiedStudentExamPage() {
             if (result.previousAnswers) {
               setAnswers((result.previousAnswers as Record<number, any>) || {});
             }
-            setStep('LIVE');
+
+            // NOVA LÓGICA: Se houver instruções (descrição), mostra a tela de aceite
+            console.log("📝 Dados da prova carregados. Instruções presentes:", !!result.exam.description);
+            if (result.exam.description && result.exam.description.trim() !== "") {
+              console.log("🚀 Mudando para o passo: INSTRUCTIONS");
+              setStep('INSTRUCTIONS');
+            } else {
+              console.log("🚀 Indo direto para: LIVE");
+              setStep('LIVE');
+            }
           } else {
             console.warn("⚠️ Falha ao carregar questões:", result.error);
             if (result.error?.includes("revogado")) {
@@ -257,7 +266,7 @@ export default function UnifiedStudentExamPage() {
 
       <div className="w-full max-w-3xl relative z-10 transition-all duration-700">
         
-        {(step === 'ID' || step === 'WAITING' || step === 'STARTED') && (
+        {(step === 'ID' || step === 'WAITING' || step === 'STARTED' || step === 'INSTRUCTIONS') && (
           <div className="liquid-glass p-10 rounded-[3rem] border border-outline-variant shadow-2xl space-y-10">
             <div className="text-center space-y-3">
               <h1 className="text-4xl font-black text-on-surface tracking-tight">Profacher <span className="text-primary">2.0</span></h1>
@@ -319,6 +328,41 @@ export default function UnifiedStudentExamPage() {
                 <div className="space-y-2">
                   <h2 className="text-4xl font-black">TUDO PRONTO!</h2>
                   <p className="text-gray-400 font-medium text-lg">Iniciando sua avaliação. Boa sorte!</p>
+                </div>
+              </div>
+            )}
+            {step === 'INSTRUCTIONS' && examData && (
+              <div className="space-y-8 animate-in fade-in zoom-in duration-700 max-h-[70vh] flex flex-col">
+                <div className="flex items-center gap-4 bg-primary/10 p-6 rounded-3xl border border-primary/20 shrink-0">
+                  <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg">
+                    <span className="material-symbols-outlined font-black">info</span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-white tracking-tight uppercase">Instruções da Prova</h2>
+                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Leia atentamente antes de começar</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-white/5 rounded-[2rem] border border-outline-variant p-8 prose prose-invert max-w-none">
+                   <MathRenderer content={examData.description || ''} className="text-gray-300 leading-relaxed text-lg" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 shrink-0">
+                   <button 
+                      onClick={() => {
+                        setStep('ID');
+                        setExamData(null);
+                      }} 
+                      className="py-6 bg-white/5 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-[2rem] font-bold transition-all border border-transparent hover:border-red-500/20"
+                   >
+                      REJEITAR E SAIR
+                   </button>
+                   <button 
+                      onClick={() => setStep('LIVE')} 
+                      className="py-6 bg-primary text-black rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                   >
+                      LI E ACEITO <span className="material-symbols-outlined font-black">check_circle</span>
+                   </button>
                 </div>
               </div>
             )}
@@ -648,6 +692,7 @@ export default function UnifiedStudentExamPage() {
                       date: new Date().toLocaleString('pt-BR'),
                       score: scoreData?.score || 0,
                       maxScore: scoreData?.maxScore || 0,
+                      showScore: scoreData?.showScore ?? false,
                       details: scoreData?.details || []
                     })}
                     className="group relative flex items-center gap-4 py-6 px-12 bg-white/5 hover:bg-white/10 border border-outline rounded-[2rem] transition-all"

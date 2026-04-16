@@ -151,7 +151,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
                           <div className="flex flex-col gap-1">
                             <Link 
                               href={`/professor/exams/${exam.id}/monitor`}
-                              className="font-bold text-lg text-on-surface hover:text-primary transition-colors cursor-pointer block"
+                              className="font-bold text-lg text-on-surface hover:text-primary transition-colors cursor-pointer block line-clamp-2 max-w-[400px]"
                             >
                               {exam.title}
                             </Link>

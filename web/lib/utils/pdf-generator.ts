@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+ 
+const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
 interface ExamPdfData {
   studentName: string;
@@ -9,6 +11,7 @@ interface ExamPdfData {
   date: string;
   score: number;
   maxScore: number;
+  showScore: boolean;
   details: {
     question: string;
     studentAnswer: any;
@@ -33,6 +36,16 @@ const stripHtml = (html: string) => {
     .replace(/&gt;/g, '>')
     .replace(/\s+/g, ' ') // Remove espaços múltiplos
     .trim();
+};
+
+/**
+ * Limpa o conteúdo de questões interativas e remove tags HTML.
+ */
+const cleanContent = (text: string) => {
+  if (!text) return '';
+  // Se for uma questão interativa, pega apenas o enunciado (antes do separador de código)
+  const [enunciation] = text.split(CODE_SEPARATOR);
+  return stripHtml(enunciation);
 };
 
 /**
@@ -70,35 +83,55 @@ export const generateExamPdf = (data: ExamPdfData) => {
     const scoreText = `${d.pointsObtained.toFixed(1)} / ${d.pointsTotal.toFixed(1)}`;
     const status = d.pointsObtained === d.pointsTotal ? 'Correta' : d.pointsObtained > 0 ? 'Parcial' : 'Incorreta';
 
+    if (data.showScore) {
     return [
       index + 1,
-      stripHtml(d.question),
+      cleanContent(d.question),
       stripHtml(studentAns || 'Não respondida'),
+      stripHtml(d.feedback || '---'),
       `${scoreText} (${status})`
     ];
+  } else {
+    return [
+      index + 1,
+      cleanContent(d.question),
+      stripHtml(studentAns || 'Não respondida')
+    ];
+  }
   });
+
+  const columns = data.showScore 
+    ? [['#', 'Questão', 'Sua Resposta', 'Feedback IA', 'Pontuação']]
+    : [['#', 'Questão', 'Sua Resposta']];
 
   autoTable(doc, {
     startY: 60,
-    head: [['#', 'Questão', 'Sua Resposta', 'Pontuação']],
+    head: columns,
     body: tableData,
     headStyles: { fillColor: [67, 79, 219], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [245, 246, 255] },
-    columnStyles: {
+    columnStyles: data.showScore ? {
       0: { cellWidth: 10 },
-      1: { cellWidth: 80 },
-      2: { cellWidth: 60 },
-      3: { cellWidth: 35 }
+      1: { cellWidth: 60 },
+      2: { cellWidth: 50 },
+      3: { cellWidth: 45 },
+      4: { cellWidth: 25 }
+    } : {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 90 },
+      2: { cellWidth: 80 }
     },
-    styles: { overflow: 'linebreak', cellPadding: 5 },
+    styles: { overflow: 'linebreak', cellPadding: 5, fontSize: data.showScore ? 8 : 10 },
   });
 
   // 3. Nota Final
-  const lastY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0);
-  doc.text(`Nota Final: ${data.score.toFixed(1)} / ${data.maxScore.toFixed(1)}`, 14, lastY);
+  if (data.showScore) {
+    const lastY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0);
+    doc.text(`Nota Final: ${data.score.toFixed(1)} / ${data.maxScore.toFixed(1)}`, 14, lastY);
+  }
 
   // 4. Rodapé
   doc.setFontSize(9);
@@ -190,7 +223,7 @@ export const generateFullDetailedClassPdf = (examTitle: string, accessCode: stri
       }
       return [
         i + 1,
-        stripHtml(d.question),
+        cleanContent(d.question),
         stripHtml(studentAns || '---'),
         `${d.pointsObtained.toFixed(1)} / ${d.pointsTotal.toFixed(1)}`
       ];

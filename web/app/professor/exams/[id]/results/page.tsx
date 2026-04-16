@@ -287,10 +287,15 @@ export default function ExamResultsPage() {
                     <div key={idx} className="space-y-4 p-8 rounded-3xl bg-white/5 border border-white/5">
                        <div className="flex items-start gap-4 min-w-0">
                           <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center text-xs font-black shrink-0">{idx + 1}</span>
-                          <div className="space-y-4 flex-1 min-w-0 overflow-hidden">
-                             <div className="text-lg font-bold text-gray-100 break-words max-w-full overflow-hidden">
-                                <MathRenderer content={it.content} className="!p-0 max-w-full overflow-x-hidden" />
-                             </div>
+                           <div className="space-y-4 flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-start justify-between gap-4">
+                                 <div className="text-lg font-bold text-gray-100 break-words max-w-full overflow-hidden flex-1">
+                                    <MathRenderer content={it.content} className="!p-0 max-w-full overflow-x-hidden" />
+                                 </div>
+                                 <div className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest shrink-0 ${it.pointsObtained >= it.points ? 'bg-green-500/10 border-green-500/20 text-green-400' : it.pointsObtained > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                                    {it.pointsObtained?.toFixed(1) || '0.0'} / {it.points?.toFixed(1)} PTS
+                                 </div>
+                              </div>
                              <div className="space-y-4 pt-4 border-t border-white/5">
                                 {it.tfResult && it.tfResult.length > 0 ? (
                                    <div className="space-y-4">
@@ -322,8 +327,18 @@ export default function ExamResultsPage() {
                                       </div>
                                       {it.correctAnswer && (
                                          <div>
-                                            <p className="text-[10px] font-black text-primary/50 uppercase tracking-widest mb-2">Gabarito Sugerido</p>
-                                            <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden">{it.correctAnswer}</div>
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Gabarito Sugerido</p>
+                                            <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden border border-primary/10">{it.correctAnswer}</div>
+                                         </div>
+                                      )}
+                                      
+                                      {it.feedback && (
+                                         <div className="mt-4 p-5 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-3">
+                                            <span className="material-symbols-outlined text-primary text-xl">smart_toy</span>
+                                            <div className="space-y-1">
+                                               <p className="text-[10px] font-black text-primary uppercase tracking-widest">Feedback da IA</p>
+                                               <p className="text-xs text-gray-400 italic leading-relaxed">{it.feedback}</p>
+                                            </div>
                                          </div>
                                       )}
                                    </>

@@ -92,6 +92,7 @@ export async function createQuestionInBank(data: {
   type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
   points: number;
   referenceAnswer?: string;
+  correctionMode?: string;
   options?: Array<{ content: string; isCorrect: boolean }>;
 }) {
   const session = await auth()
@@ -106,6 +107,7 @@ export async function createQuestionInBank(data: {
         type: data.type,
         points: data.points,
         referenceAnswer: data.referenceAnswer,
+        correctionMode: data.correctionMode || "CONCEPTUAL",
         teacherId: userId,
         groupId: data.groupId,
         options: {
@@ -130,6 +132,7 @@ export async function updateQuestionInBank(id: number, data: {
     type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
+    correctionMode?: string;
     options?: Array<{ content: string; isCorrect: boolean }>;
 }) {
     const session = await auth()
@@ -163,6 +166,7 @@ export async function updateQuestionInBank(id: number, data: {
                     type: data.type,
                     points: data.points,
                     referenceAnswer: data.referenceAnswer,
+                    correctionMode: data.correctionMode || "CONCEPTUAL",
                     options: {
                         create: data.options?.map(opt => ({
                             content: opt.content,

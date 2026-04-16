@@ -115,7 +115,7 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
     }
 }
 
-export async function gradeStudentAnswer(questionContent: string, referenceAnswer: string, studentAnswer: string, teacherId?: number) {
+export async function gradeStudentAnswer(questionContent: string, referenceAnswer: string, studentAnswer: string, teacherId?: number, correctionMode: string = "CONCEPTUAL") {
     try {
         let user;
         
@@ -175,6 +175,28 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
             "Content-Type": "application/json",
         };
 
+        const isConceptual = correctionMode === "CONCEPTUAL";
+
+        const systemPrompt = isConceptual 
+            ? `Você é um avaliador de provas ultrapreciso focado em ANÁLISE CONCEITUAL E INSTRUCIONAL.
+            
+Sua missão é dar uma nota para a resposta de um aluno baseando-se no "Gabarito de Referência" do professor.
+IMPORTANTE: O gabarito pode conter INSTRUÇÕES de correção (ex: "considere certo se citar X"). Você deve PRIORIZAR o cumprimento dessas instruções sobre a comparação literal de texto.
+
+REGRAS CRÍTICAS (MODO CONCEITUAL):
+1. FOCO NA IDEIA: Se o aluno explicou o conceito corretamente, mesmo usando palavras totalmente diferentes da do professor, dê nota máxima.
+2. INSTRUÇÕES VALEM TUDO: Se o gabarito disser "Considere correto se...", e o aluno atender ao critério, a nota é 100.
+3. FLEXIBILIDADE: Seja benevolente com a escrita. O que importa é se o aluno demonstrou conhecimento do que foi pedido.
+4. ESCALA: 0 a 100. (100 = atendeu aos critérios ou ideia central).`
+            : `Você é um avaliador de provas focado em ANÁLISE COMPARATIVA E SEMÂNTICA.
+            
+Sua missão é dar uma nota comparando a resposta do aluno com o "Gabarito de Referência" do professor.
+
+REGRAS CRÍTICAS (MODO COMPARATIVO):
+1. SIMILARIDADE: A resposta do aluno deve ser semanticamente próxima e conter as informações principais presentes no gabarito.
+2. RIGOR: Seja mais criterioso com a precisão dos fatos, nomes e dados apresentados.
+3. ESCALA: 0 a 100.`;
+
         const response = await fetch(endpoint, {
             method: "POST",
             headers,
@@ -183,18 +205,7 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
                 messages: [
                     {
                         role: "system",
-                        content: `Você é um avaliador de provas ultrapreciso. Sua missão é dar uma nota para a resposta de um aluno baseando-se EXCLUSIVAMENTE no "Gabarito de Referência" fornecido pelo professor.
-                        
-REGRAS CRÍTICAS DE AVALIAÇÃO:
-1. AUTORIDADE DO PROFESSOR: O Gabarito de Referência é a verdade absoluta. Se o gabarito disser que 2+2=5, e o aluno responder 5, ele está 100% correto.
-2. ANÁLISE SEMÂNTICA E LÓGICA: O aluno não precisa usar as mesmas palavras do professor. Se o gabarito contiver critérios lógicos (ex: "deve ser entre 10 e 20", "maior que 50", "aceitar variações de X a Y"), valide se a resposta do aluno atende matematicamente a esse critério.
-3. ESCALA: Retorne uma nota de 0 a 100.
-   - 100: Resposta correta, equivalente ou que atenda aos critérios lógicos do gabarito.
-   - 0: Resposta errada, em branco ou sem relação.
-   - 1 a 99: Parcialmente correto.
-
-OUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota.
-`
+                        content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota.`
                     },
                     {
                         role: "user",

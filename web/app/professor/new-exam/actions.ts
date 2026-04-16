@@ -16,6 +16,7 @@ export async function saveExam(data: {
     type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
+    correctionMode?: string;
     options?: Array<{ content: string; isCorrect: boolean }>;
   }>;
 }) {
@@ -65,6 +66,7 @@ export async function saveExam(data: {
           type: qData.type,
           points: qData.points,
           referenceAnswer: qData.referenceAnswer,
+          correctionMode: qData.correctionMode || "CONCEPTUAL",
           teacherId: Number(userId),
           groupId: groupId,
           options: {
@@ -158,6 +160,7 @@ export async function updateExam(examId: number, data: {
     type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
+    correctionMode?: string;
     options?: Array<{ content: string; isCorrect: boolean }>;
   }>;
 }) {
@@ -216,6 +219,7 @@ export async function updateExam(examId: number, data: {
             type: qData.type,
             points: qData.points,
             referenceAnswer: qData.referenceAnswer,
+            correctionMode: qData.correctionMode || "CONCEPTUAL",
             groupId: groupId,
             options: {
               deleteMany: {},
@@ -235,6 +239,7 @@ export async function updateExam(examId: number, data: {
             type: qData.type,
             points: qData.points,
             referenceAnswer: qData.referenceAnswer,
+            correctionMode: qData.correctionMode || "CONCEPTUAL",
             teacherId: userId,
             groupId: groupId,
             options: {

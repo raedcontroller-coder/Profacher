@@ -14,6 +14,7 @@ interface QuestionInput {
   type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH";
   points: number;
   referenceAnswer?: string;
+  correctionMode?: "COMPARATIVE" | "CONCEPTUAL";
   options: Array<{ content: string; isCorrect: boolean }>;
 }
 
@@ -59,7 +60,8 @@ export default function EditExamClient({
         { content: '', isCorrect: false },
         { content: '', isCorrect: false },
         { content: '', isCorrect: false }
-      ]
+      ],
+      correctionMode: 'CONCEPTUAL'
     }]);
   }
 
@@ -371,10 +373,44 @@ export default function EditExamClient({
                                     {/* Gabarito de Referência para Dissertativas */}
                                     {(q.type === 'ESSAY' || q.type === 'MATH') && (
                                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
-                                            <div className="flex items-center gap-3 text-amber-500">
-                                                <span className="material-symbols-outlined">auto_fix_high</span>
-                                                <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (Obrigatório para IA)</span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3 text-amber-500">
+                                                    <span className="material-symbols-outlined">auto_fix_high</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (IA)</span>
+                                                </div>
+                                                
+                                                <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newQs = [...questions];
+                                                            newQs[qIndex].correctionMode = 'CONCEPTUAL';
+                                                            setQuestions(newQs);
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${q.correctionMode === 'CONCEPTUAL' || !q.correctionMode ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'text-gray-500 hover:text-amber-500/70'}`}
+                                                    >
+                                                        CONCEITUAL
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newQs = [...questions];
+                                                            newQs[qIndex].correctionMode = 'COMPARATIVE';
+                                                            setQuestions(newQs);
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${q.correctionMode === 'COMPARATIVE' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'text-gray-500 hover:text-amber-500/70'}`}
+                                                    >
+                                                        COMPARATIVA
+                                                    </button>
+                                                </div>
                                             </div>
+
+                                            <p className="text-[9px] text-amber-500/40 leading-relaxed">
+                                                {q.correctionMode === 'COMPARATIVE' 
+                                                    ? "Rigorosa: A IA comparará a escrita e os termos literais do aluno."
+                                                    : "Inteligente: A IA focará na essência da ideia e nas instruções do gabarito."}
+                                            </p>
+
                                             <textarea 
                                                 placeholder="Digite aqui a resposta que você espera do aluno. A IA usará este texto para comparar com a resposta dele."
                                                 className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 transition-all h-32 resize-none shadow-inner placeholder:text-amber-500/30"

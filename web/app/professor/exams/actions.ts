@@ -281,6 +281,7 @@ export async function getSubmissionDetails(submissionId: number) {
       const q = eq.question;
       const rawAns = answers[q.id];
       let studentAnswer: string = '';
+      let tfResult: any[] = [];
 
       if (rawAns === undefined || rawAns === null) {
         studentAnswer = '— Não respondida —';
@@ -290,7 +291,6 @@ export async function getSubmissionDetails(submissionId: number) {
         const found = q.options.find((o: any) => o.id === optId);
         studentAnswer = found ? found.content : `Opção ID: ${rawAns}`;
       } else if (q.type === 'TRUE_FALSE') {
-        let tfResult: any[] = [];
         // rawAns é um objeto { [optId]: 'V' | 'F' }
         if (typeof rawAns === 'object' && rawAns !== null) {
           const lines = Object.entries(rawAns as Record<string, string>).map(([optId, val]) => {
@@ -327,6 +327,10 @@ export async function getSubmissionDetails(submissionId: number) {
         studentAnswer = typeof rawAns === 'string' ? rawAns : JSON.stringify(rawAns);
       }
 
+      // Buscar detalhes de correção para esta questão se houver
+      const savedDetails = (submission.correctionDetails as any[]) || [];
+      const questionDetail = savedDetails.find(d => d.questionId === q.id);
+
       return {
         questionId: q.id,
         content: q.content,
@@ -334,7 +338,10 @@ export async function getSubmissionDetails(submissionId: number) {
         studentAnswer,
         correctAnswer: q.referenceAnswer,
         points: q.points,
-        options: q.options
+        pointsObtained: questionDetail?.pointsObtained ?? (q.type === 'TRUE_FALSE' ? (tfResult.filter(t => t.isCorrect).length / (tfResult.length || 1)) * q.points : 0),
+        feedback: questionDetail?.feedback || "",
+        options: q.options,
+        tfResult
       };
     });
 
@@ -514,6 +521,7 @@ export async function getLiveExamQuestions(accessCode: string, studentName: stri
       exam: {
         id: exam.id,
         title: exam.title,
+        description: exam.description,
         showScore: exam.showScore,
         randomizeOrder: exam.randomizeOrder,
         questions: exam.randomizeOrder 
@@ -602,6 +610,7 @@ export async function finishExamLive(submissionId: number) {
       maxScore += q.points;
 
       const detail: any = {
+        questionId: q.id,
         question: q.content,
         type: q.type,
         studentAnswer: studentAnswer || "Não respondida",
@@ -685,7 +694,7 @@ export async function finishExamLive(submissionId: number) {
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer(q.content, referenceAnswer, studentAnswer, submission.exam.teacherId);
+              const result = await gradeStudentAnswer(q.content, referenceAnswer, studentAnswer, submission.exam.teacherId, q.correctionMode);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Corrigido pela IA." };
@@ -713,7 +722,7 @@ export async function finishExamLive(submissionId: number) {
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer, studentAnswer, submission.exam.teacherId);
+              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer, studentAnswer, submission.exam.teacherId, q.correctionMode);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Interação avaliada pela IA." };
@@ -742,7 +751,8 @@ export async function finishExamLive(submissionId: number) {
       where: { id: submissionId },
       data: {
         finishedAt: new Date(),
-        score: totalScore
+        score: totalScore,
+        correctionDetails: details // Salvar detalhes da IA
       }
     });
 
