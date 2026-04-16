@@ -168,7 +168,7 @@ export default function RichTextEditor({ value, onChange, placeholder, isMath }:
       // Usar microtask para evitar erro de flushSync no React 18 durante o ciclo de renderização
       Promise.resolve().then(() => {
         if (editor && value !== editor.getHTML()) {
-          editor.commands.setContent(value, false);
+          editor.commands.setContent(value, { emitUpdate: false });
         }
       });
     }

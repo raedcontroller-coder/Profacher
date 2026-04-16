@@ -38,6 +38,9 @@ interface QuestionGroup {
     description?: string;
     questions: Question[];
     updatedAt: string;
+    _count?: {
+        questions: number;
+    };
 }
 
 const typeOptions = [
@@ -325,7 +328,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                         <div>
                                             <h3 className="text-2xl font-bold text-on-surface mb-1 line-clamp-1">{group.name}</h3>
                                             <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-                                                {group.questions?.length || 0} questões cadastradas
+                                                {group._count?.questions || 0} questões cadastradas
                                             </p>
                                         </div>
                                         <div className="flex gap-4">
