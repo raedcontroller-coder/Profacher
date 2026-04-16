@@ -105,6 +105,7 @@ export default function ExamResultsPage() {
                               date: new Date().toLocaleDateString(),
                               score: res.score!,
                               maxScore: res.maxScore!,
+                              showScore: true,
                               details: res.report!.map((it: any) => ({
                                 question: it.content,
                                 studentAnswer: it.studentAnswer,
@@ -360,6 +361,7 @@ export default function ExamResultsPage() {
                      date: new Date().toLocaleDateString(),
                      score: selectedSubmission.score || 0,
                      maxScore: selectedSubmission.maxScore || 10,
+                     showScore: true,
                      details: selectedSubmission.report.map((it: any) => ({
                        question: it.content,
                        studentAnswer: it.studentAnswer,
