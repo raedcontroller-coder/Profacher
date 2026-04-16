@@ -391,7 +391,13 @@ export default function UnifiedStudentExamPage() {
                   return (
                     <div key={q.id} className="liquid-glass p-10 rounded-[2.5rem] border border-outline-variant space-y-8 animate-modal-rise">
                       <div className="flex items-start justify-between">
-                         <span className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg border border-outline-variant">{index + 1}</span>
+                         <div className="flex items-center gap-4">
+                            <span className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-lg border border-outline-variant shrink-0">{index + 1}</span>
+                            <div className="flex flex-col gap-0.5">
+                               <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Peso da Questão</span>
+                               <span className="text-xs font-bold text-primary">{q.points?.toFixed(1) || '0.0'} {q.points === 1 ? 'PONTO' : 'PONTOS'}</span>
+                            </div>
+                         </div>
                          <div className="flex items-center gap-2">
                             {savingStatus[q.id] === 'saving' && <span className="text-[10px] font-bold text-gray-500 uppercase animate-pulse">Sincronizando...</span>}
                             {savingStatus[q.id] === 'saved' && <span className="text-[10px] font-bold text-green-500 uppercase flex items-center gap-1"><span className="material-symbols-outlined text-xs">check_circle</span> Salvo</span>}
