@@ -147,8 +147,8 @@ export default function UnifiedStudentExamPage() {
             }
 
             // NOVA LÓGICA: Se houver instruções (descrição), mostra a tela de aceite
-            console.log("📝 Dados da prova carregados. Instruções presentes:", !!result.exam.description);
-            if (result.exam.description && result.exam.description.trim() !== "") {
+            console.log("📝 Dados da prova carregados. Instruções presentes:", !!result.exam?.description);
+            if (result.exam?.description && result.exam.description.trim() !== "") {
               console.log("🚀 Mudando para o passo: INSTRUCTIONS");
               setStep('INSTRUCTIONS');
             } else {
