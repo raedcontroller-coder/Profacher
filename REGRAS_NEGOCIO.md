@@ -19,4 +19,3 @@ Este documento centraliza as regras de negócio implementadas e planejadas para 
 ## 4. Segurança e Acesso
 - **Redirecionamento por Papel**: O sistema deve redirecionar automaticamente o usuário logado para sua área específica (Admin, Coordenador ou Professor) com base em seu `role` no banco de dados.
 - **Proteção de Rotas**: Cada área do sistema deve ser acessível apenas por usuários com o papel correspondente.
-Raedr93D

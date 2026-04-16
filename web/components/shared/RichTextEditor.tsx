@@ -165,9 +165,14 @@ export default function RichTextEditor({ value, onChange, placeholder, isMath }:
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value)
+      // Usar microtask para evitar erro de flushSync no React 18 durante o ciclo de renderização
+      Promise.resolve().then(() => {
+        if (editor && value !== editor.getHTML()) {
+          editor.commands.setContent(value, false);
+        }
+      });
     }
-  }, [value, editor])
+  }, [value, editor]);
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]

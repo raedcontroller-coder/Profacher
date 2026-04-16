@@ -37,6 +37,8 @@ export default function NewExamClient({ userName }: { userName: string }) {
   const [loading, setLoading] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [questions, setQuestions] = useState<QuestionInput[]>([]);
+  
+  const totalPoints = questions.reduce((sum, q) => sum + (q.points || 0), 0);
 
   // Estados para Prévia Interativa (INDEXADOS POR QUESTÃO)
   const [previews, setPreviews] = useState<Record<number, string>>({});
@@ -244,6 +246,19 @@ export default function NewExamClient({ userName }: { userName: string }) {
 
                         {/* Configurações da Prova */}
                         <div className="pt-6 border-t border-white/5 space-y-6">
+                            <div className="flex items-center justify-between bg-primary/5 p-6 rounded-2xl border border-primary/20 transition-all">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-primary">assessment</span>
+                                        <span className="font-bold text-on-surface">Pontuação Total da Prova</span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">Soma automática de todos os pontos atribuídos às questões.</p>
+                                </div>
+                                <div className="text-3xl font-black text-primary">
+                                    {totalPoints.toFixed(1)}
+                                </div>
+                            </div>
+
                             <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group" onClick={() => setShowScore(!showScore)}>
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
