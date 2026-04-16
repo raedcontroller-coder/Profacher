@@ -161,6 +161,7 @@ export default function ExamResultsPage() {
                     <tr className="text-[10px] font-black uppercase tracking-widest text-gray-500 border-b border-white/5">
                       <th className="py-4 px-2">Aluno / RA</th>
                       <th className="py-4 px-2">Início</th>
+                      <th className="py-4 px-2 text-center">Alertas (Sentinel)</th>
                       <th className="py-4 px-2 text-center">Progresso</th>
                       <th className="py-4 px-2">Status / Nota</th>
                       <th className="py-4 px-2 text-right">Detalhamento</th>
@@ -219,6 +220,15 @@ export default function ExamResultsPage() {
                             <td className="py-5 px-2 text-xs text-gray-400 font-medium">
                                {p.startedAt ? new Date(p.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---'}
                             </td>
+                            <td className="py-5 px-2 text-center">
+                               {p.focusLoses > 0 ? (
+                                 <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-full border border-amber-500/20">
+                                   {p.focusLoses} {p.focusLoses === 1 ? 'Alerta' : 'Alertas'}
+                                 </span>
+                               ) : (
+                                 <span className="text-[10px] font-black text-gray-600 uppercase">Nenhum</span>
+                               )}
+                            </td>
                             <td className="py-5 px-2">
                                <div className="w-24 mx-auto space-y-2">
                                   <div className="flex justify-between text-[8px] font-black text-gray-500 uppercase">
@@ -276,7 +286,11 @@ export default function ExamResultsPage() {
               <header className="p-10 border-b border-white/5 flex items-center justify-between shrink-0">
                  <div className="space-y-1">
                     <h2 className="text-2xl font-black text-white">{selectedSubmission.studentName}</h2>
-                    <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">RA: {selectedSubmission.studentRa} &bull; Nota: {selectedSubmission.score?.toFixed(1) || '0.0'} / {selectedSubmission.maxScore?.toFixed(1)}</p>
+                    <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
+                       RA: {selectedSubmission.studentRa} &bull; 
+                       Nota: {selectedSubmission.score?.toFixed(1) || '0.0'} / {selectedSubmission.maxScore?.toFixed(1)} &bull; 
+                       Alertas Sentinel: {selectedSubmission.focusLoses || 0}
+                    </p>
                  </div>
                  <button onClick={() => setSelectedSubmission(null)} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 border border-white/5 transition-all">
                    <span className="material-symbols-outlined">close</span>

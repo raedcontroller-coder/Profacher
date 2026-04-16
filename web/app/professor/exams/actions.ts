@@ -223,6 +223,7 @@ export async function getExamForMonitor(examId: number) {
             finishedAt: true,
             score: true,
             isExpelled: true,
+            focusLoses: true,
             answers: true
           }
         }
@@ -350,6 +351,7 @@ export async function getSubmissionDetails(submissionId: number) {
       studentName: submission.studentName,
       studentRa: submission.studentRa,
       score: submission.score,
+      focusLoses: submission.focusLoses,
       maxScore: submission.exam.questions.reduce((acc, q) => acc + q.question.points, 0),
       report 
     };
@@ -407,6 +409,31 @@ export async function kickStudent(examId: number, studentRa: string) {
     return { success: true };
   } catch (e: any) {
     console.error("Erro ao expulsar aluno:", e);
+    return { success: false, error: e.message };
+  }
+}
+
+export async function reportFocusLoss(examId: number, studentRa: string) {
+  try {
+    // 1. Incrementar no banco
+    const submission = await prisma.examSubmission.update({
+      where: { examId_studentRa: { examId, studentRa } },
+      data: { focusLoses: { increment: 1 } },
+      select: { focusLoses: true, studentName: true, exam: { select: { accessCode: true } } }
+    });
+
+    // 2. Disparar evento Pusher
+    const { pusherServer } = await import("@/lib/pusher");
+    await pusherServer.trigger(`presence-exam-${submission.exam.accessCode}`, 'integrity:alert', {
+      ra: studentRa,
+      name: (submission as any).studentName,
+      count: (submission as any).focusLoses,
+      type: 'FOCUS_LOST'
+    });
+
+    return { success: true };
+  } catch (e: any) {
+    console.error("Erro ao reportar perda de foco:", e);
     return { success: false, error: e.message };
   }
 }

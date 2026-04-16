@@ -62,6 +62,24 @@ export default function ExamMonitorPage() {
       setParticipants(prev => prev.filter(p => p.ra !== member.info.ra));
     });
 
+    channel.bind('integrity:alert', (data: { ra: string, count: number, name: string }) => {
+      // Atualizar no objeto exam (submissões fixas)
+      setExam((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          submissions: prev.submissions.map((s: any) => 
+            s.studentRa === data.ra ? { ...s, focusLoses: data.count } : s
+          )
+        };
+      });
+
+      // Atualizar nos participantes online
+      setParticipants(prev => prev.map(p => 
+        p.ra === data.ra ? { ...p, focusLoses: data.count } : p
+      ));
+    });
+
     return () => {
       pusher.unsubscribe(`presence-exam-${exam.accessCode}`);
       pusherRef.current = null;
@@ -174,13 +192,15 @@ export default function ExamMonitorPage() {
                         ra: sub.studentRa,
                         finishedAt: sub.finishedAt,
                         isOnline: false,
-                        isExpelled: isExpelled
+                        isExpelled: isExpelled,
+                        focusLoses: sub.focusLoses || 0
                       } as any);
                     } else {
                       const subInActive = merged.find(m => m.ra === sub.studentRa);
                       if (subInActive) {
                         subInActive.finishedAt = sub.finishedAt;
                         (subInActive as any).isExpelled = isExpelled;
+                        (subInActive as any).focusLoses = sub.focusLoses || 0;
                       }
                     }
                   });
@@ -223,6 +243,13 @@ export default function ExamMonitorPage() {
                               {p.isOnline ? 'Online' : 'Offline'}
                             </span>
                             
+                            {p.focusLoses > 0 && (
+                              <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[10px] font-black animate-in fade-in zoom-in">
+                                <span className="material-symbols-outlined text-[14px]">security</span>
+                                {p.focusLoses} {p.focusLoses === 1 ? 'ALERTA' : 'ALERTAS'}
+                              </div>
+                            )}
+
                             <button 
                               onClick={async () => {
                                 if (!confirm(`Expulsar "${p.name}"?`)) return;

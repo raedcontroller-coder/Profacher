@@ -129,6 +129,7 @@ model ExamSubmission {
   startedAt   DateTime  @default(now()) @map("started_at")
   finishedAt  DateTime? @map("finished_at")
   isExpelled  Boolean   @default(false) @map("is_expelled")
+  focusLoses  Int       @default(0) @map("focus_loses")
   correctionDetails Json? @map("correction_details")
   exam        Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
 

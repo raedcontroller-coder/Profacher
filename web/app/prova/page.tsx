@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getPusherClient } from '@/lib/pusher';
-import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus } from '@/app/professor/exams/actions';
+import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus, reportFocusLoss } from '@/app/professor/exams/actions';
 import MathRenderer from '@/components/shared/MathRenderer';
 import { generateExamPdf } from '@/lib/utils/pdf-generator';
 
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
 export default function UnifiedStudentExamPage() {
-  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'INSTRUCTIONS' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED'>('ID');
+  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'INSTRUCTIONS' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED' | 'UNSUPPORTED_BROWSER'>('ID');
   const [formData, setFormData] = useState({
     name: '',
     ra: '',
@@ -24,6 +24,16 @@ export default function UnifiedStudentExamPage() {
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
   const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
+	
+  // Detecção de navegador Microsoft Edge
+  useEffect(() => {
+    const userAgent = window.navigator.userAgent;
+    const isEdge = /Edg\//.test(userAgent);
+    
+    if (isEdge) {
+      setStep('UNSUPPORTED_BROWSER');
+    }
+  }, []);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +58,15 @@ export default function UnifiedStudentExamPage() {
       console.error("Erro no handleJoin:", err);
     } finally {
       setLoading(false);
+    }
+
+    // Tentar entrar em Fullscreen (Requer gesto do usuário, que é este clique)
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (err) {
+      console.warn("Navegador bloqueou o fullscreen automático:", err);
     }
   };
 
@@ -126,6 +145,41 @@ export default function UnifiedStudentExamPage() {
     return () => window.removeEventListener('message', handleMessage);
   }, [submissionId]);
 
+  // Sentinel: Monitoramento de Integridade (Silencioso)
+  useEffect(() => {
+    if (step !== 'LIVE' || !submissionId || !formData.code || !formData.ra) return;
+
+    let lastAlertTime = 0;
+    const ALERT_COOLDOWN = 3000; // Evitar spam de alertas se o aluno alternar rápido demais
+
+    const triggerAlert = async () => {
+      const now = Date.now();
+      if (now - lastAlertTime < ALERT_COOLDOWN) return;
+      
+      lastAlertTime = now;
+      console.log("Sentinel: Alerta de integridade detectado.");
+      await reportFocusLoss(examData?.id || 0, formData.ra);
+    };
+
+    const handleBlur = () => triggerAlert();
+    const handleVisibilityChange = () => {
+      // Alerta se a aba for escondida OU se sair do modo tela cheia
+      if (document.visibilityState === 'hidden' || !document.fullscreenElement) {
+        triggerAlert();
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleVisibilityChange); // Tratar saída de fullscreen como perda de foco
+
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleVisibilityChange);
+    };
+  }, [step, submissionId, formData.code, formData.ra, examData?.id]);
+
   useEffect(() => {
     if (step === 'STARTED') {
       const timer = setTimeout(async () => {
@@ -186,6 +240,38 @@ export default function UnifiedStudentExamPage() {
             <p className="text-gray-400 leading-relaxed">O seu acesso a esta sala de prova foi interrompido por decisão da moderação do professor.</p>
           </div>
           <button onClick={() => window.location.href = '/'} className="w-full py-4 bg-white/5 hover:bg-white/10 text-gray-400 rounded-2xl transition-all font-bold">VOLTAR AO INÍCIO</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'UNSUPPORTED_BROWSER') {
+    return (
+      <div className="bg-[#121315] min-h-screen flex items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-500">
+          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary border border-primary/20">
+            <span className="material-symbols-outlined text-5xl text-primary">browser_updated</span>
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-3xl font-black text-white">NAVEGADOR NÃO SUPORTADO</h1>
+            <p className="text-gray-400 leading-relaxed">
+              Detectamos que você está utilizando o Microsoft Edge. Para garantir a segurança e estabilidade da sua prova, 
+              o **Google Chrome** é obrigatório.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <a 
+              href="https://www.google.com/chrome/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full py-6 bg-primary text-black rounded-2xl transition-all font-black text-lg block shadow-2xl shadow-primary/20 hover:scale-105"
+            >
+              BAIXAR GOOGLE CHROME
+            </a>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+              Por favor, instale o Chrome e tente novamente.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -328,6 +414,12 @@ export default function UnifiedStudentExamPage() {
                 <div className="space-y-2">
                   <h2 className="text-4xl font-black">TUDO PRONTO!</h2>
                   <p className="text-gray-400 font-medium text-lg">Iniciando sua avaliação. Boa sorte!</p>
+                </div>
+                <div className="pt-4 animate-pulse">
+                  <span className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-black tracking-[0.3em] flex items-center justify-center gap-2 w-fit mx-auto">
+                    <span className="material-symbols-outlined text-sm">security</span>
+                    SENTINEL ATIVADO
+                  </span>
                 </div>
               </div>
             )}

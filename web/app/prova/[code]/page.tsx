@@ -9,11 +9,20 @@ export default function StudentExamPage() {
   const router = useRouter();
   const code = params.code as string;
 
-  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED'>('ID');
+  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'UNSUPPORTED_BROWSER'>('ID');
   const [name, setName] = useState('');
   const [ra, setRa] = useState('');
   const [loading, setLoading] = useState(false);
   const [connectedMembers, setConnectedMembers] = useState(0);
+	
+  useEffect(() => {
+    const userAgent = window.navigator.userAgent;
+    const isEdge = /Edg\//.test(userAgent);
+    
+    if (isEdge) {
+      setStep('UNSUPPORTED_BROWSER');
+    }
+  }, []);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +86,33 @@ export default function StudentExamPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant shadow-2xl space-y-8">
           
+          {step === 'UNSUPPORTED_BROWSER' ? (
+            <div className="text-center space-y-8 animate-in fade-in zoom-in duration-500 py-6">
+              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto text-primary border border-primary/20">
+                <span className="material-symbols-outlined text-4xl text-primary">browser_updated</span>
+              </div>
+              <div className="space-y-4">
+                <h1 className="text-2xl font-black text-white px-4">NAVEGADOR NÃO SUPORTADO</h1>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  Detectamos o uso do Microsoft Edge. Para realizar esta prova, é necessário utilizar o <b>Google Chrome</b>.
+                </p>
+              </div>
+              <div className="space-y-4 pt-4">
+                <a 
+                  href="https://www.google.com/chrome/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full py-4 bg-primary text-black rounded-xl transition-all font-black text-sm block shadow-xl shadow-primary/20 hover:scale-105"
+                >
+                  BAIXAR GOOGLE CHROME
+                </a>
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
+                  Instale o Chrome e recarregue esta página.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-black text-on-surface tracking-tight">
               Profacher <span className="text-primary">2.0</span>
@@ -162,6 +198,8 @@ export default function StudentExamPage() {
               <h2 className="text-3xl font-black">PROVA INICIADA!</h2>
               <p className="text-gray-400">Boa sorte! Estamos preparando suas questões...</p>
             </div>
+          )}
+          </>
           )}
 
         </div>
