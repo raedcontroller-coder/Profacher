@@ -75,14 +75,16 @@ export default function ExamResultsPage() {
                      examTitle: exam.title,
                      accessCode: exam.accessCode,
                      date: new Date().toLocaleDateString(),
-                     submissions: exam.submissions.map((s: any) => ({
-                       studentName: s.studentName,
-                       studentRa: s.studentRa,
-                       score: s.score,
-                       status: s.finishedAt ? 'Concluído' : 'Em Progresso',
-                       startedAt: s.startedAt,
-                       finishedAt: s.finishedAt
-                     }))
+                     submissions: [...exam.submissions]
+                       .sort((a: any, b: any) => a.studentName.localeCompare(b.studentName))
+                       .map((s: any) => ({
+                         studentName: s.studentName,
+                         studentRa: s.studentRa,
+                         score: s.score,
+                         status: s.finishedAt ? 'Concluído' : 'Em Progresso',
+                         startedAt: s.startedAt,
+                         finishedAt: s.finishedAt
+                       }))
                    })}
                    className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-black transition-all shadow-lg"
                  >
@@ -94,7 +96,8 @@ export default function ExamResultsPage() {
                       setLoadingDetails(true);
                       try {
                         const validReports = [];
-                        for (const s of exam.submissions) {
+                        const sortedSubmissions = [...exam.submissions].sort((a: any, b: any) => a.studentName.localeCompare(b.studentName));
+                        for (const s of sortedSubmissions) {
                           const res = await getSubmissionDetails(s.id);
                           if (res.success) {
                             validReports.push({
@@ -245,7 +248,7 @@ export default function ExamResultsPage() {
                                  <span className="px-3 py-1 bg-red-500/10 text-red-500 text-[9px] font-black uppercase rounded-full border border-red-500/20">BLOQUEADO</span>
                                ) : p.finishedAt ? (
                                  <div className="flex flex-col">
-                                    <span className="text-xs font-black text-blue-400">{p.score?.toFixed(1)} PTS</span>
+                                    <span className="text-xs font-black text-blue-400">{p.score?.toFixed(1).replace('.', ',')} PTS</span>
                                     <span className="text-[8px] text-gray-500 uppercase font-bold">CONCLUÍDO</span>
                                  </div>
                                ) : (
@@ -288,7 +291,7 @@ export default function ExamResultsPage() {
                     <h2 className="text-2xl font-black text-white">{selectedSubmission.studentName}</h2>
                     <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
                        RA: {selectedSubmission.studentRa} &bull; 
-                       Nota: {selectedSubmission.score?.toFixed(1) || '0.0'} / {selectedSubmission.maxScore?.toFixed(1)} &bull; 
+                       Nota: {selectedSubmission.score?.toFixed(1).replace('.', ',') || '0,0'} / {selectedSubmission.maxScore?.toFixed(1).replace('.', ',')} &bull; 
                        Alertas Sentinel: {selectedSubmission.focusLoses || 0}
                     </p>
                  </div>
@@ -308,7 +311,7 @@ export default function ExamResultsPage() {
                                     <MathRenderer content={it.content} className="!p-0 max-w-full overflow-x-hidden" />
                                  </div>
                                  <div className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest shrink-0 ${it.pointsObtained >= it.points ? 'bg-green-500/10 border-green-500/20 text-green-400' : it.pointsObtained > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                                    {it.pointsObtained?.toFixed(1) || '0.0'} / {it.points?.toFixed(1)} PTS
+                                    {it.pointsObtained?.toFixed(1).replace('.', ',') || '0,0'} / {it.points?.toFixed(1).replace('.', ',')} PTS
                                  </div>
                               </div>
                              <div className="space-y-4 pt-4 border-t border-white/5">

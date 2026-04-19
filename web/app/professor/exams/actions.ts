@@ -287,10 +287,13 @@ export async function getSubmissionDetails(submissionId: number) {
       if (rawAns === undefined || rawAns === null) {
         studentAnswer = '— Não respondida —';
       } else if (q.type === 'MULTIPLE_CHOICE') {
-        // rawAns é um ID numérico — busca o texto da opção correspondente
-        const optId = Number(rawAns);
+        const optId = Number(typeof rawAns === 'object' ? rawAns.optionId : rawAns);
         const found = q.options.find((o: any) => o.id === optId);
-        studentAnswer = found ? found.content : `Opção ID: ${rawAns}`;
+        studentAnswer = found ? found.content : `Opção ID: ${optId}`;
+        
+        if (typeof rawAns === 'object' && rawAns.justification) {
+          studentAnswer += `\n\nJustificativa: ${rawAns.justification}`;
+        }
       } else if (q.type === 'TRUE_FALSE') {
         // rawAns é um objeto { [optId]: 'V' | 'F' }
         if (typeof rawAns === 'object' && rawAns !== null) {
@@ -312,17 +315,12 @@ export async function getSubmissionDetails(submissionId: number) {
         } else {
           studentAnswer = String(rawAns);
         }
-
-        return {
-          questionId: q.id,
-          content: q.content,
-          type: q.type,
-          studentAnswer,
-          correctAnswer: q.referenceAnswer,
-          points: q.points,
-          options: q.options,
-          tfResult
-        };
+      } else if (q.type === 'CUSTOM_HTML') {
+        const value = typeof rawAns === 'object' ? rawAns.value : rawAns;
+        studentAnswer = typeof value === 'string' ? value : JSON.stringify(value);
+        if (typeof rawAns === 'object' && rawAns.justification) {
+          studentAnswer += `\n\nJustificativa: ${rawAns.justification}`;
+        }
       } else {
         // ESSAY / MATH — texto puro
         studentAnswer = typeof rawAns === 'string' ? rawAns : JSON.stringify(rawAns);
@@ -577,18 +575,12 @@ export async function saveLiveAnswer(submissionId: number, questionId: number, a
       return { success: false, error: "Submissão finalizada ou não encontrada" };
     }
 
-    const currentAnswers = (submission.answers as any) || {};
-    const updatedAnswers = {
-      ...currentAnswers,
-      [questionId]: answer
-    };
-
-    await prisma.examSubmission.update({
-      where: { id: submissionId },
-      data: {
-        answers: updatedAnswers
-      }
-    });
+    // v1.0.2 - Atualização atômica para evitar race conditions
+    await prisma.$executeRaw`
+      UPDATE exam_submissions 
+      SET answers = jsonb_set(COALESCE(answers, '{}'::jsonb), ARRAY[${questionId.toString()}], ${JSON.stringify(answer)}::jsonb)
+      WHERE id = ${submissionId}
+    `;
 
     return { success: true };
   } catch (e: any) {
@@ -632,7 +624,24 @@ export async function finishExamLive(submissionId: number) {
     // 2. Calcular pontuação
     submission.exam.questions.forEach((eq, index) => {
       const q = eq.question;
-      const studentAnswer = String(answers[q.id] || "").trim();
+      const rawAnswer = answers[q.id];
+      let studentAnswer = "";
+      let justification = "";
+
+      if (typeof rawAnswer === 'object' && rawAnswer !== null) {
+        if (q.type === 'MULTIPLE_CHOICE') {
+          studentAnswer = String(rawAnswer.optionId || "").trim();
+          justification = rawAnswer.justification || "";
+        } else if (q.type === 'CUSTOM_HTML') {
+          studentAnswer = String(rawAnswer.value || "").trim();
+          justification = rawAnswer.justification || "";
+        } else {
+           studentAnswer = String(rawAnswer || "").trim();
+        }
+      } else {
+        studentAnswer = String(rawAnswer || "").trim();
+      }
+
       const referenceAnswer = String(q.referenceAnswer || "").trim();
       maxScore += q.points;
 
@@ -660,16 +669,42 @@ export async function finishExamLive(submissionId: number) {
         const selectedOption = q.options.find(opt => String(opt.id).trim() === studentAnswer);
         
         detail.studentAnswer = selectedOption?.content || studentAnswer;
+        if (justification) {
+          detail.studentAnswer += `\n\nJustificativa: ${justification}`;
+        }
         detail.correctAnswer = correctOption?.content || "---";
 
-        if (correctOption && studentAnswer === String(correctOption.id).trim()) {
-          totalScore += q.points;
-          detail.pointsObtained = q.points;
-          detail.feedback = "Parabéns! Você selecionou a alternativa correta.";
+        if (!justification) {
+          if (correctOption && studentAnswer === String(correctOption.id).trim()) {
+            totalScore += q.points;
+            detail.pointsObtained = q.points;
+            detail.feedback = "Parabéns! Você selecionou a alternativa correta.";
+          } else {
+            detail.feedback = `Resposta incorreta. A alternativa correta era a "${detail.correctAnswer}".`;
+          }
+          details.push(detail);
         } else {
-          detail.feedback = `Resposta incorreta. A alternativa correta era a "${detail.correctAnswer}".`;
+          // IA avalia justificativa
+          const currentDetailIndex = details.length;
+          details.push(detail);
+          
+          aiCorrections.push({
+            index: currentDetailIndex,
+            promise: (async () => {
+              const combinedInput = `Alternativa Selecionada: ${selectedOption?.content || 'Nenhuma'}\nJustificativa do Aluno: ${justification}`;
+              const prompt = `QUESTÃO OBJETIVA: ${q.content}\nGabarito Correto Esperado: ${detail.correctAnswer}`;
+              // Se não houver referenceAnswer, usamos o texto da opção correta como referência
+              const ref = referenceAnswer || detail.correctAnswer;
+              
+              const result = await gradeStudentAnswer(prompt, ref, combinedInput, submission.exam.teacherId, q.correctionMode);
+              if (result.success) {
+                const earned = (result.score! / 100) * q.points;
+                return { points: earned, feedback: result.feedback || "Avaliado pela IA (Objetiva + Justificativa)." };
+              }
+              return { points: 0, feedback: "A IA não pôde avaliar a justificativa." };
+            })()
+          });
         }
-        details.push(detail);
       } 
       else if (q.type === 'TRUE_FALSE') {
         let correctCount = 0;
@@ -742,14 +777,15 @@ export async function finishExamLive(submissionId: number) {
           detail.pointsObtained = q.points;
           detail.feedback = "Interação perfeita com o resultado esperado.";
           totalScore += q.points;
-        } else if (referenceAnswer) {
+        } else if (referenceAnswer || justification) {
           // Extrair apenas o enunciado para reduzir latência e custos
           const enunciation = q.content.includes(CODE_SEPARATOR) ? q.content.split(CODE_SEPARATOR)[0] : q.content;
+          const combinedInput = justification ? `Interação: ${studentAnswer} | Justificativa: ${justification}` : studentAnswer;
 
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer, studentAnswer, submission.exam.teacherId, q.correctionMode);
+              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer || "Avalie a interação e justificativa", combinedInput, submission.exam.teacherId, q.correctionMode);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Interação avaliada pela IA." };

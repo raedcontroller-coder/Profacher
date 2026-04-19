@@ -186,15 +186,16 @@ IMPORTANTE: O gabarito pode conter INSTRUÇÕES de correção (ex: "considere ce
 REGRAS CRÍTICAS (MODO CONCEITUAL):
 1. FOCO NA IDEIA: Se o aluno explicou o conceito corretamente, mesmo usando palavras totalmente diferentes da do professor, dê nota máxima.
 2. INSTRUÇÕES VALEM TUDO: Se o gabarito disser "Considere correto se...", e o aluno atender ao critério, a nota é 100.
-3. FLEXIBILIDADE: Seja benevolente com a escrita. O que importa é se o aluno demonstrou conhecimento do que foi pedido.
-4. ESCALA: 0 a 100. (100 = atendeu aos critérios ou ideia central).`
+3. RIGOR LÓGICO E MATEMÁTICO: Se o gabarito especificar um intervalo numérico (ex: "entre 10 e 20"), um valor exato ou uma condição lógica binária, você deve segui-la RIGOROSAMENTE. Não invente que um valor está no intervalo se ele não estiver.
+4. FLEXIBILIDADE CONCEITUAL: Seja benevolente com a escrita em respostas dissertativas. O que importa é se o aluno demonstrou conhecimento.
+5. ESCALA: 0 a 100. (100 = atendeu aos critérios ou ideia central).`
             : `Você é um avaliador de provas focado em ANÁLISE COMPARATIVA E SEMÂNTICA.
             
 Sua missão é dar uma nota comparando a resposta do aluno com o "Gabarito de Referência" do professor.
 
 REGRAS CRÍTICAS (MODO COMPARATIVO):
 1. SIMILARIDADE: A resposta do aluno deve ser semanticamente próxima e conter as informações principais presentes no gabarito.
-2. RIGOR: Seja mais criterioso com a precisão dos fatos, nomes e dados apresentados.
+2. RIGOR MATEMÁTICO/FATUAL: Seja extremamente criterioso com a precisão de números, datas, nomes e dados técnicos. Hallucinações numéricas resultam em nota 0.
 3. ESCALA: 0 a 100.`;
 
         const response = await fetch(endpoint, {

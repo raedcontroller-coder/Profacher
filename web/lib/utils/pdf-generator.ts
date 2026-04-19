@@ -80,7 +80,7 @@ export const generateExamPdf = (data: ExamPdfData) => {
         .join(' | ');
     }
 
-    const scoreText = `${d.pointsObtained.toFixed(1)} / ${d.pointsTotal.toFixed(1)}`;
+    const scoreText = `${d.pointsObtained.toFixed(1).replace('.', ',')} / ${d.pointsTotal.toFixed(1).replace('.', ',')}`;
     const status = d.pointsObtained === d.pointsTotal ? 'Correta' : d.pointsObtained > 0 ? 'Parcial' : 'Incorreta';
 
     if (data.showScore) {
@@ -130,7 +130,7 @@ export const generateExamPdf = (data: ExamPdfData) => {
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0);
-    doc.text(`Nota Final: ${data.score.toFixed(1)} / ${data.maxScore.toFixed(1)}`, 14, lastY);
+    doc.text(`Nota Final: ${data.score.toFixed(1).replace('.', ',')} / ${data.maxScore.toFixed(1).replace('.', ',')}`, 14, lastY);
   }
 
   // 4. Rodapé
@@ -180,7 +180,7 @@ export const generateTeacherSummaryPdf = (data: TeacherSummaryData) => {
     s.studentRa,
     s.studentName,
     s.status,
-    s.score !== null ? s.score.toFixed(1) : '---',
+    s.score !== null ? s.score.toFixed(1).replace('.', ',') : '---',
     s.finishedAt ? new Date(s.finishedAt).toLocaleTimeString() : '---'
   ]);
 
@@ -225,7 +225,7 @@ export const generateFullDetailedClassPdf = (examTitle: string, accessCode: stri
         i + 1,
         cleanContent(d.question),
         stripHtml(studentAns || '---'),
-        `${d.pointsObtained.toFixed(1)} / ${d.pointsTotal.toFixed(1)}`
+        `${d.pointsObtained.toFixed(1).replace('.', ',')} / ${d.pointsTotal.toFixed(1).replace('.', ',')}`
       ];
     });
 
@@ -241,8 +241,102 @@ export const generateFullDetailedClassPdf = (examTitle: string, accessCode: stri
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Nota: ${student.score.toFixed(1)} / ${student.maxScore.toFixed(1)}`, 14, finalY);
+    doc.text(`Nota: ${student.score.toFixed(1).replace('.', ',')} / ${student.maxScore.toFixed(1).replace('.', ',')}`, 14, finalY);
   });
 
   doc.save(`Relatorio_Completo_${accessCode}.pdf`);
+};
+
+/**
+ * Gera um PDF da prova em branco (para impressão e entrega física).
+ */
+export const generateBlankExamPdf = (title: string, questions: any[]) => {
+  const doc = new jsPDF();
+  let cursorY = 25;
+
+  // 1. Cabeçalho da Prova
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title || 'Avaliação', 14, cursorY);
+  cursorY += 15;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100);
+  doc.text('Aluno: __________________________________________________________________', 14, cursorY);
+  cursorY += 8;
+  doc.text('Data: ____/____/________', 14, cursorY);
+  cursorY += 15;
+
+  // 2. Loop de Questões
+  questions.forEach((q, index) => {
+    // Verificar se precisa de nova página antes de começar a questão
+    if (cursorY > 260) {
+      doc.addPage();
+      cursorY = 20;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    const questionHeader = `${index + 1} ) `;
+    const content = cleanContent(q.content || '');
+    
+    // Dividir texto para caber na página
+    const lines = doc.splitTextToSize(content, 180);
+    doc.text(questionHeader, 14, cursorY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(lines, 22, cursorY);
+    
+    cursorY += (lines.length * 6) + 4;
+
+    // Renderizar espaço de resposta baseado no tipo
+    if (q.type === 'MULTIPLE_CHOICE') {
+      const options = q.options || [];
+      options.forEach((opt: any, optIdx: number) => {
+        const label = String.fromCharCode(97 + optIdx); // a, b, c...
+        const optText = `(   ) ${label}) ${stripHtml(opt.content)}`;
+        const optLines = doc.splitTextToSize(optText, 170);
+        
+        if (cursorY + (optLines.length * 6) > 280) {
+          doc.addPage();
+          cursorY = 20;
+        }
+        
+        doc.text(optLines, 22, cursorY);
+        cursorY += (optLines.length * 6) + 2;
+      });
+    } else if (q.type === 'TRUE_FALSE') {
+       const options = q.options || [];
+       options.forEach((opt: any) => {
+         const optText = `(   ) ${stripHtml(opt.content)}`;
+         const optLines = doc.splitTextToSize(optText, 170);
+
+         if (cursorY + (optLines.length * 6) > 280) {
+           doc.addPage();
+           cursorY = 20;
+         }
+         doc.text(optLines, 22, cursorY);
+         cursorY += (optLines.length * 6) + 2;
+       });
+    } else {
+      // ESSAY, MATH ou CUSTOM_HTML (interativa)
+      for (let i = 0; i < 5; i++) {
+        if (cursorY > 285) {
+          doc.addPage();
+          cursorY = 20;
+        }
+        doc.text('___________________________________________________________________________________', 22, cursorY);
+        cursorY += 8;
+      }
+    }
+    cursorY += 10; // Espaço entre questões
+  });
+
+  // Rodapé
+  doc.setFontSize(9);
+  doc.setTextColor(150);
+  doc.text('Gerado pelo Profacher 2.0', 14, doc.internal.pageSize.getHeight() - 10);
+
+  doc.save(`Prova_${(title || 'Sem_Titulo').replace(/\s+/g, '_')}.pdf`);
 };

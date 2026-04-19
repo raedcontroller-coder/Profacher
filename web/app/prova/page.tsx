@@ -24,6 +24,18 @@ export default function UnifiedStudentExamPage() {
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
   const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
+  const answersRef = useRef<Record<number, any>>({});
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Sincronizar answersRef com o estado answers
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 	
   // Detecção de navegador Microsoft Edge
   useEffect(() => {
@@ -69,6 +81,84 @@ export default function UnifiedStudentExamPage() {
       console.warn("Navegador bloqueou o fullscreen automático:", err);
     }
   };
+
+  const handleSelectOption = React.useCallback(async (questionId: number, optionIdOrValue: any) => {
+    if (!submissionId) return;
+    
+    let finalAnswer: any;
+    if (typeof optionIdOrValue === 'string' && (optionIdOrValue.endsWith('_V') || optionIdOrValue.endsWith('_F'))) {
+      const [optIdStr, val] = optionIdOrValue.split('_');
+      const optId = parseInt(optIdStr);
+      const currentQAnswer = answersRef.current[questionId] || {};
+      finalAnswer = { ...currentQAnswer, [optId]: val };
+    } else if (typeof optionIdOrValue === 'object' && optionIdOrValue !== null && 'justification' in optionIdOrValue) {
+      const current = answersRef.current[questionId];
+      if (typeof current === 'object' && current !== null) {
+        finalAnswer = { ...current, justification: optionIdOrValue.justification };
+      } else {
+        const q = examData?.questions.find((q: any) => q.id === questionId);
+        if (q?.type === 'MULTIPLE_CHOICE') {
+          finalAnswer = { optionId: current, justification: optionIdOrValue.justification };
+        } else {
+          finalAnswer = { value: current, justification: optionIdOrValue.justification };
+        }
+      }
+    } else if (examData?.questions.find((q: any) => q.id === questionId)?.type === 'MULTIPLE_CHOICE') {
+      const current = answersRef.current[questionId];
+      const justification = (typeof current === 'object' && current !== null) ? (current.justification || "") : "";
+      finalAnswer = { optionId: optionIdOrValue, justification };
+    } else if (examData?.questions.find((q: any) => q.id === questionId)?.type === 'CUSTOM_HTML') {
+      const current = answersRef.current[questionId];
+      const justification = (typeof current === 'object' && current !== null) ? (current.justification || "") : "";
+      finalAnswer = { value: optionIdOrValue, justification };
+    } else {
+      finalAnswer = optionIdOrValue;
+    }
+
+    // 1. Atualização Instantânea da UI (Optimistic Update)
+    setAnswers(prev => ({ ...prev, [questionId]: finalAnswer }));
+    setSavingStatus(prev => ({ ...prev, [questionId]: 'saving' }));
+
+    // 2. Identificar se deve usar debounce (Apenas para texto, interativos e justificativas)
+    const question = examData?.questions.find((q: any) => q.id === questionId);
+    const isJustificationUpdate = typeof optionIdOrValue === 'object' && optionIdOrValue !== null && 'justification' in optionIdOrValue;
+    const useDebounce = question?.type === 'ESSAY' || question?.type === 'MATH' || question?.type === 'CUSTOM_HTML' || isJustificationUpdate;
+    const debounceTime = useDebounce ? 800 : 0;
+
+    // 3. Debouncing: Limpar gravação agendada anteriormente para esta questão
+    if (saveTimeoutsRef.current[questionId]) {
+      clearTimeout(saveTimeoutsRef.current[questionId]);
+    }
+
+    const performSave = async () => {
+      try {
+        const result = await saveLiveAnswer(submissionId, questionId, finalAnswer);
+        if (result.success) {
+          setSavingStatus(prev => ({ ...prev, [questionId]: 'saved' }));
+          setTimeout(() => {
+            setSavingStatus(prev => {
+              const newStatus = { ...prev };
+              delete newStatus[questionId];
+              return newStatus;
+            });
+          }, 2000);
+        } else {
+          setSavingStatus(prev => ({ ...prev, [questionId]: 'error' }));
+        }
+      } catch (err) {
+        setSavingStatus(prev => ({ ...prev, [questionId]: 'error' }));
+      } finally {
+        delete saveTimeoutsRef.current[questionId];
+      }
+    };
+
+    // 4. Agendar ou executar imediatamente
+    if (debounceTime > 0) {
+      saveTimeoutsRef.current[questionId] = setTimeout(performSave, debounceTime);
+    } else {
+      performSave();
+    }
+  }, [submissionId, examData]);
 
   useEffect(() => {
     if (!formData.code || !formData.ra || step === 'ID' || step === 'FINISHED' || step === 'EXPULLED') {
@@ -132,18 +222,16 @@ export default function UnifiedStudentExamPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'profacher_answer') {
-        const { answer } = event.data;
-        if (event.data.questionId) {
-          handleSelectOption(event.data.questionId, answer);
-        } else {
-          console.warn("Mensagem profacher_answer recebida sem questionId", event.data);
+        const { answer, questionId } = event.data;
+        if (questionId) {
+          handleSelectOption(questionId, answer);
         }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [submissionId]);
+  }, [submissionId, handleSelectOption]);
 
   // Sentinel: Monitoramento de Integridade (Silencioso)
   useEffect(() => {
@@ -276,51 +364,6 @@ export default function UnifiedStudentExamPage() {
       </div>
     );
   }
-
-  const handleSelectOption = async (questionId: number, optionIdOrValue: any) => {
-    if (!submissionId) return;
-    
-    let finalAnswer: any;
-    if (typeof optionIdOrValue === 'string' && (optionIdOrValue.endsWith('_V') || optionIdOrValue.endsWith('_F'))) {
-      const [optIdStr, val] = optionIdOrValue.split('_');
-      const optId = parseInt(optIdStr);
-      const currentQAnswer = answers[questionId] || {};
-      finalAnswer = { ...currentQAnswer, [optId]: val };
-    } else {
-      finalAnswer = optionIdOrValue;
-    }
-
-    // 1. Atualização Instantânea da UI (Optimistic Update)
-    setAnswers(prev => ({ ...prev, [questionId]: finalAnswer }));
-    setSavingStatus(prev => ({ ...prev, [questionId]: 'saving' }));
-
-    // 2. Debouncing: Limpar gravação agendada anteriormente para esta questão
-    if (saveTimeoutsRef.current[questionId]) {
-      clearTimeout(saveTimeoutsRef.current[questionId]);
-    }
-
-    // 3. Agendar gravação no servidor (800ms de inatividade)
-    saveTimeoutsRef.current[questionId] = setTimeout(async () => {
-      const result = await saveLiveAnswer(submissionId, questionId, finalAnswer);
-      
-      if (result.success) {
-        setSavingStatus(prev => ({ ...prev, [questionId]: 'saved' }));
-        setTimeout(() => {
-          setSavingStatus(prev => {
-            const newStatus = { ...prev };
-            delete newStatus[questionId];
-            return newStatus;
-          });
-        }, 2000);
-      } else {
-        setSavingStatus(prev => ({ ...prev, [questionId]: 'error' }));
-      }
-      
-      // Limpar referência do timeout concluído
-      delete saveTimeoutsRef.current[questionId];
-    }, 800);
-  };
-
 
   const handleFinish = async () => {
     if (!submissionId) return;
@@ -468,6 +511,13 @@ export default function UnifiedStudentExamPage() {
                   <h2 className="text-xl font-black text-primary uppercase tracking-tighter">{examData.title}</h2>
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{formData.name} &bull; RA: {formData.ra}</p>
                </div>
+
+               <div className="hidden md:flex flex-col items-center bg-white/5 px-6 py-2 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest opacity-60">Hora Atual</span>
+                  <span className="text-xl font-black text-white font-mono tracking-wider">
+                    {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+               </div>
                <button onClick={() => setStep('REVIEW')} className="bg-primary/10 text-primary border border-primary/20 px-8 py-3 rounded-full font-black text-xs hover:bg-primary hover:text-black transition-all flex items-center gap-2 group">
                   REVISAR E ENTREGAR
                   <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">send</span>
@@ -521,13 +571,31 @@ export default function UnifiedStudentExamPage() {
                           </div>
                         )}
                         {q.type === 'MULTIPLE_CHOICE' && (
-                          <div className="space-y-4">
-                            {q.options.map((opt: any) => (
-                              <button key={opt.id} onClick={() => handleSelectOption(q.id, opt.id)} className={`w-full p-6 rounded-[1.5rem] border-2 text-left transition-all flex items-center gap-4 ${answers[q.id] === opt.id ? 'bg-primary/10 border-primary text-primary' : 'bg-white/5 border-transparent text-gray-400'}`}>
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${answers[q.id] === opt.id ? 'border-primary bg-primary' : 'border-gray-700'}`}>{answers[q.id] === opt.id && <div className="w-2 h-2 bg-black rounded-full" />}</div>
-                                <span className="text-lg font-medium">{opt.content}</span>
-                              </button>
-                            ))}
+                          <div className="space-y-6">
+                            <div className="space-y-4">
+                              {q.options.map((opt: any) => {
+                                const selectedId = (typeof answers[q.id] === 'object' && answers[q.id] !== null) ? answers[q.id].optionId : answers[q.id];
+                                const isSelected = selectedId === opt.id;
+                                return (
+                                  <button key={opt.id} onClick={() => handleSelectOption(q.id, opt.id)} className={`w-full p-6 rounded-[1.5rem] border-2 text-left transition-all flex items-center gap-4 ${isSelected ? 'bg-primary/10 border-primary text-primary' : 'bg-white/5 border-transparent text-gray-400'}`}>
+                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-primary bg-primary' : 'border-gray-700'}`}>{isSelected && <div className="w-2 h-2 bg-black rounded-full" />}</div>
+                                    <span className="text-lg font-medium">{opt.content}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            
+                            {answers[q.id] !== undefined && answers[q.id] !== null && (
+                              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                <label className="text-xs font-bold text-gray-500 ml-4 uppercase tracking-widest">Justifique sua resposta (Opcional)</label>
+                                <textarea 
+                                  className="w-full bg-white/5 border border-outline rounded-[1.5rem] p-6 text-on-surface outline-none focus:border-primary/40 transition-all min-h-[120px] resize-none"
+                                  placeholder="Explique o raciocínio por trás da sua escolha..."
+                                  value={(typeof answers[q.id] === 'object' && answers[q.id] !== null) ? (answers[q.id].justification || "") : ""}
+                                  onChange={(e) => handleSelectOption(q.id, { justification: e.target.value })}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                         {q.type === 'CUSTOM_HTML' && (
@@ -570,11 +638,24 @@ export default function UnifiedStudentExamPage() {
                                    `}
                                 />
                                 <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover/interactive:opacity-100 transition-opacity">
-                                   <p className="text-[10px] text-center text-gray-400">Interaja com o componente acima para responder</p>
+                                   <p className="text-[10px] text-center text-gray-400">Interaja com o componente 
+acima para responder</p>
                                 </div>
                              </div>
+
+                             {answers[q.id] !== undefined && answers[q.id] !== null && (
+                               <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                 <label className="text-xs font-bold text-gray-500 ml-4 uppercase tracking-widest">Justifique sua resposta (Opcional)</label>
+                                 <textarea 
+                                   className="w-full bg-white/5 border border-outline rounded-[1.5rem] p-6 text-on-surface outline-none focus:border-primary/40 transition-all min-h-[120px] resize-none"
+                                   placeholder="Explique o raciocínio por trás da sua interação..."
+                                   value={(typeof answers[q.id] === 'object' && answers[q.id] !== null) ? (answers[q.id].justification || "") : ""}
+                                   onChange={(e) => handleSelectOption(q.id, { justification: e.target.value })}
+                                 />
+                               </div>
+                             )}
                           </div>
-                        )}
+                       )}
                       </div>
                     </div>
                   );
@@ -627,7 +708,7 @@ export default function UnifiedStudentExamPage() {
                            </svg>
                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
                               <span className="text-6xl font-black text-white leading-none">
-                                {((scoreData.score / scoreData.maxScore) * 100).toFixed(0)}%
+                                {((scoreData.score / scoreData.maxScore) * 100).toFixed(0).replace('.', ',')}%
                               </span>
                               <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mt-3">Aproveitamento Global</span>
                            </div>
@@ -637,7 +718,7 @@ export default function UnifiedStudentExamPage() {
                       <div className="lg:col-span-12 xl:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="md:col-span-2 liquid-glass p-12 rounded-[3rem] border border-white/5 flex flex-col justify-center space-y-4">
                            <p className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">Sua Pontuação Final</p>
-                           <p className="text-8xl font-black text-white tracking-tighter text-center">{scoreData.score.toFixed(1)} <span className="text-3xl text-gray-700 font-medium tracking-normal">/ {scoreData.maxScore} pts</span></p>
+                           <p className="text-8xl font-black text-white tracking-tighter text-center">{scoreData.score.toFixed(1).replace('.', ',')} <span className="text-3xl text-gray-700 font-medium tracking-normal">/ {scoreData.maxScore.toFixed(1).replace('.', ',')} pts</span></p>
                         </div>
                         <div className="md:col-span-2 liquid-glass p-12 rounded-[3.5rem] border border-primary/20 bg-primary/5 flex items-center gap-10 group">
                            <div className="w-24 h-24 bg-primary/20 rounded-[2.5rem] flex items-center justify-center text-primary shrink-0 group-hover:rotate-12 transition-transform">
@@ -683,7 +764,7 @@ export default function UnifiedStudentExamPage() {
                                            <span className="inline-block px-4 py-1.5 bg-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{detail.type}</span>
                                            <div className={`px-6 py-2 rounded-full font-black text-sm flex items-center gap-2 ${isCorrect ? 'bg-green-500/10 text-green-500' : isPartial ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'}`}>
                                               <span className="material-symbols-outlined text-base">{isCorrect ? 'check_circle' : isPartial ? 'hourglass_top' : 'cancel'}</span>
-                                              {detail.pointsObtained.toFixed(1)} / {detail.pointsTotal} PTS
+                                              {detail.pointsObtained.toFixed(1).replace('.', ',')} / {detail.pointsTotal.toFixed(1).replace('.', ',')} PTS
                                            </div>
                                         </div>
                                      </div>

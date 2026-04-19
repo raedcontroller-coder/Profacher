@@ -237,13 +237,13 @@
                 };
 
                 chart = new Chart(ctx, config);
-                updateDisplay();
+                updateDisplay(true);
             }
 
-            function updateDisplay() {
+            function updateDisplay(isInitial = false) {
                 const valor = userChoiceY.toFixed(0);
                 userValDisplay.textContent = valor;
-                if (typeof setAnswer === 'function') setAnswer(valor);
+                if (!isInitial && typeof setAnswer === 'function') setAnswer(valor);
             }
 
             function handleInteraction(e) {

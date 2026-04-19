@@ -7,6 +7,7 @@ import { updateExam } from '@/app/professor/new-exam/actions';
 import { useRouter } from 'next/navigation';
 import ImportQuestionModal from '@/app/professor/new-exam/ImportQuestionModal';
 import RichTextEditor from '@/components/shared/RichTextEditor';
+import { generateBlankExamPdf } from '@/lib/utils/pdf-generator';
 import { useEffect } from 'react';
 
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
@@ -216,6 +217,15 @@ export default function EditExamClient({
                         >
                             Voltar
                         </button>
+                        {questions.length > 0 && (
+                            <button 
+                                onClick={() => generateBlankExamPdf(title, questions)}
+                                className="px-6 py-3 rounded-2xl bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/20 font-bold flex items-center gap-2 transition-all shadow-lg"
+                            >
+                                <span className="material-symbols-outlined text-lg">download</span>
+                                BAIXAR PDF
+                            </button>
+                        )}
                         <button 
                           disabled={loading}
                           onClick={handleUpdate}
@@ -270,7 +280,7 @@ export default function EditExamClient({
                                     <p className="text-sm text-gray-500">Soma automática de todos os pontos atribuídos às questões.</p>
                                 </div>
                                 <div className="text-3xl font-black text-primary">
-                                    {totalPoints.toFixed(1)}
+                                    {totalPoints.toFixed(1).replace('.', ',')}
                                 </div>
                             </div>
 
