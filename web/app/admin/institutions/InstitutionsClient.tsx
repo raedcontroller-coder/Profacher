@@ -605,7 +605,7 @@ export default function InstitutionsClient({ initialUserName }: { initialUserNam
       <TopBar userName={initialUserName || "Administrador"} roleLabel="Administrador Global" />
 
       <main className="layout-main pt-16 min-h-screen relative z-10">
-        <div className="p-12 max-w-[1700px] mx-auto space-y-10">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-12 max-w-[1700px] mx-auto space-y-10">
           
           <section className="flex justify-between items-end">
             <div className="space-y-3">

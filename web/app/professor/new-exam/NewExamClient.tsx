@@ -189,34 +189,34 @@ export default function NewExamClient({ userName }: { userName: string }) {
         <TopBar userName={userName} roleLabel="Professor" />
 
         <main className="layout-main pt-16 min-h-screen relative z-10">
-            <div className="p-12 max-w-[1200px] mx-auto space-y-10 animate-in fade-in duration-700">
+            <div className="p-4 sm:p-6 md:p-8 lg:p-12 max-w-[1200px] mx-auto space-y-10 animate-in fade-in duration-700">
                 
-                <header className="flex justify-between items-center mb-4">
+                <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
                     <div className="space-y-2">
-                        <h2 className="text-4xl font-bold tracking-tight text-on-surface">Nova <span className="text-primary">Avaliação</span></h2>
+                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface">Nova <span className="text-primary">Avaliação</span></h2>
                         <p className="text-gray-400">Monte sua prova do zero e alimente seu acervo automaticamente.</p>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-3">
                         <button 
                           disabled={loading}
                           onClick={() => router.back()}
-                          className="px-6 py-3 rounded-2xl border border-outline-variant hover:bg-white/5 transition-all font-bold text-gray-500"
+                          className="px-5 py-3 rounded-2xl border border-outline-variant hover:bg-white/5 transition-all font-bold text-gray-500 text-sm"
                         >
                             Cancelar
                         </button>
                         {questions.length > 0 && (
                             <button 
                                 onClick={() => generateBlankExamPdf(title, questions)}
-                                className="px-6 py-3 rounded-2xl bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/20 font-bold flex items-center gap-2 transition-all shadow-lg"
+                                className="px-5 py-3 rounded-2xl bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/20 font-bold flex items-center gap-2 transition-all shadow-lg text-sm"
                             >
                                 <span className="material-symbols-outlined text-lg">download</span>
-                                BAIXAR PDF
+                                PDF
                             </button>
                         )}
                         <button 
                           disabled={loading}
                           onClick={handleSave}
-                          className="px-10 py-3 rounded-2xl bg-primary text-black font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                          className="flex-1 sm:flex-none px-6 sm:px-10 py-3 rounded-2xl bg-primary text-black font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm"
                         >
                             {loading ? (
                                 <>
@@ -226,7 +226,7 @@ export default function NewExamClient({ userName }: { userName: string }) {
                             ) : (
                                 <>
                                     <span className="material-symbols-outlined">verified</span> 
-                                    SALVAR PROVA
+                                    SALVAR
                                 </>
                             )}
                         </button>

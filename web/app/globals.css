@@ -90,6 +90,17 @@
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Mobile: sidebar fica fora do fluxo como drawer */
+  @media (max-width: 1023px) {
+    .layout-main {
+      padding-left: 0 !important;
+    }
+
+    .layout-header {
+      left: 0 !important;
+    }
+  }
+
   h1,
   h2,
   h3,

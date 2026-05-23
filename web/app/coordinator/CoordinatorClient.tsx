@@ -216,10 +216,10 @@ export default function CoordinatorClient({ initialUserName }: { initialUserName
       <TopBar userName={currentUserName} roleLabel="Coordenadora" />
 
       <main className="layout-main pt-16 min-h-screen relative z-10">
-        <div className="p-12 max-w-[1700px] mx-auto space-y-10">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-[1700px] mx-auto space-y-10">
           <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-3">
-              <h2 className="text-4xl font-bold tracking-tight text-on-surface font-['Inter']">Gestão da Instituição</h2>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface font-['Inter']">Gestão da Instituição</h2>
               <p className="text-on-surface-variant text-lg max-w-3xl font-['Inter'] leading-relaxed">
                 Controle o acesso, monitore o uso de IA e gerencie o pessoal do ecossistema acadêmico.
               </p>

@@ -43,11 +43,11 @@ export default function ProfessorClient({ userName }: { userName: string }) {
       <TopBar userName={userName} roleLabel="Professor" />
 
       <main className="layout-main pt-16 min-h-screen relative z-10 transition-all duration-500">
-        <div className="p-12 max-w-[1600px] mx-auto space-y-12">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-12 max-w-[1600px] mx-auto space-y-12">
           
           <header className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-700">
-            <h2 className="text-5xl font-bold tracking-tight text-on-surface">Minha <span className="text-primary">Área Escolar</span></h2>
-            <p className="text-on-surface-variant text-xl max-w-2xl leading-relaxed text-gray-400">
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-on-surface">Minha <span className="text-primary">Área Escolar</span></h2>
+            <p className="text-on-surface-variant text-base md:text-xl max-w-2xl leading-relaxed text-gray-400">
               Bem-vindo, {userName}. Aqui você gerencia suas turmas, banco de questões e cria novas avaliações assistidas por IA.
             </p>
           </header>

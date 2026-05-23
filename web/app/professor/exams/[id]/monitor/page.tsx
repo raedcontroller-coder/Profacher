@@ -114,7 +114,7 @@ export default function ExamMonitorPage() {
       <TopBar userName={session?.user?.name || "Professor"} roleLabel="Professor" />
 
       <main className="layout-main pt-16 min-h-screen relative z-10">
-        <div className="p-12 max-w-[1200px] mx-auto space-y-12">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-12 max-w-[1200px] mx-auto space-y-12">
           
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="space-y-2">

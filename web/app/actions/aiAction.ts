@@ -186,10 +186,14 @@ IMPORTANTE: O gabarito pode conter INSTRUÇÕES de correção (ex: "considere ce
 REGRAS CRÍTICAS (MODO CONCEITUAL):
 1. FOCO NA IDEIA: Se o aluno explicou o conceito corretamente, mesmo usando palavras totalmente diferentes da do professor, dê nota máxima.
 2. INSTRUÇÕES VALEM TUDO: Se o gabarito disser "Considere correto se...", e o aluno atender ao critério, a nota é 100.
-3. RIGOR LÓGICO E MATEMÁTICO: Se o gabarito especificar um intervalo numérico (ex: "entre 10 e 20"), um valor exato ou uma condição lógica binária, você deve segui-la RIGOROSAMENTE. Não invente que um valor está no intervalo se ele não estiver.
+3. RIGOR LÓGICO E MATEMÁTICO: Se o gabarito especificar um intervalo numérico (ex: "entre 10 e 20"), um valor exato ou uma condição lógica binária, você deve segui-la RIGOROSAMENTE.
 4. FLEXIBILIDADE CONCEITUAL: Seja benevolente com a escrita em respostas dissertativas. O que importa é se o aluno demonstrou conhecimento.
-5. CÁLCULO E DESENVOLVIMENTO: Se houver imagens anexadas de desenvolvimento (rascunho do aluno ou gabarito do professor), avalie o desenvolvimento. Se o aluno acertou o desenvolvimento visualmente ou matematicamente, mas não inseriu a "Resposta Final Esperada" em texto, A NOTA DEVE SER 100 MESMO ASSIM, pois o raciocínio está correto.
-6. ESCALA: 0 a 100. (100 = atendeu aos critérios ou ideia central).`
+5. ANÁLISE DE IMAGENS DE CÁLCULO: Se houver uma imagem de desenvolvimento enviada pelo aluno (rascunho, foto, whiteboard), você DEVE analisar rigorosamente se os passos matemáticos estão corretos. Verifique: (a) se os procedimentos estão corretos passo a passo, (b) se o resultado final bate com o gabarito, (c) se há erros de raciocínio ou de cálculo. Erros matemáticos explícitos resultam em nota proporcional ao que foi feito corretamente. NÃO presuma que está certo apenas porque há uma imagem — analise o conteúdo visual com rigor matemático.
+6. GABARITO VISUAL DO PROFESSOR: Se o professor forneceu uma imagem de gabarito de desenvolvimento, compare o desenvolvimento do aluno com o gabarito visual do professor passo a passo.
+7. RESPOSTA CERTA, RACIOCÍNIO ERRADO = NOTA BAIXA: Para questões matemáticas ou de cálculo, uma resposta numericamente correta NÃO garante nota total se o desenvolvimento/raciocínio for matematicamente incoerente, inventado ou logicamente inválido.
+   EXEMPLO: Questão pede quantas crianças têm menos de 12 anos (total=75, 2/5 têm mais de 12). Gabarito: 45 (via 3/5 × 75). Se o aluno escrever "90 ÷ 2 = 45" — a resposta final (45) está correta, mas o desenvolvimento (90 dividido por 2) é matematicamente sem sentido para este problema. Neste caso, a nota deve ser BAIXA (0 a 30), pois o aluno "chutou" ou usou um procedimento inválido. O raciocínio correto é condição obrigatória para nota alta.
+8. RESPOSTA TOTALMENTE ERRADA = 0: Se o aluno errou completamente o raciocínio E a resposta final, ou se a resposta não tiver nenhuma relação com o que foi pedido, a NOTA DEVE SER ZERO (0). Não seja complacente com respostas inventadas ou absurdas.
+9. ESCALA: 0 a 100. (100 = resposta correta COM desenvolvimento/raciocínio matematicamente válido e coerente; 0 = totalmente incorreto).`
             : `Você é um avaliador de provas focado em ANÁLISE COMPARATIVA E SEMÂNTICA.
             
 Sua missão é dar uma nota comparando a resposta do aluno com o "Gabarito de Referência" do professor.
@@ -197,7 +201,10 @@ Sua missão é dar uma nota comparando a resposta do aluno com o "Gabarito de Re
 REGRAS CRÍTICAS (MODO COMPARATIVO):
 1. SIMILARIDADE: A resposta do aluno deve ser semanticamente próxima e conter as informações principais presentes no gabarito.
 2. RIGOR MATEMÁTICO/FATUAL: Seja extremamente criterioso com a precisão de números, datas, nomes e dados técnicos. Hallucinações numéricas resultam em nota 0.
-3. ESCALA: 0 a 100.`;
+3. RESPOSTA CERTA, RACIOCÍNIO ERRADO = NOTA BAIXA: Para questões matemáticas, uma resposta numericamente correta NÃO garante nota total se o desenvolvimento for matematicamente incoerente ou inventado. O aluno deve demonstrar o procedimento correto. Um resultado correto obtido por meio de um desenvolvimento inválido deve receber nota proporcional apenas à resposta final (ex: 10 a 20 de 100), sem crédito pelo desenvolvimento.
+4. ANÁLISE DE IMAGENS: Se houver imagem de desenvolvimento do aluno, analise com rigor se os cálculos e procedimentos estão corretos. Não conceda pontos por imagens ilegíveis ou com erros claros.
+5. RESPOSTA TOTALMENTE ERRADA = 0: Se a resposta (texto ou imagem) não fizer nenhum sentido matemático ou lógico para o problema, a NOTA É ZERO. Sem complacência.
+6. ESCALA: 0 a 100.`;
 
         let userMessageContent: any[] | string = `QUESTÃO: ${questionContent}\nGABARITO DO PROFESSOR: ${referenceAnswer}\nRESPOSTA DO ALUNO: ${studentAnswer}`;
 
@@ -223,30 +230,45 @@ REGRAS CRÍTICAS (MODO COMPARATIVO):
             }
         }
 
+        const bodyPayload = {
+            model: bodyModel,
+            messages: [
+                {
+                    role: "system",
+                    content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota.`
+                },
+                {
+                    role: "user",
+                    content: userMessageContent
+                }
+            ],
+            temperature: 0,
+            max_tokens: 300
+        };
+
+        console.log("=========================================");
+        console.log("[AI GRADING] Payload enviado para a IA:");
+        console.log(JSON.stringify(bodyPayload, null, 2));
+        console.log("=========================================");
+
         const response = await fetch(endpoint, {
             method: "POST",
             headers,
-            body: JSON.stringify({
-                model: bodyModel,
-                messages: [
-                    {
-                        role: "system",
-                        content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota.`
-                    },
-                    {
-                        role: "user",
-                        content: userMessageContent
-                    }
-                ],
-                temperature: 0,
-                max_tokens: 300
-            })
+            body: JSON.stringify(bodyPayload)
         });
 
-        if (!response.ok) return { success: false, error: "IA indisponível no momento" };
+        if (!response.ok) {
+            console.error("[AI GRADING] Erro da API HTTP:", response.status, await response.text());
+            return { success: false, error: "IA indisponível no momento" };
+        }
 
         const data = await response.json();
         let content = data.choices?.[0]?.message?.content || "{\"score\": 0, \"feedback\": \"Falha na análise.\"}";
+        
+        console.log("=========================================");
+        console.log("[AI GRADING] Resposta crua recebida da IA:");
+        console.log(content);
+        console.log("=========================================");
         
         // Limpeza básica caso a IA coloque markdown
         content = content.replace(/```json/g, "").replace(/```/g, "").trim();

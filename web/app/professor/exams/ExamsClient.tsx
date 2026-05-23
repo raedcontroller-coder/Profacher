@@ -88,17 +88,17 @@ export default function ExamsClient({ userName }: { userName: string }) {
       <TopBar userName={userName} roleLabel="Professor" />
 
       <main className="layout-main pt-16 min-h-screen relative z-10">
-        <div className="p-12 max-w-[1600px] mx-auto space-y-8">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-12 max-w-[1600px] mx-auto space-y-8">
           
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+          <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
             <div className="space-y-2">
-              <h2 className="text-4xl font-bold tracking-tight text-on-surface">Minhas <span className="text-primary">Provas</span></h2>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface">Minhas <span className="text-primary">Provas</span></h2>
               <p className="text-gray-400">Gerencie suas avaliações criadas e organizadas por grupos.</p>
             </div>
             
             <Link 
               href="/professor/new-exam" 
-              className="flex items-center gap-2 bg-primary text-black font-bold px-6 py-4 rounded-2xl hover:scale-105 transition-all shadow-lg shadow-primary/20"
+              className="flex items-center justify-center gap-2 bg-primary text-black font-bold px-6 py-4 rounded-2xl hover:scale-105 transition-all shadow-lg shadow-primary/20 sm:w-auto w-full"
             >
               <span className="material-symbols-outlined">add_circle</span>
               Criar Nova Prova
@@ -123,7 +123,69 @@ export default function ExamsClient({ userName }: { userName: string }) {
 
           {/* Exams List */}
           <section className="animate-in fade-in zoom-in-95 duration-1000 delay-400">
-            <div className="liquid-glass rounded-[2.5rem] border border-outline-variant overflow-hidden">
+
+            {/* Cards — Mobile */}
+            <div className="md:hidden space-y-4">
+              {loading ? (
+                <div className="flex flex-col items-center gap-4 py-16">
+                  <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                  <p className="text-gray-500 font-mono uppercase tracking-widest text-xs">Carregando provas...</p>
+                </div>
+              ) : filteredExams.length > 0 ? filteredExams.map((exam) => (
+                <div key={exam.id} className="liquid-glass rounded-3xl border border-outline-variant p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/professor/exams/${exam.id}/monitor`} className="font-bold text-on-surface hover:text-primary transition-colors block line-clamp-2">
+                        {exam.title}
+                      </Link>
+                      <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{exam.description || 'Sem descrição'}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link href={`/professor/exams/${exam.id}/edit`} className={`w-9 h-9 rounded-xl flex items-center justify-center ${exam.status === 'STARTED' ? 'bg-gray-800 text-gray-600' : 'bg-white/5 text-gray-400 hover:bg-primary/20 hover:text-primary'} transition-all`}>
+                        <span className="material-symbols-outlined text-lg">edit</span>
+                      </Link>
+                      <button onClick={() => handleDelete(exam.id, exam.title)} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xl font-black text-white bg-surface-container px-3 py-1.5 rounded-xl border border-outline-variant min-w-[80px] text-center">
+                        {exam.accessCode || '---'}
+                      </span>
+                      <button onClick={() => { navigator.clipboard.writeText(exam.accessCode || ''); }} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-all">
+                        <span className="material-symbols-outlined text-sm">content_copy</span>
+                      </button>
+                    </div>
+                    <div className="px-3 py-1 bg-secondary/10 rounded-full border border-black/5 dark:border-white/[0.02] text-secondary text-sm font-bold">
+                      {exam._count.questions} questões
+                    </div>
+                    <span className="text-gray-500 text-sm">{new Date(exam.createdAt).toLocaleDateString('pt-BR')}</span>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Link href={`/professor/exams/${exam.id}/monitor`} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-secondary/10 text-secondary font-bold text-sm hover:bg-secondary hover:text-black transition-all">
+                      <span className="material-symbols-outlined text-lg">monitor</span>
+                      Monitor
+                    </Link>
+                    <Link href={`/professor/exams/${exam.id}/results`} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:brightness-110 transition-all">
+                      <span className="material-symbols-outlined text-lg">analytics</span>
+                      Resultados
+                    </Link>
+                  </div>
+                </div>
+              )) : (
+                <div className="flex flex-col items-center gap-4 py-16 opacity-30">
+                  <span className="material-symbols-outlined text-6xl">description</span>
+                  <p className="font-bold">Nenhuma prova encontrada</p>
+                </div>
+              )}
+            </div>
+
+            {/* Tabela — Desktop md+ */}
+            <div className="hidden md:block liquid-glass rounded-[2.5rem] border border-outline-variant overflow-hidden">
               <table className="table-admin">
                 <thead>
                   <tr>

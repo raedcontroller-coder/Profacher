@@ -40,7 +40,7 @@ export default async function ProfessorSettingsPage() {
       <TopBar userName={userName} roleLabel="Professor" />
 
       <main className="layout-main pt-16 min-h-screen relative z-10 transition-all duration-500">
-        <div className="p-12 max-w-5xl mx-auto space-y-8">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-12 max-w-5xl mx-auto space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Configurações de Perfil</h1>
             <p className="text-gray-500 dark:text-gray-400 mt-2">Visão geral da sua conta, instituição e coordenação.</p>
