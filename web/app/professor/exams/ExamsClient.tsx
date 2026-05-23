@@ -75,14 +75,14 @@ export default function ExamsClient({ userName }: { userName: string }) {
   );
 
   return (
-    <div className="bg-[#121315] min-h-screen text-on-surface font-['Inter'] relative overflow-hidden">
+    <div className="bg-background min-h-screen text-on-surface font-['Inter'] relative overflow-hidden transition-colors duration-300">
       {/* Background elements */}
       <div 
-        className="fixed inset-0 z-0 opacity-20 pointer-events-none bg-cover bg-center bg-no-repeat"
+        className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat opacity-0 dark:opacity-20"
         style={{ backgroundImage: "url('/bg.png')" }}
       />
-      <div className="fixed top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 dark:bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/10 dark:bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <Sidebar role="PROFESSOR" />
       <TopBar userName={userName} roleLabel="Professor" />

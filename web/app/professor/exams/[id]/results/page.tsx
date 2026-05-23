@@ -60,7 +60,7 @@ export default function ExamResultsPage() {
                 </span>
                 <button 
                    onClick={() => router.push(`/professor/exams/${examId}/monitor`)}
-                   className="text-gray-500 hover:text-white text-xs font-bold flex items-center gap-1 transition-all"
+                   className="text-gray-500 hover:text-gray-900 dark:hover:text-white text-xs font-bold flex items-center gap-1 transition-all"
                 >
                    <span className="material-symbols-outlined text-sm">arrow_back</span>
                    Voltar ao Monitor
@@ -127,7 +127,7 @@ export default function ExamResultsPage() {
                       }
                     }}
                     disabled={loadingDetails}
-                    className="flex items-center gap-2 px-4 py-2 bg-secondary/20 hover:bg-secondary/30 text-secondary-container border border-secondary/20 rounded-xl text-xs font-black transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-gray-800 dark:text-gray-300 border border-secondary/20 rounded-xl text-xs font-black transition-all disabled:opacity-50"
                  >
                    <span className="material-symbols-outlined text-sm">history_edu</span>
                    {loadingDetails ? 'Processando...' : 'Relatório Detalhado (Geral)'}
@@ -142,18 +142,18 @@ export default function ExamResultsPage() {
                   <span className="material-symbols-outlined text-primary">analytics</span>
                   Desempenho da Turma
                 </h3>
-                <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/5">
+                <div className="flex items-center bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
                    <button 
                      onClick={() => setFilterType('ALPHABETICAL')}
-                     className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterType === 'ALPHABETICAL' ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'}`}
+                     className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterType === 'ALPHABETICAL' ? 'bg-primary text-black' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}
                    >A-Z</button>
                    <button 
                      onClick={() => setFilterType('DELIVERY')}
-                     className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterType === 'DELIVERY' ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'}`}
+                     className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterType === 'DELIVERY' ? 'bg-primary text-black' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}
                    >ENTREGA</button>
                    <button 
                      onClick={() => setFilterType('SCORE')}
-                     className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterType === 'SCORE' ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'}`}
+                     className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterType === 'SCORE' ? 'bg-primary text-black' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}
                    >NOTA</button>
                 </div>
               </div>
@@ -215,12 +215,12 @@ export default function ExamResultsPage() {
                                   {p.name?.charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-sm text-gray-100">{p.name}</p>
+                                  <p className="font-bold text-sm text-on-surface">{p.name}</p>
                                   <p className="text-[10px] font-mono text-gray-500 tracking-tighter">RA: {p.ra}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-5 px-2 text-xs text-gray-400 font-medium">
+                            <td className="py-5 px-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
                                {p.startedAt ? new Date(p.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---'}
                             </td>
                             <td className="py-5 px-2 text-center">

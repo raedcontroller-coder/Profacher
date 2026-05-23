@@ -35,6 +35,7 @@ const professorNavItems: NavItem[] = [
   { icon: 'inventory_2', label: 'Banco de Questões', href: '/professor/questions' },
   { icon: 'school', label: 'Minhas Classes', href: '/professor/classes', disabled: true },
   { icon: 'analytics', label: 'Desempenho', href: '/professor/analytics', disabled: true },
+  { icon: 'settings', label: 'Configurações', href: '/professor/settings' },
 ];
 
 interface SidebarProps {
@@ -49,13 +50,13 @@ export default function Sidebar({ role }: SidebarProps) {
   if (role === 'PROFESSOR') navItems = professorNavItems;
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#121315]/80 backdrop-blur-xl border-r border-outline-variant z-50 flex flex-col p-4 font-['Inter']">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-50/80 dark:bg-[#121315]/80 backdrop-blur-xl border-r border-black/5 dark:border-outline-variant z-50 flex flex-col p-4 font-['Inter']">
       <div className="flex items-center gap-3 px-4 py-8 mb-4">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-          <span className="material-symbols-outlined text-black font-bold">menu_book</span>
+        <div className="w-10 h-10 bg-primary/20 dark:bg-primary rounded-xl flex items-center justify-center shadow-lg border border-primary/30">
+          <span className="material-symbols-outlined text-primary dark:text-black font-bold">menu_book</span>
         </div>
         <div>
-          <h1 className="text-on-surface font-bold text-2xl tracking-tight">Profacher</h1>
+          <h1 className="text-gray-900 dark:text-on-surface font-bold text-2xl tracking-tight">Profacher</h1>
           <p className="text-caption text-primary font-bold">Elite Examination System</p>
         </div>
       </div>
@@ -89,10 +90,10 @@ export default function Sidebar({ role }: SidebarProps) {
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
                 isActive 
                   ? 'bg-primary/10 text-primary' 
-                  : 'text-gray-400 hover:text-white hover:bg-[#1f2021]'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-[#1f2021]'
               }`}
             >
-              <span className={`material-symbols-outlined text-2xl ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-white'}`}>
+              <span className={`material-symbols-outlined text-2xl ${isActive ? 'text-primary' : 'text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white'}`}>
                 {item.icon}
               </span>
               <span className="font-bold text-body">{item.label}</span>
@@ -109,18 +110,18 @@ export default function Sidebar({ role }: SidebarProps) {
           </Link>
         )}
         
-        <div className="border-t border-outline-variant pt-4 px-2 space-y-1">
+        <div className="border-t border-black/5 dark:border-outline-variant pt-4 px-2 space-y-1">
           <button 
             onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
-            className="w-full flex items-center gap-3 px-4 py-4 rounded-lg text-gray-400 hover:text-white hover:bg-[#1f2021] transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-4 rounded-lg text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-[#1f2021] transition-colors"
           >
             <span className="material-symbols-outlined text-2xl">logout</span>
             <span className="font-bold text-body">Sair</span>
           </button>
         </div>
 
-        <div className="px-4 py-4 opacity-40 hover:opacity-100 transition-opacity flex justify-center text-white">
-          <img src="/RaedLogo.svg" alt="Raed" className="h-6 brightness-0 invert" />
+        <div className="px-4 py-4 opacity-30 hover:opacity-100 transition-opacity flex justify-center text-black dark:text-white">
+          <img src="/RaedLogo.svg" alt="Raed" className="h-6 dark:brightness-0 dark:invert opacity-70 dark:opacity-100" />
         </div>
       </div>
     </aside>

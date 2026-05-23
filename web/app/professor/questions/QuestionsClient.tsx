@@ -268,9 +268,9 @@ export default function QuestionsClient({ userName }: { userName: string }) {
   }
 
   return (
-    <div className="bg-[#121315] min-h-screen text-on-surface font-['Inter'] relative overflow-hidden">
-        <div className="fixed inset-0 z-0 opacity-10 pointer-events-none bg-cover bg-center" style={{ backgroundImage: "url('/bg.png')" }} />
-        <div className="fixed top-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary/5 rounded-full blur-[140px] pointer-events-none" />
+    <div className="bg-background min-h-screen text-on-surface font-['Inter'] relative overflow-hidden transition-colors duration-300">
+        <div className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center opacity-0 dark:opacity-10" style={{ backgroundImage: "url('/bg.png')" }} />
+        <div className="fixed top-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary/10 dark:bg-primary/5 rounded-full blur-[140px] pointer-events-none" />
         
         <Sidebar role="PROFESSOR" />
         <TopBar userName={userName} roleLabel="Professor" />
