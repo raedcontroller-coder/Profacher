@@ -14,7 +14,7 @@ export default function TopBar({ userName, roleLabel }: TopBarProps) {
     : userName.split(' ').map(n => n[0]).join('').substring(0, 2);
 
   return (
-    <header className="fixed top-0 right-0 left-64 h-16 z-40 bg-gray-50/80 dark:bg-[#121315]/80 backdrop-blur-xl flex justify-between items-center px-8 border-b border-black/5 dark:border-outline-variant font-['Inter']">
+    <header className="fixed top-0 right-0 layout-header h-16 z-40 bg-gray-50/80 dark:bg-[#121315]/80 backdrop-blur-xl flex justify-between items-center px-8 border-b border-black/5 dark:border-outline-variant font-['Inter']">
       <div className="flex items-center gap-8">
         <span className="text-caption text-gray-500">Exam Intelligence</span>
       </div>

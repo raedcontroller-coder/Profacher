@@ -42,7 +42,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
       <Sidebar role="PROFESSOR" />
       <TopBar userName={userName} roleLabel="Professor" />
 
-      <main className="pl-64 pt-16 min-h-screen relative z-10 transition-all duration-500">
+      <main className="layout-main pt-16 min-h-screen relative z-10 transition-all duration-500">
         <div className="p-12 max-w-[1600px] mx-auto space-y-12">
           
           <header className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-700">

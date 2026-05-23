@@ -215,7 +215,7 @@ export default function CoordinatorClient({ initialUserName }: { initialUserName
       <Sidebar role="COORDENADOR" />
       <TopBar userName={currentUserName} roleLabel="Coordenadora" />
 
-      <main className="pl-64 pt-16 min-h-screen relative z-10">
+      <main className="layout-main pt-16 min-h-screen relative z-10">
         <div className="p-12 max-w-[1700px] mx-auto space-y-10">
           <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-3">

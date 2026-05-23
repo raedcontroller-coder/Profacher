@@ -87,7 +87,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
       <Sidebar role="PROFESSOR" />
       <TopBar userName={userName} roleLabel="Professor" />
 
-      <main className="pl-64 pt-16 min-h-screen relative z-10">
+      <main className="layout-main pt-16 min-h-screen relative z-10">
         <div className="p-12 max-w-[1600px] mx-auto space-y-8">
           
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-700">

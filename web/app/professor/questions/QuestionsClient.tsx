@@ -275,7 +275,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         <Sidebar role="PROFESSOR" />
         <TopBar userName={userName} roleLabel="Professor" />
 
-        <main className="pl-64 pt-16 min-h-screen relative z-10">
+        <main className="layout-main pt-16 min-h-screen relative z-10">
             <div className="p-12 max-w-[1200px] mx-auto space-y-10">
                 {/* Header Dinâmico */}
                 <header className="flex justify-between items-end mb-4 animate-in fade-in slide-in-from-top-4 duration-700">

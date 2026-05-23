@@ -40,7 +40,7 @@ export default function AdminClient({ initialUserName }: { initialUserName?: str
       <Sidebar role="ADMIN" />
       <TopBar userName={currentUserName} roleLabel="Administrador Global" />
 
-      <main className="pl-64 pt-16 min-h-screen relative z-10">
+      <main className="layout-main pt-16 min-h-screen relative z-10">
         <div className="p-12 max-w-[1700px] mx-auto space-y-10">
           
           {/* Hero Section */}
