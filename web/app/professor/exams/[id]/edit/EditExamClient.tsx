@@ -273,7 +273,7 @@ export default function EditExamClient({
 
                         {/* Configurações da Prova */}
                         <div className="pt-6 border-t border-white/5 space-y-6">
-                            <div className="flex items-center justify-between bg-primary/5 p-6 rounded-2xl border border-primary/20 transition-all">
+                            <div className="flex items-center justify-between bg-primary/5 p-6 rounded-2xl border border-black/5 dark:border-white/[0.02] transition-all">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <span className="material-symbols-outlined text-primary">assessment</span>

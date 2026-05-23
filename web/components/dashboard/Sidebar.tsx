@@ -105,7 +105,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
       <div className="mt-auto space-y-4">
         {(role === 'COORDENADOR' || role === 'PROFESSOR') && (
-          <Link href={role === 'COORDENADOR' ? "/coordinator/new-exam" : "/professor/new-exam"} className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-5 rounded-2xl border border-primary/20 group shadow-lg">
+          <Link href={role === 'COORDENADOR' ? "/coordinator/new-exam" : "/professor/new-exam"} className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-5 rounded-2xl border border-black/5 dark:border-white/[0.02] group shadow-lg">
             <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform">add_circle</span>
             <span className="font-bold text-body">Nova Prova</span>
           </Link>

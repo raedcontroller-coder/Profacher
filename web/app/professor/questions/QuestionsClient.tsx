@@ -325,7 +325,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                             groups.map((group, idx) => (
                                 <div 
                                     key={group.id} 
-                                    className="liquid-glass p-10 rounded-[3rem] border border-outline-variant hover:border-primary/40 transition-all group relative animate-in zoom-in-95 duration-500"
+                                    className="liquid-glass p-10 rounded-[3rem] border border-black/5 dark:border-white/[0.02] hover:border-primary/40 transition-all group relative animate-in zoom-in-95 duration-500"
                                     style={{ animationDelay: `${idx * 100}ms` }}
                                 >
                                     <div className="space-y-6">
@@ -370,7 +370,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                 <span className="font-bold tracking-widest text-sm">CRIAR NOVA QUESTÃO NESTE GRUPO</span>
                             </button>
                         ) : (
-                            <div className="liquid-glass p-12 rounded-[4rem] border border-primary/30 shadow-2xl shadow-primary/5 space-y-10 animate-in slide-in-from-bottom-5 duration-700">
+                            <div className="liquid-glass p-12 rounded-[4rem] border border-black/5 dark:border-white/[0.02] shadow-2xl shadow-primary/5 space-y-10 animate-in slide-in-from-bottom-5 duration-700">
                                 <header className="flex justify-between items-center border-b border-white/5 pb-8">
                                     <div className="flex items-center gap-6">
                                         <div className="w-14 h-14 rounded-2xl bg-primary text-black flex items-center justify-center font-black text-xl">
@@ -672,7 +672,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                             </div>
                         ) : activeGroup?.questions?.length ? (
                             activeGroup.questions.map((q, idx) => (
-                                <div key={q.id} className="liquid-glass p-10 rounded-[3rem] border border-outline-variant relative group/item animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                                <div key={q.id} className="liquid-glass p-10 rounded-[3rem] border border-black/5 dark:border-white/[0.02] relative group/item animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
                                     <div className="flex items-center gap-6 mb-6">
                                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold text-primary border border-white/5">
                                             {idx + 1}

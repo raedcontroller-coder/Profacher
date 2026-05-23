@@ -162,7 +162,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
                           <div className="flex flex-col gap-1">
                             <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-black mb-1">Código de Acesso</span>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-2xl font-black text-white bg-[#1a1b1e] px-4 py-2 rounded-2xl border-2 border-primary/30 shadow-lg shadow-primary/5 min-w-[100px] text-center">
+                              <span className="font-mono text-2xl font-black text-white bg-[#1a1b1e] px-4 py-2 rounded-2xl border border-outline-variant shadow-lg shadow-primary/5 min-w-[100px] text-center">
                                 {exam.accessCode || '---'}
                               </span>
                               <button 
@@ -180,7 +180,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
                         </td>
                         <td>
                           <div className="flex items-center gap-2">
-                             <div className="px-3 py-1 bg-secondary/10 rounded-full border border-secondary/20 text-secondary text-sm font-bold">
+                             <div className="px-3 py-1 bg-secondary/10 rounded-full border border-black/5 dark:border-white/[0.02] text-secondary text-sm font-bold">
                                {exam._count.questions} questões
                              </div>
                           </div>

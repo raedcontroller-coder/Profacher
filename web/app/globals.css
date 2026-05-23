@@ -22,9 +22,9 @@
   --on-surface: #e3e2e3;
   --on-surface-variant: #c7c4d7;
 
-  --outline: rgba(255, 255, 255, 0.1);
+  --outline: rgba(255, 255, 255, 0.04);
   /* Brilho de contorno ultra-sutil */
-  --outline-variant: rgba(255, 255, 255, 0.02);
+  --outline-variant: rgba(255, 255, 255, 0.01);
   /* Borda quase invisível e minimalista */
 
   --error: #ffb4ab;
