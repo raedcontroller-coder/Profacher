@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Abstract Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 hidden dark:block">
         <div className="absolute top-[10%] left-[10%] w-[30%] h-[40%] bg-primary/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[20%] right-[10%] w-[25%] h-[35%] bg-tertiary-container/5 rounded-full blur-[100px]"></div>
       </div>
