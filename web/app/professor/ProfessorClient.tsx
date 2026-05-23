@@ -54,7 +54,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
 
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in zoom-in-95 duration-1000 delay-200">
              {/* Card 1: Grupos */}
-             <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant hover:border-primary/50 transition-all group">
+             <div className="liquid-glass p-8 rounded-[2.5rem] border border-black/5 dark:border-white/[0.02] hover:border-primary/50 transition-all group">
                 <div className="flex items-start justify-between mb-6">
                    <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-white/5 group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined text-3xl">category</span>
@@ -68,9 +68,9 @@ export default function ProfessorClient({ userName }: { userName: string }) {
              </div>
 
              {/* Card 2: Questões */}
-             <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant hover:border-secondary/50 transition-all group">
+             <div className="liquid-glass p-8 rounded-[2.5rem] border border-black/5 dark:border-white/[0.02] hover:border-secondary/50 transition-all group">
                 <div className="flex items-start justify-between mb-6">
-                   <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20 group-hover:scale-110 transition-transform">
+                   <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary border border-black/5 dark:border-white/[0.02] group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined text-3xl">quiz</span>
                    </div>
                    <div className="text-right">
@@ -82,7 +82,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
              </div>
 
              {/* Card 3: Acesso Rápido */}
-             <div className="liquid-glass p-8 rounded-[2.5rem] border border-outline-variant bg-primary/5 flex flex-col justify-center items-center text-center gap-4 group cursor-pointer transition-all">
+             <div className="liquid-glass p-8 rounded-[2.5rem] border border-black/5 dark:border-white/[0.02] bg-primary/5 flex flex-col justify-center items-center text-center gap-4 group cursor-pointer transition-all">
                 <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-black shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
                    <span className="material-symbols-outlined text-3xl font-bold">add</span>
                 </div>
@@ -94,7 +94,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
           </section>
 
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div className="liquid-glass p-10 rounded-[3rem] border border-outline-variant space-y-6">
+              <div className="liquid-glass p-10 rounded-[3rem] border border-black/5 dark:border-white/[0.02] space-y-6">
                   <h3 className="text-2xl font-bold flex items-center gap-3">
                       <span className="material-symbols-outlined text-primary">history</span>
                       Atividade Recente
@@ -112,7 +112,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
                   </div>
               </div>
 
-              <div className="liquid-glass p-10 rounded-[3rem] border border-outline-variant space-y-6 bg-gradient-to-br from-transparent to-primary/5">
+              <div className="liquid-glass p-10 rounded-[3rem] border border-black/5 dark:border-white/[0.02] space-y-6 bg-gradient-to-br from-transparent to-primary/5">
                   <h3 className="text-2xl font-bold flex items-center gap-3 text-primary">
                       <span className="material-symbols-outlined">auto_awesome</span>
                       Assistente de IA

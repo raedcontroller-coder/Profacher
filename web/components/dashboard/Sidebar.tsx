@@ -45,7 +45,7 @@ interface SidebarProps {
 
 export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
-  
+
   let navItems = adminNavItems;
   if (role === 'COORDENADOR') navItems = coordinatorNavItems;
   if (role === 'PROFESSOR') navItems = professorNavItems;
@@ -62,10 +62,10 @@ export default function Sidebar({ role }: SidebarProps) {
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 px-4">
+      <nav className="flex-1 space-y-1 px-4 mt-16">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
-          
+
           if (item.disabled) {
             return (
               <div
@@ -88,11 +88,10 @@ export default function Sidebar({ role }: SidebarProps) {
             <Link
               key={item.label}
               href={item.href}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
-                isActive 
-                  ? 'bg-primary/10 text-primary' 
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-[#1f2021]'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${isActive
+                ? 'bg-primary/10 text-primary'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-[#1f2021]'
+                }`}
             >
               <span className={`material-symbols-outlined text-2xl ${isActive ? 'text-primary' : 'text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white'}`}>
                 {item.icon}
@@ -110,9 +109,9 @@ export default function Sidebar({ role }: SidebarProps) {
             <span className="font-bold text-body">Nova Prova</span>
           </Link>
         )}
-        
+
         <div className="border-t border-black/5 dark:border-outline-variant pt-4 px-2 space-y-1">
-          <button 
+          <button
             onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
             className="w-full flex items-center gap-3 px-4 py-4 rounded-lg text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-[#1f2021] transition-colors"
           >

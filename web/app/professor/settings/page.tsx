@@ -51,7 +51,7 @@ export default async function ProfessorSettingsPage() {
             {/* Aparência do Sistema */}
             <div className="liquid-glass rounded-2xl p-6 relative overflow-hidden group md:col-span-2 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-black/5 dark:border-white/[0.02]">
                   <span className="material-symbols-outlined text-primary text-2xl">palette</span>
                 </div>
                 <div>
@@ -86,7 +86,7 @@ export default async function ProfessorSettingsPage() {
               <p className="text-gray-600 dark:text-gray-300">{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(profile.createdAt))}</p>
             </div>
             <div className="pt-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-bold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-black/5 dark:border-white/[0.02] text-primary text-sm font-bold">
                 <span className="material-symbols-outlined text-sm">verified</span>
                 Professor
               </span>
