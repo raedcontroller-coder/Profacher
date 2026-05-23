@@ -31,9 +31,13 @@ Controle total do professor sobre a entrada e permanência na sala.
 
 ## 🎨 Design System: Liquid Glass V3
 A interface do Profacher 2.0 segue os princípios de design moderno de alta fidelidade:
-- **Estética Dark-Glass:** Vidro fosco sobre fundo ultra-escuro (`#121315`).
-- **Micro-interações:** Feedback visual em botões de V/F e salvamento automático.
-- **Tokens de Transparência:** Uso consistente de `white/5` para bordas e superfícies premium.
+- **Tematização Adaptativa:** Suporte nativo a Light/Dark mode via `next-themes` com tokens no `:root` e `.light`.
+- **Estética Liquid-Glass:** Fundo translúcido com `backdrop-blur(50px) saturate(120%)`.
+- **Bordas Sutis (Novo Padrão):** Para evitar alto contraste no modo escuro, nunca utilizamos `border-primary/X` ou cores sólidas opacas em contornos estruturais de larga escala. O padrão oficial para contornos de botões, painéis e cards é:
+  - Borda primária: `border-black/5 dark:border-white/[0.02]`
+  - Borda secundária (variante): `border-outline-variant` (configurado globalmente para máxima suavidade: 1% no dark mode).
+- **Tokens de Transparência:** Uso consistente de `white/5` para superfícies premium internas e backgrounds secundários.
+- **Micro-interações:** Feedback visual e animações de estado (como os olhos da logo calculando).
 
 ---
 
