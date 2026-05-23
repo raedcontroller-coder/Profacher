@@ -9,6 +9,7 @@ import ImportQuestionModal from '@/app/professor/new-exam/ImportQuestionModal';
 import RichTextEditor from '@/components/shared/RichTextEditor';
 import { generateBlankExamPdf } from '@/lib/utils/pdf-generator';
 import { useEffect } from 'react';
+import { Whiteboard } from '@/components/Whiteboard';
 
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
@@ -18,6 +19,7 @@ interface QuestionInput {
   type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
   points: number;
   referenceAnswer?: string;
+  referenceDevelopment?: string;
   correctionMode?: "COMPARATIVE" | "CONCEPTUAL";
   options: Array<{ content: string; isCorrect: boolean }>;
 }
@@ -523,7 +525,7 @@ export default function EditExamClient({
                                                 isMath={q.type === 'MATH'}
                                             />
                                         )}
-                                        {(q.type === 'ESSAY' || q.type === 'MATH' || q.type === 'CUSTOM_HTML') && (
+                                        {(q.type === 'ESSAY' || q.type === 'CUSTOM_HTML') && (
                                             <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3 text-amber-500">
@@ -573,6 +575,39 @@ export default function EditExamClient({
                                                 <div className="flex items-center gap-3 text-[10px] text-amber-500/60 italic px-2">
                                                     <span className="material-symbols-outlined text-sm">info</span>
                                                     A IA não buscará a resposta correta por conta própria. Ela comparará a resposta do aluno estritamente com o seu gabarito.
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {q.type === 'MATH' && (
+                                            <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
+                                                <div className="flex items-center gap-3 text-amber-500 mb-2">
+                                                    <span className="material-symbols-outlined">auto_fix_high</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (IA)</span>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Desenvolvimento Esperado</label>
+                                                    <Whiteboard 
+                                                        initialData={q.referenceDevelopment}
+                                                        onChange={(base64) => {
+                                                            const newQs = [...questions];
+                                                            newQs[qIndex].referenceDevelopment = base64;
+                                                            setQuestions(newQs);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="space-y-4 pt-4">
+                                                    <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Resposta Final Esperada</label>
+                                                    <textarea 
+                                                        placeholder="Digite apenas a resposta final que você espera do aluno..."
+                                                        className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 transition-all h-24 resize-none shadow-inner placeholder:text-amber-500/30"
+                                                        value={q.referenceAnswer || ''}
+                                                        onChange={e => {
+                                                            const newQs = [...questions];
+                                                            newQs[qIndex].referenceAnswer = e.target.value;
+                                                            setQuestions(newQs);
+                                                        }}
+                                                    />
                                                 </div>
                                             </div>
                                         )}

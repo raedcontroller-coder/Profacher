@@ -80,6 +80,7 @@ model Question {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   referenceAnswer String?          @map("reference_answer")
+  referenceDevelopment String?     @map("reference_development")
   correctionMode  String           @default("CONCEPTUAL") @map("correction_mode")
   exams           ExamQuestion[]
   options         QuestionOption[]

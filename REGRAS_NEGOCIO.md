@@ -15,6 +15,7 @@ Este documento centraliza as regras de negócio implementadas e planejadas para 
 - **Criação de Provas**: Professores podem criar provas selecionando questões do banco ou criando novas questões diretamente na tela de "Nova Prova".
 - **Auto-organização de Questões**: Se o professor criar questões diretamente em uma "Nova Prova" (sem puxar do banco), ao salvar a prova, o sistema deve criar automaticamente um **Grupo de Questões** com o nome da prova e arquivar essas novas questões nele.
 - **Correção Comparativa (IA)**: Para questões dissertativas e de cálculo, a IA atua apenas como um comparador inteligente. A correção deve ser baseada estritamente no **Gabarito de Referência** fornecido pelo professor, independentemente do conhecimento externo da IA. Se o professor definir um gabarito tecnicamente incorreto por engano ou propósito (ex: 1+1=3), a IA deve validar a resposta do aluno contra esse gabarito específico.
+- **Correção Visual de Cálculo (MATH)**: Na avaliação de questões de Cálculo, a IA deve inspecionar a imagem do desenvolvimento (desenho do quadro branco ou foto anexada pelo aluno). Se o desenvolvimento visual estiver correto e coerente com o gabarito esperado, a IA considerará a resposta como 100% certa, mesmo que o aluno não tenha preenchido o campo de texto da Resposta Final.
 
 ## 4. Segurança e Acesso
 - **Redirecionamento por Papel**: O sistema deve redirecionar automaticamente o usuário logado para sua área específica (Admin, Coordenador ou Professor) com base em seu `role` no banco de dados.

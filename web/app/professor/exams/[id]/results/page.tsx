@@ -340,13 +340,40 @@ export default function ExamResultsPage() {
                                       <div>
                                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Resposta do Aluno</p>
                                          <div className="p-4 rounded-xl bg-white/5 text-gray-300 text-sm italic break-words whitespace-pre-wrap max-w-full overflow-hidden">
-                                            {it.studentAnswer || 'Sem resposta'}
+                                            {(() => {
+                                               if (!it.studentAnswer) return 'Sem resposta';
+                                               try {
+                                                 const parsed = JSON.parse(it.studentAnswer);
+                                                 if (parsed.development !== undefined) {
+                                                    return (
+                                                       <div className="space-y-4 not-italic">
+                                                         <div className="p-4 bg-white rounded-[1.5rem] overflow-hidden flex justify-center">
+                                                           {parsed.development ? <img src={parsed.development} alt="Desenvolvimento" className="max-w-full rounded-lg" /> : <p className="text-black/50 text-center text-sm">Nenhum desenvolvimento</p>}
+                                                         </div>
+                                                         <div className="font-bold text-gray-200 bg-white/5 p-4 rounded-xl border border-white/10">Resposta Final: {parsed.answer || ''}</div>
+                                                       </div>
+                                                    );
+                                                 }
+                                               } catch (e) {}
+                                               return it.studentAnswer;
+                                            })()}
                                          </div>
                                       </div>
-                                      {it.correctAnswer && (
+                                      {(it.correctAnswer || it.referenceDevelopment) && (
                                          <div>
                                             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Gabarito Sugerido</p>
-                                            <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden border border-primary/10">{it.correctAnswer}</div>
+                                            <div className="space-y-4">
+                                               {it.referenceDevelopment && (
+                                                   <div className="p-4 bg-white rounded-[1.5rem] overflow-hidden flex justify-center">
+                                                       <img src={it.referenceDevelopment} alt="Gabarito de Desenvolvimento" className="max-w-full rounded-lg" />
+                                                   </div>
+                                               )}
+                                               {it.correctAnswer && (
+                                                   <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden border border-primary/10">
+                                                       {it.correctAnswer}
+                                                   </div>
+                                               )}
+                                            </div>
                                          </div>
                                       )}
                                       

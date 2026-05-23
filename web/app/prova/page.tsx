@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getPusherClient } from '@/lib/pusher';
 import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus, reportFocusLoss } from '@/app/professor/exams/actions';
 import MathRenderer from '@/components/shared/MathRenderer';
+import { Whiteboard } from "@/components/Whiteboard";
 import { generateExamPdf } from '@/lib/utils/pdf-generator';
 
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
@@ -554,8 +555,34 @@ export default function UnifiedStudentExamPage() {
                       )}
 
                       <div className="space-y-6">
-                        {(q.type === 'ESSAY' || q.type === 'MATH') && (
+                        {q.type === 'ESSAY' && (
                           <textarea className="w-full bg-white/5 border border-outline rounded-[2rem] p-8 text-lg text-on-surface outline-none focus:border-primary/40 transition-all min-h-[250px] resize-none" placeholder="Escreva sua resposta aqui..." value={answers[q.id] || ''} onChange={(e) => handleSelectOption(q.id, e.target.value)} />
+                        )}
+                        {q.type === 'MATH' && (
+                          <div className="space-y-6">
+                            <div className="space-y-3">
+                               <label className="text-xs font-bold text-gray-500 ml-4 uppercase tracking-widest">Campo de Desenvolvimento (Quadro Branco)</label>
+                               <Whiteboard 
+                                 initialData={(typeof answers[q.id] === 'object' && answers[q.id] !== null) ? answers[q.id].development : ''}
+                                 onChange={(base64) => {
+                                    const currentAns = (typeof answers[q.id] === 'object' && answers[q.id] !== null) ? answers[q.id] : { answer: '' };
+                                    handleSelectOption(q.id, { ...currentAns, development: base64 });
+                                 }}
+                               />
+                            </div>
+                            <div className="space-y-3">
+                               <label className="text-xs font-bold text-gray-500 ml-4 uppercase tracking-widest">Resposta Final</label>
+                               <textarea 
+                                  className="w-full bg-white/5 border border-outline rounded-[1.5rem] p-6 text-on-surface outline-none focus:border-primary/40 transition-all min-h-[120px] resize-none" 
+                                  placeholder="Digite apenas a resposta final aqui..." 
+                                  value={(typeof answers[q.id] === 'object' && answers[q.id] !== null) ? (answers[q.id].answer || '') : (typeof answers[q.id] === 'string' ? answers[q.id] : '')}
+                                  onChange={(e) => {
+                                      const currentAns = (typeof answers[q.id] === 'object' && answers[q.id] !== null) ? answers[q.id] : { development: '' };
+                                      handleSelectOption(q.id, { ...currentAns, answer: e.target.value });
+                                  }} 
+                               />
+                            </div>
+                          </div>
                         )}
                         {q.type === 'TRUE_FALSE' && (
                           <div className="grid grid-cols-1 gap-6">
@@ -812,8 +839,17 @@ acima para responder</p>
                                               <span className="material-symbols-outlined text-sm">person</span> sua resposta
                                            </p>
                                            <div className="p-8 rounded-[2.5rem] bg-white/5 border border-outline-variant text-gray-300 min-h-[100px] text-lg leading-relaxed">
-                                              {typeof detail.studentAnswer === 'object' ? 
-                                                 <pre className="text-sm font-mono whitespace-pre-wrap">{JSON.stringify(detail.studentAnswer, null, 2)}</pre> 
+                                              {typeof detail.studentAnswer === 'object' && detail.studentAnswer !== null ? 
+                                                 (detail.type === 'MATH' ? (
+                                                    <div className="space-y-4">
+                                                      <div className="p-4 bg-white rounded-[1.5rem] overflow-hidden">
+                                                        {detail.studentAnswer.development ? <img src={detail.studentAnswer.development} alt="Desenvolvimento" className="w-full h-auto" /> : <p className="text-black/50 text-center text-sm">Nenhum desenvolvimento</p>}
+                                                      </div>
+                                                      <div className="font-bold p-4 bg-white/5 rounded-2xl border border-outline text-gray-200">Resposta Final: {detail.studentAnswer.answer || ''}</div>
+                                                    </div>
+                                                 ) : (
+                                                    <pre className="text-sm font-mono whitespace-pre-wrap">{JSON.stringify(detail.studentAnswer, null, 2)}</pre> 
+                                                 ))
                                                  : <div className="break-words whitespace-pre-wrap">{detail.studentAnswer}</div>
                                               }
                                            </div>

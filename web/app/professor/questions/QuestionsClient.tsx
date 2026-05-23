@@ -13,6 +13,7 @@ import {
     updateQuestionInBank
 } from './actions';
 import RichTextEditor from '@/components/shared/RichTextEditor';
+import { Whiteboard } from '@/components/Whiteboard';
 
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
@@ -28,6 +29,7 @@ interface Question {
     type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML";
     points: number;
     referenceAnswer?: string;
+    referenceDevelopment?: string;
     correctionMode?: "COMPARATIVE" | "CONCEPTUAL";
     options: QuestionOption[];
 }
@@ -68,6 +70,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
   const [qType, setQType] = useState<"MULTIPLE_CHOICE" | "TRUE_FALSE" | "ESSAY" | "MATH" | "CUSTOM_HTML">('MULTIPLE_CHOICE');
   const [qPoints, setQPoints] = useState(1.0);
   const [qReferenceAnswer, setQReferenceAnswer] = useState('');
+  const [qReferenceDevelopment, setQReferenceDevelopment] = useState('');
   const [qInteractiveCode, setQInteractiveCode] = useState('');
   const [qOptions, setQOptions] = useState<Array<{ content: string; isCorrect: boolean }>>([
     { content: '', isCorrect: true },
@@ -155,6 +158,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
     setQType('MULTIPLE_CHOICE');
     setQPoints(1.0);
     setQReferenceAnswer('');
+    setQReferenceDevelopment('');
     setQOptions([
       { content: '', isCorrect: true },
       { content: '', isCorrect: false },
@@ -194,6 +198,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
 
     setQPoints(q.points);
     setQReferenceAnswer(q.referenceAnswer || '');
+    setQReferenceDevelopment(q.referenceDevelopment || '');
     setQCorrectionMode(q.correctionMode || 'CONCEPTUAL');
     if (q.options) {
       setQOptions(q.options.map((opt: any) => ({ content: opt.content, isCorrect: opt.isCorrect })));
@@ -232,6 +237,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         type: qType,
         points: qPoints,
         referenceAnswer: qReferenceAnswer,
+        referenceDevelopment: qReferenceDevelopment,
         correctionMode: qCorrectionMode,
         options: qOptions
       });
@@ -248,6 +254,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
         type: qType,
         points: qPoints,
         referenceAnswer: qReferenceAnswer,
+        referenceDevelopment: qReferenceDevelopment,
         correctionMode: qCorrectionMode,
         options: qOptions
       });
@@ -494,7 +501,7 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                         />
                                     )}
 
-                                    { (qType === 'ESSAY' || qType === 'MATH' || qType === 'CUSTOM_HTML') && (
+                                    { (qType === 'ESSAY' || qType === 'CUSTOM_HTML') && (
                                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-3 text-amber-500">
@@ -532,6 +539,31 @@ export default function QuestionsClient({ userName }: { userName: string }) {
                                                 value={qReferenceAnswer}
                                                 onChange={e => setQReferenceAnswer(e.target.value)}
                                             />
+                                        </div>
+                                    )}
+
+                                    {qType === 'MATH' && (
+                                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-500 bg-amber-500/5 p-8 rounded-[2rem] border border-white/5">
+                                            <div className="flex items-center gap-3 text-amber-500 mb-2">
+                                                <span className="material-symbols-outlined">auto_fix_high</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Gabarito de Referência (IA)</span>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Desenvolvimento Esperado</label>
+                                                <Whiteboard 
+                                                    initialData={qReferenceDevelopment}
+                                                    onChange={(base64) => setQReferenceDevelopment(base64)}
+                                                />
+                                            </div>
+                                            <div className="space-y-4 pt-4">
+                                                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Resposta Final Esperada</label>
+                                                <textarea 
+                                                    placeholder="Digite apenas a resposta final que você espera do aluno..."
+                                                    className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-sm text-amber-100 outline-none focus:border-amber-500/50 transition-all h-24 resize-none shadow-inner placeholder:text-amber-500/30"
+                                                    value={qReferenceAnswer}
+                                                    onChange={e => setQReferenceAnswer(e.target.value)}
+                                                />
+                                            </div>
                                         </div>
                                     )}
 

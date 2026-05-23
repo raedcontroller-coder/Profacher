@@ -336,6 +336,7 @@ export async function getSubmissionDetails(submissionId: number) {
         type: q.type,
         studentAnswer,
         correctAnswer: q.referenceAnswer,
+        referenceDevelopment: q.referenceDevelopment,
         points: q.points,
         pointsObtained: questionDetail?.pointsObtained ?? (q.type === 'TRUE_FALSE' ? (tfResult.filter(t => t.isCorrect).length / (tfResult.length || 1)) * q.points : 0),
         feedback: questionDetail?.feedback || "",
@@ -745,18 +746,28 @@ export async function finishExamLive(submissionId: number) {
       }
       else if (q.type === 'ESSAY' || q.type === 'MATH') {
         detail.correctAnswer = referenceAnswer || "---";
+        
+        let devBase64 = "";
+        let finalStudentAnswer = studentAnswer;
+        
+        if (q.type === 'MATH' && typeof rawAnswer === 'object' && rawAnswer !== null) {
+           finalStudentAnswer = String(rawAnswer.answer || "").trim();
+           devBase64 = rawAnswer.development || "";
+           detail.studentAnswer = finalStudentAnswer || (devBase64 ? "[Desenho/Foto Enviado]" : "Não respondida");
+        }
+
         const currentDetailIndex = details.length;
         details.push(detail);
         
-        if (isExactMatch && referenceAnswer) {
+        if (isExactMatch && referenceAnswer && !devBase64) {
           detail.pointsObtained = q.points;
           detail.feedback = "Resposta idêntica ao gabarito esperado.";
           totalScore += q.points;
-        } else if (referenceAnswer) {
+        } else if (referenceAnswer || devBase64) {
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer(q.content, referenceAnswer, studentAnswer, submission.exam.teacherId, q.correctionMode);
+              const result = await gradeStudentAnswer(q.content, referenceAnswer, finalStudentAnswer, submission.exam.teacherId, q.correctionMode, devBase64, q.referenceDevelopment);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Corrigido pela IA." };

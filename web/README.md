@@ -73,6 +73,7 @@ A interface do Profacher 2.0 segue os princípios de design moderno de alta fide
 - **RA Único:** O RA do aluno é a chave primária de identificação na prova; nomes podem ser repetidos, RAs não.
 - **Normalização:** Todos os nomes de alunos são convertidos para **CAIXA ALTA** no momento da entrada para garantir consistência nos relatórios.
 - **Finalização Imutável:** Uma vez que o botão "Finalizar Prova" é clicado, o aluno perde o direito de edição e reentrada na sessão.
+- **Correção Inteligente de Cálculo:** Para questões do tipo `Cálculo (MATH)`, se a IA constatar que o aluno acertou o desenvolvimento (desenho do quadro branco ou foto) visual ou matematicamente em relação ao gabarito, mas esqueceu de preencher o campo de Resposta Final, a questão deve ser considerada totalmente certa mesmo assim.
 
 ---
 *Profacher 2.0 — Desenvolvido para simplificar a vida do professor e garantir a integridade do conhecimento.*
