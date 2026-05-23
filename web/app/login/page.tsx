@@ -2,6 +2,7 @@
 
 import React, { useActionState } from 'react';
 import { loginAction } from './actions';
+import LogoProfacher from '@/components/shared/LogoProfacher';
 
 export default function LoginPage() {
   const [error, formAction, isPending] = useActionState(loginAction, undefined);
@@ -24,11 +25,9 @@ export default function LoginPage() {
           {/* Left Side: Narrative/Brand */}
           <div className="hidden lg:flex flex-col p-12 relative z-10 h-full">
             {/* Top Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-lg">
-                <span className="material-symbols-outlined text-on-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-              </div>
-              <h1 className="text-xl font-bold tracking-tighter text-primary">Profacher</h1>
+            <div className="flex items-center gap-5">
+              <LogoProfacher className="w-32 h-32 text-primary" calculateEffect={true} />
+              <h1 className="text-4xl font-bold tracking-tighter text-primary">Profacher</h1>
             </div>
             
             {/* Main Text Content: Left aligned, vertically centered and lowered */}
@@ -45,11 +44,9 @@ export default function LoginPage() {
 
           {/* Right Side: Login Form */}
           <div className="p-8 md:p-16 flex flex-col justify-center relative z-10">
-            <div className="mb-10 lg:hidden flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-container rounded-lg flex items-center justify-center">
-                <span className="material-symbols-outlined text-on-primary-container text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-              </div>
-              <span className="font-bold tracking-tighter text-primary">Profacher</span>
+            <div className="mb-10 lg:hidden flex items-center gap-5">
+              <LogoProfacher className="w-24 h-24 text-primary" calculateEffect={true} />
+              <span className="text-3xl font-bold tracking-tighter text-primary">Profacher</span>
             </div>
 
             <div className="mb-10">

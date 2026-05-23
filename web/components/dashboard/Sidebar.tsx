@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import LogoProfacher from '../shared/LogoProfacher';
 
 interface NavItem {
   icon: string;
@@ -50,18 +51,18 @@ export default function Sidebar({ role }: SidebarProps) {
   if (role === 'PROFESSOR') navItems = professorNavItems;
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-50/80 dark:bg-[#121315]/80 backdrop-blur-xl border-r border-black/5 dark:border-outline-variant z-50 flex flex-col p-4 font-['Inter']">
-      <div className="flex items-center gap-3 px-4 py-8 mb-4">
-        <div className="w-10 h-10 bg-primary/20 dark:bg-primary rounded-xl flex items-center justify-center shadow-lg border border-primary/30">
-          <span className="material-symbols-outlined text-primary dark:text-black font-bold">menu_book</span>
-        </div>
-        <div>
-          <h1 className="text-gray-900 dark:text-on-surface font-bold text-2xl tracking-tight">Profacher</h1>
-          <p className="text-caption text-primary font-bold">Elite Examination System</p>
-        </div>
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-50/80 dark:bg-[#121315]/80 backdrop-blur-xl border-r border-black/5 dark:border-outline-variant z-50 flex flex-col font-['Inter']">
+      <div className="p-8 pb-4">
+        <Link href={`/${role.toLowerCase()}`} className="flex items-center gap-3 group">
+          <LogoProfacher className="w-12 h-12 text-gray-900 dark:text-white transition-transform group-hover:scale-105" hoverBlink={true} />
+          <div>
+            <h1 className="text-2xl font-black tracking-tighter text-on-surface">Prof<span className="text-primary">acher</span></h1>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{role}</p>
+          </div>
+        </Link>
       </div>
 
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-1 px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           

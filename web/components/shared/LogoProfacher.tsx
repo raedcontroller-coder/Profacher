@@ -1,0 +1,130 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+
+export default function LogoProfacher({ 
+  className = "w-10 h-10", 
+  hoverBlink = false,
+  calculateEffect = false
+}: { 
+  className?: string, 
+  hoverBlink?: boolean,
+  calculateEffect?: boolean
+}) {
+  const eyeClass = hoverBlink ? "profacher-eye profacher-eye-hover" : (!calculateEffect ? "profacher-eye profacher-eye-always" : "profacher-eye");
+  const [eyeMode, setEyeMode] = useState<'OPEN' | 'BLINK' | 'CALCULATING'>('OPEN');
+  const [calcNumbers, setCalcNumbers] = useState({ left: '0', right: '1' });
+
+  useEffect(() => {
+    if (!calculateEffect) return;
+
+    let timeoutId: NodeJS.Timeout;
+    
+    const triggerAction = () => {
+      const rand = Math.random();
+      
+      if (rand < 0.5) {
+        // 50% chance: Calculate mode
+        setEyeMode('CALCULATING');
+        timeoutId = setTimeout(() => {
+          setEyeMode('OPEN');
+          timeoutId = setTimeout(triggerAction, 2000 + Math.random() * 4000);
+        }, 1000 + Math.random() * 1500);
+      } else if (rand < 0.75) {
+        // 25% chance: Single Blink
+        setEyeMode('BLINK');
+        timeoutId = setTimeout(() => {
+          setEyeMode('OPEN');
+          timeoutId = setTimeout(triggerAction, 1000 + Math.random() * 3000);
+        }, 120);
+      } else {
+        // 25% chance: Double Blink
+        setEyeMode('BLINK');
+        timeoutId = setTimeout(() => {
+          setEyeMode('OPEN');
+          timeoutId = setTimeout(() => {
+            setEyeMode('BLINK');
+            timeoutId = setTimeout(() => {
+              setEyeMode('OPEN');
+              timeoutId = setTimeout(triggerAction, 1500 + Math.random() * 3000);
+            }, 120);
+          }, 80);
+        }, 120);
+      }
+    };
+
+    timeoutId = setTimeout(triggerAction, 1000 + Math.random() * 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [calculateEffect]);
+
+  useEffect(() => {
+    if (eyeMode !== 'CALCULATING') return;
+
+    const interval = setInterval(() => {
+      setCalcNumbers({
+        left: Math.floor(Math.random() * 10).toString(),
+        right: Math.floor(Math.random() * 10).toString()
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [eyeMode]);
+
+  return (
+    <svg 
+      className={className}
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 559.472 527.973" 
+      fill="currentColor"
+    >
+      <style>
+        {`
+          @keyframes profacher-blink {
+            0%, 96%, 98%, 100% { transform: scaleY(1); }
+            97% { transform: scaleY(0.05); }
+          }
+          .profacher-eye-always {
+            animation: profacher-blink 4s infinite;
+          }
+          .group:hover .profacher-eye-hover {
+            animation: profacher-blink 2s infinite;
+          }
+          .profacher-eye-left {
+            transform-origin: 201.516px 357.336px;
+          }
+          .profacher-eye-right {
+            transform-origin: 357.511px 357.336px;
+          }
+        `}
+      </style>
+      <path d="M381.111,500.029"/>
+      <path d="M279.63,188.332l-151.277-42.999c-0.021,0.497-0.055,0.986-0.055,1.49v62.119c0,16.25,9.366,29.424,20.914,29.424h260.84
+        c11.548,0,20.91-13.175,20.91-29.424v-62.119c0-1.024-0.038-2.033-0.109-3.03L279.63,188.332z"/>
+      <path d="M483.183,294.531h-15.464c-7.611-19.086-18.984-36.535-33.017-51.894c-6.467,7.165-15.072,11.476-24.65,11.476h-260.84
+        c-9.582,0-18.187-4.313-24.655-11.476c-14.031,15.359-25.405,32.808-33.02,51.894H76.081c-12.274,0-22.219,9.948-22.219,22.219
+        v79.002c0,12.268,9.945,22.216,22.219,22.216h14.254c12.415,34.28,38.601,58.719,87.813,82.065c0,0,100.584,40.939,202.963-0.004
+        c49.213-23.343,75.399-47.781,87.813-82.062h14.258c12.271,0,22.219-9.948,22.219-22.216V316.75
+        C505.401,304.479,495.453,294.531,483.183,294.531z M400.552,443.889c-8.625,0-71.12-4.604-120.922-4.604
+        c-49.871,0-112.451,4.604-121.09,4.604c-8.64,0-49.374-6.574-49.374-96.631c0-90.059,340.695-90.059,340.695,0
+        C449.861,437.315,409.182,443.889,400.552,443.889z"/>
+      <g>
+        {eyeMode === 'CALCULATING' ? (
+          <>
+            <text x="201.518" y="377" fontSize="70" fontWeight="900" fontFamily="monospace" textAnchor="middle" fill="currentColor">{calcNumbers.left}</text>
+            <text x="357.511" y="377" fontSize="70" fontWeight="900" fontFamily="monospace" textAnchor="middle" fill="currentColor">{calcNumbers.right}</text>
+          </>
+        ) : (
+          <>
+            <circle cx="201.518" cy="357.336" r="35.18" className={`${eyeClass} profacher-eye-left`} style={calculateEffect ? { animation: 'none', transform: eyeMode === 'BLINK' ? 'scaleY(0.05)' : 'scaleY(1)', transition: 'transform 0.05s ease-in-out' } : {}} />
+            <circle cx="357.511" cy="357.336" r="35.18" className={`${eyeClass} profacher-eye-right`} style={calculateEffect ? { animation: 'none', transform: eyeMode === 'BLINK' ? 'scaleY(0.05)' : 'scaleY(1)', transition: 'transform 0.05s ease-in-out' } : {}} />
+          </>
+        )}
+      </g>
+      <path d="M279.63,171.161l270.325-79.617L279.63,14.704L9.305,94.321l67.896,19.299v34.722c-7.485,1.639-13.09,8.295-13.09,16.271
+        c0,7.098,4.443,13.142,10.699,15.545l-22.298,70.308c0,0-3.086,16.592,20.982,16.592h8.026v0.245h7.612
+        c22.839,0,19.913-16.592,19.913-16.592l-21.349-70.952c5.741-2.631,9.743-8.416,9.743-15.146c0-7.518-4.981-13.867-11.819-15.943
+        v-32.655L279.63,171.161z"/>
+    </svg>
+  );
+}
