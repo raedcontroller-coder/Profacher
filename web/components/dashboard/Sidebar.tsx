@@ -9,6 +9,7 @@ interface NavItem {
   icon: string;
   label: string;
   href: string;
+  disabled?: boolean;
 }
 
 const coordinatorNavItems: NavItem[] = [
@@ -32,8 +33,8 @@ const professorNavItems: NavItem[] = [
   { icon: 'dashboard', label: 'Dashboard', href: '/professor' },
   { icon: 'description', label: 'Minhas provas', href: '/professor/exams' },
   { icon: 'inventory_2', label: 'Banco de Questões', href: '/professor/questions' },
-  { icon: 'school', label: 'Minhas Classes', href: '/professor/classes' },
-  { icon: 'analytics', label: 'Desempenho', href: '/professor/analytics' },
+  { icon: 'school', label: 'Minhas Classes', href: '/professor/classes', disabled: true },
+  { icon: 'analytics', label: 'Desempenho', href: '/professor/analytics', disabled: true },
 ];
 
 interface SidebarProps {
@@ -62,6 +63,25 @@ export default function Sidebar({ role }: SidebarProps) {
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
+          
+          if (item.disabled) {
+            return (
+              <div
+                key={item.label}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl opacity-40 cursor-not-allowed group relative"
+                title="Em breve"
+              >
+                <span className="material-symbols-outlined text-2xl text-gray-500">
+                  {item.icon}
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-bold text-body text-gray-500 leading-tight">{item.label}</span>
+                  <span className="text-[10px] text-primary/70 font-bold uppercase tracking-wider mt-0.5">Em breve</span>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.label}
