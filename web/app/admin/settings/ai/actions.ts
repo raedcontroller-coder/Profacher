@@ -30,23 +30,36 @@ export async function getGlobalAiSettings() {
 /**
  * Atualiza as configurações globais de IA
  */
-export async function updateGlobalAiSettings(data: { globalAiModel: string; globalAiKey: string }) {
+export async function updateGlobalAiSettings(data: { globalAiModel?: string; globalAiKey?: string; savedAiKeys?: any }) {
   const session = await auth()
   if (!session || (session.user as any)?.role !== "ADMIN") {
     throw new Error("Não autorizado")
   }
 
   try {
+    let activeModel = data.globalAiModel;
+    let activeKey = data.globalAiKey;
+
+    if (data.savedAiKeys && Array.isArray(data.savedAiKeys)) {
+        const activeItem = data.savedAiKeys.find((k: any) => k.active);
+        if (activeItem) {
+            activeModel = activeItem.model;
+            activeKey = activeItem.key;
+        }
+    }
+
     await prisma.globalSettings.upsert({
       where: { id: 1 },
       update: {
-        globalAiModel: data.globalAiModel,
-        globalAiKey: data.globalAiKey,
+        globalAiModel: activeModel,
+        globalAiKey: activeKey,
+        savedAiKeys: data.savedAiKeys,
       },
       create: {
         id: 1,
-        globalAiModel: data.globalAiModel,
-        globalAiKey: data.globalAiKey,
+        globalAiModel: activeModel,
+        globalAiKey: activeKey,
+        savedAiKeys: data.savedAiKeys,
       },
     });
 

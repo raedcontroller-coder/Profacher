@@ -25,6 +25,106 @@ export async function getInstitutionUsers() {
   })
 }
 
+export async function getAiUsageByTeacher() {
+  const session = await auth()
+  if (!session?.user) throw new Error("Não autorizado")
+
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email as string },
+    select: { institutionId: true }
+  })
+
+  if (!currentUser?.institutionId) return []
+
+  const usageLogs = await prisma.aiUsageLog.groupBy({
+    by: ['teacherId'],
+    where: { institutionId: currentUser.institutionId },
+    _sum: {
+      promptTokens: true,
+      completionTokens: true,
+      costInBRL: true,
+    }
+  })
+
+  const teachers = await prisma.user.findMany({
+    where: { id: { in: usageLogs.map(log => log.teacherId) } },
+    select: { id: true, fullName: true }
+  })
+
+  return usageLogs.map(log => {
+    const teacher = teachers.find(t => t.id === log.teacherId)
+    return {
+      teacherId: log.teacherId,
+      teacherName: teacher?.fullName || "Professor Desconhecido",
+      totalTokens: (log._sum.promptTokens || 0) + (log._sum.completionTokens || 0),
+      totalCost: log._sum.costInBRL || 0,
+    }
+  }).sort((a, b) => b.totalCost - a.totalCost)
+}
+
+export async function getCoordinatorDashboardMetrics() {
+  const session = await auth()
+  if (!session?.user) throw new Error("Não autorizado")
+
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email as string },
+    select: { institutionId: true }
+  })
+
+  if (!currentUser?.institutionId) {
+    return {
+      totalTeachers: 0,
+      totalExams: 0,
+      totalSubmissions: 0,
+      activeExams: 0,
+      recentExams: []
+    }
+  }
+
+  const institutionId = currentUser.institutionId
+
+  // Total Teachers
+  const totalTeachers = await prisma.user.count({
+    where: { institutionId, role: { name: 'PROFESSOR' } }
+  })
+
+  // We need to find exams created by users in this institution
+  // The most reliable way is finding all exams where teacher.institutionId == institutionId
+  const exams = await prisma.exam.findMany({
+    where: { teacher: { institutionId } },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      createdAt: true,
+      teacher: { select: { fullName: true } },
+      _count: { select: { submissions: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  const totalExams = exams.length
+  const activeExams = exams.filter(e => e.status === 'STARTED').length
+  const totalSubmissions = exams.reduce((acc, curr) => acc + curr._count.submissions, 0)
+  
+  const recentExams = exams.slice(0, 5).map(e => ({
+    id: e.id,
+    title: e.title,
+    status: e.status,
+    createdAt: e.createdAt,
+    teacherName: e.teacher.fullName,
+    submissions: e._count.submissions
+  }))
+
+  return {
+    totalTeachers,
+    totalExams,
+    totalSubmissions,
+    activeExams,
+    recentExams
+  }
+}
+
 export async function inviteUserAction({ fullName, email, roleName = "PROFESSOR" }: { fullName: string, email: string, roleName?: string }) {
   const session = await auth()
   if (!session?.user) return { error: "Não autorizado" }

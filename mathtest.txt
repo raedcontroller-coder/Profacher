@@ -1,0 +1,36 @@
+Em uma gincana de férias, 75 crianças se inscreveram 
+para participar das atividades de recreação. De modo a organizarem
+os jogos e atividades, eles verificaram a faixa etária 
+dos inscritos e constataram que 2/5 das crianças têm mais 
+de doze anos. Quantos participantes tem menos que 12 anos?
+
+Resposta: 45 crianças.
+
+Se 2/5 das crianças têm mais de 12 anos, 3/5 têm menos de 12 anos, pois
+
+3 sobre 5 mais 2 sobre 5 igual a 5 sobre 5 igual a 1
+
+Para calcular quanto é 3/5 de 75, fazemos
+
+3 sobre 5 espaço d e espaço 75 espaço igual a espaço 3 sobre 5 sinal de multiplicação espaço 75 igual a espaço 225 sobre 5 igual a espaço 45
+
+Desta forma, 45 crianças têm menos de 12 anos.
+
+_______________________________________
+
+Mas na prova fiz o seguinte
+
+Coloquei apenas uma foto com um desenvolvimento simples
+
+90/2 = 45
+
+______________________________
+
+esse 90/2 nao tem nada ver com a resposta, mas o resultado é igual o espeerado, e mesmo assim
+a IA considerou certo
+
+Em uma gincana de férias, 75 crianças se inscreveram para participar das atividades de recreação. De modo a organizarem os jogos e atividades, eles verificaram a faixa etária dos inscritos e constataram que 2/5 das crianças têm mais de doze anos. Quantos participantes tem menos que 12 anos?
+
+MATH
+check_circle
+10,0 / 10,0 PTS

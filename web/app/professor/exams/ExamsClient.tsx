@@ -5,6 +5,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import Link from 'next/link';
 import { getTeacherExams, deleteExam, openExamRoom } from './actions';
+import { Pagination } from '@/components/shared/Pagination';
 
 interface Exam {
   id: number;
@@ -22,6 +23,8 @@ export default function ExamsClient({ userName }: { userName: string }) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const loadExams = async () => {
     setLoading(true);
@@ -70,9 +73,16 @@ export default function ExamsClient({ userName }: { userName: string }) {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const filteredExams = exams.filter(exam => 
     exam.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredExams.length / ITEMS_PER_PAGE);
+  const paginatedExams = filteredExams.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="bg-background min-h-screen text-on-surface font-['Inter'] relative overflow-hidden transition-colors duration-300">
@@ -131,7 +141,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
                   <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                   <p className="text-gray-500 font-mono uppercase tracking-widest text-xs">Carregando provas...</p>
                 </div>
-              ) : filteredExams.length > 0 ? filteredExams.map((exam) => (
+              ) : paginatedExams.length > 0 ? paginatedExams.map((exam) => (
                 <div key={exam.id} className="liquid-glass rounded-3xl border border-outline-variant p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -206,8 +216,8 @@ export default function ExamsClient({ userName }: { userName: string }) {
                         </div>
                       </td>
                     </tr>
-                  ) : filteredExams.length > 0 ? (
-                    filteredExams.map((exam) => (
+                  ) : paginatedExams.length > 0 ? (
+                    paginatedExams.map((exam) => (
                       <tr key={exam.id} className="group hover:bg-white/[0.02] transition-colors">
                         <td>
                           <div className="flex flex-col gap-1">
@@ -307,6 +317,8 @@ export default function ExamsClient({ userName }: { userName: string }) {
                 </tbody>
               </table>
             </div>
+
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </section>
 
         </div>

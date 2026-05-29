@@ -15,7 +15,7 @@ export async function getInstitutions() {
     throw new Error("Não autorizado")
   }
 
-  return await prisma.institution.findMany({
+  const institutions = await prisma.institution.findMany({
     select: {
       id: true,
       name: true,
@@ -27,6 +27,21 @@ export async function getInstitutions() {
       }
     },
     orderBy: { name: 'asc' }
+  });
+
+  const aiCosts = await prisma.aiUsageLog.groupBy({
+    by: ['institutionId'],
+    _sum: {
+      costInBRL: true
+    }
+  });
+
+  return institutions.map(inst => {
+    const cost = aiCosts.find(c => c.institutionId === inst.id);
+    return {
+      ...inst,
+      totalAiCostBrl: cost?._sum.costInBRL || 0
+    };
   });
 }
 

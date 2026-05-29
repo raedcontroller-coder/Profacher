@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { getInstitutions, getInstitutionUsers, createInstitution, updateInstitution, deleteInstitution } from './actions';
+import { Pagination } from '@/components/shared/Pagination';
 
 interface User {
   id: number;
@@ -20,6 +21,7 @@ interface Institution {
   hasIntegratedAi: boolean;
   customAiModel?: string | null;
   customAiKey?: string | null;
+  totalAiCostBrl?: number;
   _count: { users: number };
 }
 
@@ -51,23 +53,6 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
     <div className="mt-6 border-t border-outline-variant pt-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between mb-4">
           <h4 className="text-body font-bold text-primary/70">Membros da Instituição</h4>
-        <div className="flex items-center gap-2">
-          <button 
-            disabled={page === 1 || loading}
-            onClick={() => loadUsers(page - 1)}
-            className="p-1 rounded-lg hover:bg-white/5 disabled:opacity-20 transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">chevron_left</span>
-          </button>
-          <span className="text-body-sm font-mono text-gray-500 tracking-widest">Página {page} / {totalPages}</span>
-          <button 
-            disabled={page === totalPages || loading}
-            onClick={() => loadUsers(page + 1)}
-            className="p-1 rounded-lg hover:bg-white/5 disabled:opacity-20 transition-all"
-          >
-            <span className="material-symbols-outlined text-xl">chevron_right</span>
-          </button>
-        </div>
       </div>
 
       <div className="space-y-3">
@@ -77,7 +62,7 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
           users.map(user => (
             <div key={user.id} className="flex items-center justify-between p-3 rounded-xl bg-[#0d0e0f]/50 border border-outline-variant">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center text-body font-bold text-primary border border-white/5">
+                <div className="w-12 h-12 rounded-lg bg-primary/5 flex items-center justify-center text-body font-bold text-primary border border-outline-variant">
                    {user.fullName.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div>
@@ -85,7 +70,7 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
                   <p className="text-body text-gray-500">{user.email}</p>
                 </div>
               </div>
-              <span className="text-body font-bold text-gray-600 bg-white/5 px-3 py-1 rounded border border-white/5">
+              <span className="text-body font-bold text-gray-600 bg-white/5 px-3 py-1 rounded border border-outline-variant">
                 {user.role.name}
               </span>
             </div>
@@ -94,6 +79,9 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
           <p className="text-xs text-gray-600 italic">Nenhum usuário encontrado.</p>
         )}
       </div>
+      {users.length > 0 && (
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={loadUsers} />
+      )}
     </div>
   );
 }
@@ -116,16 +104,21 @@ function InstitutionCard({ institution, onEdit, onDelete }: { institution: Insti
                <span className="text-xs font-bold text-primary/70 uppercase tracking-widest">{institution._count.users} Usuários Totais</span>
                <div className="h-1 w-1 bg-gray-500 rounded-full opacity-30" />
                {institution.hasIntegratedAi ? (
-                 <span className="px-2 py-0.5 bg-primary/5 text-primary text-[10px] font-bold rounded border border-white/5 flex items-center gap-1">
+                 <span className="px-2 py-0.5 bg-primary/5 text-primary text-[10px] font-bold rounded border border-outline-variant flex items-center gap-1">
                    <span className="material-symbols-outlined text-[12px]">verified</span>
                    IA INTEGRADA
                  </span>
                ) : (
-                 <span className="px-2 py-0.5 bg-amber-500/5 text-amber-500 text-[10px] font-bold rounded border border-white/5 flex items-center gap-1">
+                 <span className="px-2 py-0.5 bg-amber-500/5 text-amber-500 text-[10px] font-bold rounded border border-outline-variant flex items-center gap-1">
                    <span className="material-symbols-outlined text-[12px]">key</span>
                    IA PRÓPRIA
                  </span>
                )}
+               <div className="h-1 w-1 bg-gray-500 rounded-full opacity-30" />
+               <span className="px-2 py-0.5 bg-green-500/5 text-green-500 text-[10px] font-bold rounded border border-outline-variant flex items-center gap-1">
+                 <span className="material-symbols-outlined text-[12px]">payments</span>
+                 CUSTO IA: R$ {(institution.totalAiCostBrl || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+               </span>
             </div>
           </div>
         </div>
@@ -249,7 +242,7 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
             />
           </div>
 
-          <div className="space-y-4 p-6 rounded-3xl bg-primary/5 border border-white/5">
+          <div className="space-y-4 p-6 rounded-3xl bg-primary/5 border border-outline-variant">
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-sm font-bold text-primary flex items-center gap-2">
@@ -268,7 +261,7 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
             </div>
 
             {!hasIntegratedAi && (
-              <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in duration-300">
+              <div className="space-y-4 pt-4 border-t border-outline-variant animate-in fade-in duration-300">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Modelo de IA da Instituição</label>
                   <select 
@@ -297,7 +290,7 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
             )}
           </div>
 
-          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-white/5 text-red-500 text-sm">{error}</div>}
+          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-outline-variant text-red-500 text-sm">{error}</div>}
 
           <div className="pt-4 flex gap-4">
             <button type="button" onClick={() => confirming ? setConfirming(false) : onClose()} className="flex-1 p-4 rounded-2xl border border-outline-variant hover:bg-white/5 font-bold">
@@ -359,7 +352,7 @@ function DeleteInstitutionModal({ isOpen, onClose, onSuccess, institution }: { i
         </div>
 
         <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-red-500/5 border border-white/5 text-on-surface leading-relaxed">
+          <div className="p-4 rounded-2xl bg-red-500/5 border border-outline-variant text-on-surface leading-relaxed">
             Para confirmar a exclusão, digite o nome exato da instituição abaixo:
             <br />
             <strong className="text-red-400 select-none">{institution.name}</strong>
@@ -372,7 +365,7 @@ function DeleteInstitutionModal({ isOpen, onClose, onSuccess, institution }: { i
             className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-red-500 transition-all text-on-surface"
           />
 
-          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-white/5 text-red-500 text-sm">{error}</div>}
+          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-outline-variant text-red-500 text-sm">{error}</div>}
 
           <div className="pt-4 flex gap-4">
             <button onClick={onClose} className="flex-1 p-4 rounded-2xl border border-outline-variant hover:bg-white/5 font-bold transition-all">
@@ -483,7 +476,7 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
             <p className="text-[10px] text-gray-500 ml-1 italic">Este será usado na URL e deve ser único.</p>
           </div>
 
-          <div className="space-y-4 p-6 rounded-3xl bg-primary/5 border border-white/5">
+          <div className="space-y-4 p-6 rounded-3xl bg-primary/5 border border-outline-variant">
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-sm font-bold text-primary flex items-center gap-2">
@@ -502,7 +495,7 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
             </div>
 
             {!hasIntegratedAi && (
-              <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in duration-300">
+              <div className="space-y-4 pt-4 border-t border-outline-variant animate-in fade-in duration-300">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Modelo de IA da Instituição</label>
                   <select 
@@ -532,7 +525,7 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
           </div>
 
           {error && (
-            <div className="p-4 rounded-xl bg-red-500/5 border border-white/5 text-red-500 text-sm flex items-center gap-3">
+            <div className="p-4 rounded-xl bg-red-500/5 border border-outline-variant text-red-500 text-sm flex items-center gap-3">
               <span className="material-symbols-outlined text-sm">error</span>
               {error}
             </div>

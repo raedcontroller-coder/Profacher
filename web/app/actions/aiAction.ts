@@ -2,6 +2,26 @@
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getPromptForQuestionType } from "@/lib/ai/prompts"
+import { getEngineConfig } from "@/lib/ai/engines"
+
+function calculateAiCostInUSD(model: string, promptTokens: number, completionTokens: number): number {
+    const pricesPer1M: Record<string, { prompt: number; completion: number }> = {
+        'gpt-4o-mini': { prompt: 0.15, completion: 0.60 },
+        'gpt-4o': { prompt: 5.00, completion: 15.00 },
+        'gpt-4-turbo': { prompt: 10.00, completion: 30.00 },
+        'gemini-1.5-pro': { prompt: 3.50, completion: 10.50 },
+        'claude-3-5-sonnet': { prompt: 3.00, completion: 15.00 },
+        'deepseek-chat': { prompt: 0.14, completion: 0.28 },
+        'openrouter': { prompt: 0.15, completion: 0.60 },
+    };
+
+    const rate = pricesPer1M[model] || pricesPer1M['gpt-4o-mini'];
+    const promptCost = (promptTokens / 1_000_000) * rate.prompt;
+    const completionCost = (completionTokens / 1_000_000) * rate.completion;
+    
+    return promptCost + completionCost;
+}
 
 export async function generateMathEquation(prompt: string) {
     const session = await auth();
@@ -38,31 +58,8 @@ export async function generateMathEquation(prompt: string) {
             return { success: false, error: "Chave de API não configurada no sistema. Verifique o painel administrativo." };
         }
 
-        // Sistema de Roteamento de Endpoints (Compatibilidade Nativa via Fetch)
-        let endpoint = "https://api.openai.com/v1/chat/completions";
-        let bodyModel = aiModel;
-
-        if (aiModel === 'openrouter') {
-            endpoint = "https://openrouter.ai/api/v1/chat/completions";
-            bodyModel = "openai/gpt-4o-mini"; // Fallback veloz e barato do OpenRouter caso selecionem o genérico
-        } else if (aiModel.includes('deepseek')) {
-            endpoint = "https://api.deepseek.com/chat/completions";
-        } else if (aiModel.includes('gemini')) {
-            // Se o usuário tentar usar gemini por fora do openrouter sem biblioteca do Google, tentamos openrouter fallback
-            // Para maior estabilidade com o modelo OpenAI Format
-            endpoint = "https://openrouter.ai/api/v1/chat/completions";
-            bodyModel = "google/gemini-1.5-pro";
-        }
-
-        const headers: Record<string, string> = {
-            "Authorization": `Bearer ${aiKey}`,
-            "Content-Type": "application/json",
-        };
-
-        if (endpoint.includes('openrouter')) {
-            headers["HTTP-Referer"] = "http://localhost:3000";
-            headers["X-Title"] = "Profacher 2.0";
-        }
+        // Roteamento de Endpoints via arquivo de configuração (engines.ts)
+        const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
 
         const response = await fetch(endpoint, {
             method: "POST",
@@ -101,6 +98,28 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
         const data = await response.json();
         let latex = data.choices?.[0]?.message?.content || "";
         
+        // Faturamento (Billing)
+        const promptTokens = data.usage?.prompt_tokens || 0;
+        const completionTokens = data.usage?.completion_tokens || 0;
+        
+        if (promptTokens > 0 || completionTokens > 0) {
+            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
+            const usdToBrlRate = globalSettings?.usdToBrlRate || 5.50;
+            const costUsd = calculateAiCostInUSD(bodyModel, promptTokens, completionTokens);
+            const costBrl = costUsd * usdToBrlRate;
+            
+            await prisma.aiUsageLog.create({
+                data: {
+                    teacherId: user.id,
+                    institutionId: user.institutionId,
+                    modelUsed: bodyModel,
+                    promptTokens,
+                    completionTokens,
+                    costInBRL: costBrl
+                }
+            });
+        }
+
         // Sanitizar agressivamente a resposta da IA caso ela desobedeça o prompt
         latex = latex.replace(/```latex/gi, "")
                      .replace(/```/g, "")
@@ -115,7 +134,7 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
     }
 }
 
-export async function gradeStudentAnswer(questionContent: string, referenceAnswer: string, studentAnswer: string, teacherId?: number, correctionMode: string = "CONCEPTUAL", studentImage?: string, referenceImage?: string) {
+export async function gradeStudentAnswer(questionContent: string, referenceAnswer: string, studentAnswer: string, teacherId?: number, correctionMode: string = "CONCEPTUAL", studentImage?: string, referenceImage?: string, questionType: string = "ESSAY") {
     try {
         let user;
         
@@ -157,54 +176,10 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
 
         if (!aiKey) return { success: false, error: "IA não configurada." };
 
-        let endpoint = "https://api.openai.com/v1/chat/completions";
-        let bodyModel = aiModel;
+        // Roteamento de Endpoints via arquivo de configuração (engines.ts)
+        const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
 
-        if (aiModel === 'openrouter') {
-            endpoint = "https://openrouter.ai/api/v1/chat/completions";
-            bodyModel = "openai/gpt-4o-mini";
-        } else if (aiModel.includes('deepseek')) {
-            endpoint = "https://api.deepseek.com/chat/completions";
-        } else if (aiModel.includes('gemini')) {
-            endpoint = "https://openrouter.ai/api/v1/chat/completions";
-            bodyModel = "google/gemini-1.5-pro";
-        }
-
-        const headers: Record<string, string> = {
-            "Authorization": `Bearer ${aiKey}`,
-            "Content-Type": "application/json",
-        };
-
-        const isConceptual = correctionMode === "CONCEPTUAL";
-
-        const systemPrompt = isConceptual 
-            ? `Você é um avaliador de provas ultrapreciso focado em ANÁLISE CONCEITUAL E INSTRUCIONAL.
-            
-Sua missão é dar uma nota para a resposta de um aluno baseando-se no "Gabarito de Referência" do professor.
-IMPORTANTE: O gabarito pode conter INSTRUÇÕES de correção (ex: "considere certo se citar X"). Você deve PRIORIZAR o cumprimento dessas instruções sobre a comparação literal de texto.
-
-REGRAS CRÍTICAS (MODO CONCEITUAL):
-1. FOCO NA IDEIA: Se o aluno explicou o conceito corretamente, mesmo usando palavras totalmente diferentes da do professor, dê nota máxima.
-2. INSTRUÇÕES VALEM TUDO: Se o gabarito disser "Considere correto se...", e o aluno atender ao critério, a nota é 100.
-3. RIGOR LÓGICO E MATEMÁTICO: Se o gabarito especificar um intervalo numérico (ex: "entre 10 e 20"), um valor exato ou uma condição lógica binária, você deve segui-la RIGOROSAMENTE.
-4. FLEXIBILIDADE CONCEITUAL: Seja benevolente com a escrita em respostas dissertativas. O que importa é se o aluno demonstrou conhecimento.
-5. ANÁLISE DE IMAGENS DE CÁLCULO: Se houver uma imagem de desenvolvimento enviada pelo aluno (rascunho, foto, whiteboard), você DEVE analisar rigorosamente se os passos matemáticos estão corretos. Verifique: (a) se os procedimentos estão corretos passo a passo, (b) se o resultado final bate com o gabarito, (c) se há erros de raciocínio ou de cálculo. Erros matemáticos explícitos resultam em nota proporcional ao que foi feito corretamente. NÃO presuma que está certo apenas porque há uma imagem — analise o conteúdo visual com rigor matemático.
-6. GABARITO VISUAL DO PROFESSOR: Se o professor forneceu uma imagem de gabarito de desenvolvimento, compare o desenvolvimento do aluno com o gabarito visual do professor passo a passo.
-7. RESPOSTA CERTA, RACIOCÍNIO ERRADO = NOTA BAIXA: Para questões matemáticas ou de cálculo, uma resposta numericamente correta NÃO garante nota total se o desenvolvimento/raciocínio for matematicamente incoerente, inventado ou logicamente inválido.
-   EXEMPLO: Questão pede quantas crianças têm menos de 12 anos (total=75, 2/5 têm mais de 12). Gabarito: 45 (via 3/5 × 75). Se o aluno escrever "90 ÷ 2 = 45" — a resposta final (45) está correta, mas o desenvolvimento (90 dividido por 2) é matematicamente sem sentido para este problema. Neste caso, a nota deve ser BAIXA (0 a 30), pois o aluno "chutou" ou usou um procedimento inválido. O raciocínio correto é condição obrigatória para nota alta.
-8. RESPOSTA TOTALMENTE ERRADA = 0: Se o aluno errou completamente o raciocínio E a resposta final, ou se a resposta não tiver nenhuma relação com o que foi pedido, a NOTA DEVE SER ZERO (0). Não seja complacente com respostas inventadas ou absurdas.
-9. ESCALA: 0 a 100. (100 = resposta correta COM desenvolvimento/raciocínio matematicamente válido e coerente; 0 = totalmente incorreto).`
-            : `Você é um avaliador de provas focado em ANÁLISE COMPARATIVA E SEMÂNTICA.
-            
-Sua missão é dar uma nota comparando a resposta do aluno com o "Gabarito de Referência" do professor.
-
-REGRAS CRÍTICAS (MODO COMPARATIVO):
-1. SIMILARIDADE: A resposta do aluno deve ser semanticamente próxima e conter as informações principais presentes no gabarito.
-2. RIGOR MATEMÁTICO/FATUAL: Seja extremamente criterioso com a precisão de números, datas, nomes e dados técnicos. Hallucinações numéricas resultam em nota 0.
-3. RESPOSTA CERTA, RACIOCÍNIO ERRADO = NOTA BAIXA: Para questões matemáticas, uma resposta numericamente correta NÃO garante nota total se o desenvolvimento for matematicamente incoerente ou inventado. O aluno deve demonstrar o procedimento correto. Um resultado correto obtido por meio de um desenvolvimento inválido deve receber nota proporcional apenas à resposta final (ex: 10 a 20 de 100), sem crédito pelo desenvolvimento.
-4. ANÁLISE DE IMAGENS: Se houver imagem de desenvolvimento do aluno, analise com rigor se os cálculos e procedimentos estão corretos. Não conceda pontos por imagens ilegíveis ou com erros claros.
-5. RESPOSTA TOTALMENTE ERRADA = 0: Se a resposta (texto ou imagem) não fizer nenhum sentido matemático ou lógico para o problema, a NOTA É ZERO. Sem complacência.
-6. ESCALA: 0 a 100.`;
+        const systemPrompt = getPromptForQuestionType(questionType, correctionMode);
 
         let userMessageContent: any[] | string = `QUESTÃO: ${questionContent}\nGABARITO DO PROFESSOR: ${referenceAnswer}\nRESPOSTA DO ALUNO: ${studentAnswer}`;
 
@@ -235,7 +210,7 @@ REGRAS CRÍTICAS (MODO COMPARATIVO):
             messages: [
                 {
                     role: "system",
-                    content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota.`
+                    content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"analysis": "sua análise passo a passo secreta sobre a validade do raciocínio e cálculo antes de dar a nota", "score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota para o aluno.`
                 },
                 {
                     role: "user",
@@ -243,7 +218,8 @@ REGRAS CRÍTICAS (MODO COMPARATIVO):
                 }
             ],
             temperature: 0,
-            max_tokens: 300
+            max_tokens: 300,
+            response_format: { type: "json_object" }
         };
 
         console.log("=========================================");
@@ -274,6 +250,28 @@ REGRAS CRÍTICAS (MODO COMPARATIVO):
         content = content.replace(/```json/g, "").replace(/```/g, "").trim();
         
         const result = JSON.parse(content);
+
+        // Faturamento (Billing)
+        const promptTokens = data.usage?.prompt_tokens || 0;
+        const completionTokens = data.usage?.completion_tokens || 0;
+        
+        if (promptTokens > 0 || completionTokens > 0) {
+            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
+            const usdToBrlRate = globalSettings?.usdToBrlRate || 5.50;
+            const costUsd = calculateAiCostInUSD(bodyModel, promptTokens, completionTokens);
+            const costBrl = costUsd * usdToBrlRate;
+            
+            await prisma.aiUsageLog.create({
+                data: {
+                    teacherId: user.id,
+                    institutionId: user.institutionId,
+                    modelUsed: bodyModel,
+                    promptTokens,
+                    completionTokens,
+                    costInBRL: costBrl
+                }
+            });
+        }
 
         return { 
             success: true, 

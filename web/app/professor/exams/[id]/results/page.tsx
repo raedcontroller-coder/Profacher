@@ -8,6 +8,7 @@ import TopBar from '@/components/dashboard/TopBar';
 import { getExamForMonitor, kickStudent, getSubmissionDetails } from '../../actions';
 import { generateTeacherSummaryPdf, generateFullDetailedClassPdf, generateExamPdf } from '@/lib/utils/pdf-generator';
 import MathRenderer from '@/components/shared/MathRenderer';
+import { Pagination } from '@/components/shared/Pagination';
 
 export default function ExamResultsPage() {
   const params = useParams();
@@ -20,6 +21,10 @@ export default function ExamResultsPage() {
   const [filterType, setFilterType] = useState<'DELIVERY' | 'ALPHABETICAL' | 'SCORE'>('ALPHABETICAL');
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => { setCurrentPage(1); }, [filterType]);
 
   // 1. Carregar dados da prova de forma periódica para monitorar entregas
   useEffect(() => {
@@ -194,7 +199,7 @@ export default function ExamResultsPage() {
                       if (merged.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={5} className="py-20 text-center opacity-30">
+                            <td colSpan={6} className="py-20 text-center opacity-30">
                                <span className="material-symbols-outlined text-6xl block mb-4">analytics</span>
                                <p className="text-lg font-medium">Nenhum resultado disponível ainda.</p>
                             </td>
@@ -202,7 +207,10 @@ export default function ExamResultsPage() {
                         );
                       }
 
-                      return merged.map((p: any, i: number) => {
+                      const totalPages = Math.ceil(merged.length / ITEMS_PER_PAGE);
+                      const paginatedMerged = merged.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+                      return paginatedMerged.map((p: any, i: number) => {
                         const totalQuestions = exam?._count?.questions || 0;
                         const answeredCount = Object.keys(p.answers || {}).length;
                         const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
@@ -276,6 +284,14 @@ export default function ExamResultsPage() {
                   </tbody>
                 </table>
               </div>
+              
+              {exam?.submissions?.length > 0 && (
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={Math.ceil(exam.submissions.length / ITEMS_PER_PAGE)} 
+                  onPageChange={setCurrentPage} 
+                />
+              )}
           </div>
         </div>
       </main>

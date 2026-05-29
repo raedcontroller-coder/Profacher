@@ -697,12 +697,12 @@ export async function finishExamLive(submissionId: number) {
               // Se não houver referenceAnswer, usamos o texto da opção correta como referência
               const ref = referenceAnswer || detail.correctAnswer;
               
-              const result = await gradeStudentAnswer(prompt, ref, combinedInput, submission.exam.teacherId, q.correctionMode);
+              const result = await gradeStudentAnswer(prompt, ref, combinedInput, submission.exam.teacherId, q.correctionMode, undefined, undefined, q.type);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Avaliado pela IA (Objetiva + Justificativa)." };
               }
-              return { points: 0, feedback: "A IA não pôde avaliar a justificativa." };
+              return { points: 0, feedback: "⚠️ Correção Pendente: Ocorreu uma falha de comunicação com a Inteligência Artificial. Sua resposta foi salva em segurança e será corrigida manualmente pelo professor." };
             })()
           });
         }
@@ -767,12 +767,12 @@ export async function finishExamLive(submissionId: number) {
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer(q.content, referenceAnswer, finalStudentAnswer, submission.exam.teacherId, q.correctionMode, devBase64, q.referenceDevelopment);
+              const result = await gradeStudentAnswer(q.content, referenceAnswer, finalStudentAnswer, submission.exam.teacherId, q.correctionMode, devBase64, q.referenceDevelopment ?? undefined, q.type);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Corrigido pela IA." };
               }
-              return { points: 0, feedback: "A IA não pôde processar esta resposta." };
+              return { points: 0, feedback: "⚠️ Correção Pendente: Ocorreu uma falha de comunicação com a Inteligência Artificial. Sua resposta foi salva em segurança e será corrigida manualmente pelo professor." };
             })()
           });
         }
@@ -796,12 +796,12 @@ export async function finishExamLive(submissionId: number) {
           aiCorrections.push({
             index: currentDetailIndex,
             promise: (async () => {
-              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer || "Avalie a interação e justificativa", combinedInput, submission.exam.teacherId, q.correctionMode);
+              const result = await gradeStudentAnswer("QUESTÃO INTERATIVA: " + enunciation, referenceAnswer || "Avalie a interação e justificativa", combinedInput, submission.exam.teacherId, q.correctionMode, undefined, undefined, q.type);
               if (result.success) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Interação avaliada pela IA." };
               }
-              return { points: 0, feedback: "A IA não pôde avaliar esta interação." };
+              return { points: 0, feedback: "⚠️ Correção Pendente: Ocorreu uma falha de comunicação com a Inteligência Artificial. Sua resposta foi salva em segurança e será corrigida manualmente pelo professor." };
             })()
           });
         } else {

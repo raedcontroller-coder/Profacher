@@ -18,7 +18,8 @@ const coordinatorNavItems: NavItem[] = [
   { icon: 'dashboard', label: 'Dashboard', href: '/coordinator' },
   { icon: 'description', label: 'Provas', href: '/coordinator/exams' },
   { icon: 'analytics', label: 'Resultados', href: '/coordinator/results' },
-  { icon: 'group', label: 'Gestão de Usuários', href: '/coordinator' },
+  { icon: 'group', label: 'Gestão de Usuários', href: '/coordinator/users' },
+  { icon: 'monitoring', label: 'Custos de IA', href: '/coordinator/ai-costs' },
   { icon: 'settings', label: 'Configurações', href: '/coordinator/settings' },
 ];
 
