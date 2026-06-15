@@ -4,24 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getPromptForQuestionType } from "@/lib/ai/prompts"
 import { getEngineConfig } from "@/lib/ai/engines"
-
-function calculateAiCostInUSD(model: string, promptTokens: number, completionTokens: number): number {
-    const pricesPer1M: Record<string, { prompt: number; completion: number }> = {
-        'gpt-4o-mini': { prompt: 0.15, completion: 0.60 },
-        'gpt-4o': { prompt: 5.00, completion: 15.00 },
-        'gpt-4-turbo': { prompt: 10.00, completion: 30.00 },
-        'gemini-1.5-pro': { prompt: 3.50, completion: 10.50 },
-        'claude-3-5-sonnet': { prompt: 3.00, completion: 15.00 },
-        'deepseek-chat': { prompt: 0.14, completion: 0.28 },
-        'openrouter': { prompt: 0.15, completion: 0.60 },
-    };
-
-    const rate = pricesPer1M[model] || pricesPer1M['gpt-4o-mini'];
-    const promptCost = (promptTokens / 1_000_000) * rate.prompt;
-    const completionCost = (completionTokens / 1_000_000) * rate.completion;
-    
-    return promptCost + completionCost;
-}
+import { logAiUsage } from "@/lib/ai/billing"
 
 export async function generateMathEquation(prompt: string) {
     const session = await auth();
@@ -37,19 +20,25 @@ export async function generateMathEquation(prompt: string) {
 
         let aiKey = "";
         let aiModel = "";
+        let fallbackKey = "";
+        let fallbackModel = "";
 
         // Roteamento Hierárquico: Instituição Integrada vs Customizada vs Admin Global
-        if (user.institution?.hasIntegratedAi) {
+        if (user.institution?.hasIntegratedAi || user.roleId === 1) {
             const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
             aiKey = globalSettings?.globalAiKey || "";
             aiModel = globalSettings?.globalAiModel || "gpt-4o";
+            
+            if (globalSettings?.savedAiKeys && Array.isArray(globalSettings.savedAiKeys)) {
+                const fb = (globalSettings.savedAiKeys as any[]).find((k) => k.isFallback);
+                if (fb) {
+                    fallbackKey = fb.key;
+                    fallbackModel = fb.model;
+                }
+            }
         } else if (user.institution) {
             aiKey = user.institution.customAiKey || "";
             aiModel = user.institution.customAiModel || "gpt-4o";
-        } else if (user.roleId === 1) { // fallback para Admin (Role 1 = Admin)
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            aiKey = globalSettings?.globalAiKey || "";
-            aiModel = globalSettings?.globalAiModel || "gpt-4o";
         } else {
             return { success: false, error: "Sem acesso a uma API de IA configurada." };
         }
@@ -58,8 +47,8 @@ export async function generateMathEquation(prompt: string) {
             return { success: false, error: "Chave de API não configurada no sistema. Verifique o painel administrativo." };
         }
 
-        // Roteamento de Endpoints via arquivo de configuração (engines.ts)
-        const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
+        async function attemptMathGeneration(modelToUse: string, keyToUse: string) {
+            const { endpoint, bodyModel, headers } = getEngineConfig(modelToUse, keyToUse);
 
         const response = await fetch(endpoint, {
             method: "POST",
@@ -89,36 +78,41 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
             })
         });
 
-        if (!response.ok) {
-            const err = await response.text();
-            console.error("AI Math Error payload:", err);
-            return { success: false, error: `Falha na requisição da IA (${response.status})` };
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`Falha na requisição da IA (${response.status}) - ${err}`);
+            }
+
+            const data = await response.json();
+            return { data, bodyModel };
         }
 
-        const data = await response.json();
-        let latex = data.choices?.[0]?.message?.content || "";
+        let aiData: any;
+        let finalBodyModel = "";
+
+        try {
+            const res = await attemptMathGeneration(aiModel, aiKey);
+            aiData = res.data;
+            finalBodyModel = res.bodyModel;
+        } catch (e: any) {
+            console.warn("[AI MATH] Erro com a IA principal:", e.message);
+            if (fallbackKey && fallbackModel) {
+                console.log("[AI MATH] Tentando IA de Fallback...");
+                const resFallback = await attemptMathGeneration(fallbackModel, fallbackKey);
+                aiData = resFallback.data;
+                finalBodyModel = resFallback.bodyModel;
+            } else {
+                throw e; // Lança para o catch de segurança
+            }
+        }
+
+        let latex = aiData.choices?.[0]?.message?.content || "";
         
         // Faturamento (Billing)
-        const promptTokens = data.usage?.prompt_tokens || 0;
-        const completionTokens = data.usage?.completion_tokens || 0;
+        const promptTokens = aiData.usage?.prompt_tokens || 0;
+        const completionTokens = aiData.usage?.completion_tokens || 0;
         
-        if (promptTokens > 0 || completionTokens > 0) {
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            const usdToBrlRate = globalSettings?.usdToBrlRate || 5.50;
-            const costUsd = calculateAiCostInUSD(bodyModel, promptTokens, completionTokens);
-            const costBrl = costUsd * usdToBrlRate;
-            
-            await prisma.aiUsageLog.create({
-                data: {
-                    teacherId: user.id,
-                    institutionId: user.institutionId,
-                    modelUsed: bodyModel,
-                    promptTokens,
-                    completionTokens,
-                    costInBRL: costBrl
-                }
-            });
-        }
+        await logAiUsage(user.id, user.institutionId, finalBodyModel, promptTokens, completionTokens);
 
         // Sanitizar agressivamente a resposta da IA caso ela desobedeça o prompt
         latex = latex.replace(/```latex/gi, "")
@@ -158,26 +152,29 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
 
         let aiKey = "";
         let aiModel = "";
+        let fallbackKey = "";
+        let fallbackModel = "";
 
-        if (user.institution?.hasIntegratedAi) {
+        if (user.institution?.hasIntegratedAi || user.roleId === 1) {
             const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
             aiKey = globalSettings?.globalAiKey || "";
             aiModel = globalSettings?.globalAiModel || "gpt-4o";
+            
+            if (globalSettings?.savedAiKeys && Array.isArray(globalSettings.savedAiKeys)) {
+                const fb = (globalSettings.savedAiKeys as any[]).find((k) => k.isFallback);
+                if (fb) {
+                    fallbackKey = fb.key;
+                    fallbackModel = fb.model;
+                }
+            }
         } else if (user.institution) {
             aiKey = user.institution.customAiKey || "";
             aiModel = user.institution.customAiModel || "gpt-4o";
-        } else if (user.roleId === 1) {
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            aiKey = globalSettings?.globalAiKey || "";
-            aiModel = globalSettings?.globalAiModel || "gpt-4o";
         } else {
             return { success: false, error: "Sem acesso a uma IA configurada." };
         }
 
         if (!aiKey) return { success: false, error: "IA não configurada." };
-
-        // Roteamento de Endpoints via arquivo de configuração (engines.ts)
-        const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
 
         const systemPrompt = getPromptForQuestionType(questionType, correctionMode);
 
@@ -205,46 +202,60 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
             }
         }
 
-        const bodyPayload = {
-            model: bodyModel,
-            messages: [
-                {
-                    role: "system",
-                    content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"analysis": "sua análise passo a passo secreta sobre a validade do raciocínio e cálculo antes de dar a nota", "score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota para o aluno.`
-                },
-                {
-                    role: "user",
-                    content: userMessageContent
-                }
-            ],
-            temperature: 0,
-            max_tokens: 300,
-            response_format: { type: "json_object" }
-        };
+        async function attemptGrading(modelToUse: string, keyToUse: string) {
+            const { endpoint, bodyModel, headers } = getEngineConfig(modelToUse, keyToUse);
+            const bodyPayload = {
+                model: bodyModel,
+                messages: [
+                    {
+                        role: "system",
+                        content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"analysis": "sua análise passo a passo secreta sobre a validade do raciocínio e cálculo antes de dar a nota", "score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota para o aluno.`
+                    },
+                    {
+                        role: "user",
+                        content: userMessageContent
+                    }
+                ],
+                temperature: 0,
+                max_tokens: 300,
+                response_format: { type: "json_object" }
+            };
 
-        console.log("=========================================");
-        console.log("[AI GRADING] Payload enviado para a IA:");
-        console.log(JSON.stringify(bodyPayload, null, 2));
-        console.log("=========================================");
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(bodyPayload)
+            });
 
-        const response = await fetch(endpoint, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(bodyPayload)
-        });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`Falha HTTP ${response.status}: ${err}`);
+            }
 
-        if (!response.ok) {
-            console.error("[AI GRADING] Erro da API HTTP:", response.status, await response.text());
-            return { success: false, error: "IA indisponível no momento" };
+            const data = await response.json();
+            return { data, bodyModel };
         }
 
-        const data = await response.json();
-        let content = data.choices?.[0]?.message?.content || "{\"score\": 0, \"feedback\": \"Falha na análise.\"}";
-        
-        console.log("=========================================");
-        console.log("[AI GRADING] Resposta crua recebida da IA:");
-        console.log(content);
-        console.log("=========================================");
+        let aiData: any;
+        let finalBodyModel = "";
+
+        try {
+            const res = await attemptGrading(aiModel, aiKey);
+            aiData = res.data;
+            finalBodyModel = res.bodyModel;
+        } catch (e: any) {
+            console.warn("[AI GRADING] Erro com IA principal:", e.message);
+            if (fallbackKey && fallbackModel) {
+                console.log("[AI GRADING] Tentando IA de Fallback...");
+                const resFallback = await attemptGrading(fallbackModel, fallbackKey);
+                aiData = resFallback.data;
+                finalBodyModel = resFallback.bodyModel;
+            } else {
+                throw e;
+            }
+        }
+
+        let content = aiData.choices?.[0]?.message?.content || "{\"score\": 0, \"feedback\": \"Falha na análise.\"}";
         
         // Limpeza básica caso a IA coloque markdown
         content = content.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -252,26 +263,10 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
         const result = JSON.parse(content);
 
         // Faturamento (Billing)
-        const promptTokens = data.usage?.prompt_tokens || 0;
-        const completionTokens = data.usage?.completion_tokens || 0;
+        const promptTokens = aiData.usage?.prompt_tokens || 0;
+        const completionTokens = aiData.usage?.completion_tokens || 0;
         
-        if (promptTokens > 0 || completionTokens > 0) {
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            const usdToBrlRate = globalSettings?.usdToBrlRate || 5.50;
-            const costUsd = calculateAiCostInUSD(bodyModel, promptTokens, completionTokens);
-            const costBrl = costUsd * usdToBrlRate;
-            
-            await prisma.aiUsageLog.create({
-                data: {
-                    teacherId: user.id,
-                    institutionId: user.institutionId,
-                    modelUsed: bodyModel,
-                    promptTokens,
-                    completionTokens,
-                    costInBRL: costBrl
-                }
-            });
-        }
+        await logAiUsage(user.id, user.institutionId, finalBodyModel, promptTokens, completionTokens);
 
         return { 
             success: true, 

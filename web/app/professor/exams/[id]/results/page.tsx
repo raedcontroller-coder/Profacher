@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
-import { getExamForMonitor, kickStudent, getSubmissionDetails } from '../../actions';
+import { getExamForMonitor, kickStudent, getSubmissionDetails, updateManualGrade } from '../../actions';
 import { generateTeacherSummaryPdf, generateFullDetailedClassPdf, generateExamPdf } from '@/lib/utils/pdf-generator';
 import MathRenderer from '@/components/shared/MathRenderer';
 import { Pagination } from '@/components/shared/Pagination';
@@ -23,6 +23,11 @@ export default function ExamResultsPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
+  const [manualPoints, setManualPoints] = useState<string>('');
+  const [manualFeedback, setManualFeedback] = useState<string>('');
+  const [savingManualGrade, setSavingManualGrade] = useState(false);
 
   useEffect(() => { setCurrentPage(1); }, [filterType]);
 
@@ -48,7 +53,6 @@ export default function ExamResultsPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-surface text-on-surface selection:bg-primary/30 selection:text-primary font-['Inter']">
       <Sidebar role="PROFESSOR" />
@@ -317,8 +321,10 @@ export default function ExamResultsPage() {
               </header>
 
               <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar bg-black/20">
-                 {selectedSubmission.report.map((it: any, idx: number) => (
-                    <div key={idx} className="space-y-4 p-8 rounded-3xl bg-white/5 border border-white/5">
+                 {selectedSubmission.report.map((it: any, idx: number) => {
+                    const isPending = it.feedback?.includes('Correção Pendente');
+                    return (
+                    <div key={idx} className={`space-y-4 p-8 rounded-3xl bg-white/5 border ${isPending ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'border-white/5'}`}>
                        <div className="flex items-start gap-4 min-w-0">
                           <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center text-xs font-black shrink-0">{idx + 1}</span>
                            <div className="space-y-4 flex-1 min-w-0 overflow-hidden">
@@ -326,8 +332,21 @@ export default function ExamResultsPage() {
                                  <div className="text-lg font-bold text-gray-100 break-words max-w-full overflow-hidden flex-1">
                                     <MathRenderer content={it.content} className="!p-0 max-w-full overflow-x-hidden" />
                                  </div>
-                                 <div className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest shrink-0 ${it.pointsObtained >= it.points ? 'bg-green-500/10 border-green-500/20 text-green-400' : it.pointsObtained > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                                    {it.pointsObtained?.toFixed(1).replace('.', ',') || '0,0'} / {it.points?.toFixed(1).replace('.', ',')} PTS
+                                 <div className="flex items-center gap-2 shrink-0">
+                                   <div className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest ${it.pointsObtained >= it.points ? 'bg-green-500/10 border-green-500/20 text-green-400' : it.pointsObtained > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                                       {it.pointsObtained?.toFixed(1).replace('.', ',') || '0,0'} / {it.points?.toFixed(1).replace('.', ',')} PTS
+                                   </div>
+                                   <button 
+                                     onClick={() => {
+                                       setEditingQuestionId(it.questionId);
+                                       setManualPoints(String(it.pointsObtained));
+                                       setManualFeedback(it.feedback || '');
+                                     }}
+                                     className="w-8 h-8 rounded-full border border-white/10 hover:bg-white/10 flex items-center justify-center text-gray-400 transition-all"
+                                     title="Corrigir Manualmente"
+                                   >
+                                     <span className="material-symbols-outlined text-sm">edit</span>
+                                   </button>
                                  </div>
                               </div>
                              <div className="space-y-4 pt-4 border-t border-white/5">
@@ -392,23 +411,98 @@ export default function ExamResultsPage() {
                                             </div>
                                          </div>
                                       )}
-                                      
-                                      {it.feedback && (
-                                         <div className="mt-4 p-5 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-3">
-                                            <span className="material-symbols-outlined text-primary text-xl">smart_toy</span>
+                                                                   {editingQuestionId === it.questionId ? (
+                                         <div className="mt-6 p-6 rounded-2xl bg-black/40 border border-white/10 space-y-4">
+                                           <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                             <span className="material-symbols-outlined text-sm">edit_note</span>
+                                             Correção Manual
+                                           </h4>
+                                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                             <div className="space-y-2">
+                                               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Nota Atribuída</label>
+                                               <input 
+                                                 type="number" 
+                                                 step="0.1"
+                                                 min="0"
+                                                 max={it.points}
+                                                 value={manualPoints}
+                                                 onChange={e => setManualPoints(e.target.value)}
+                                                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                                               />
+                                             </div>
+                                             <div className="md:col-span-3 space-y-2">
+                                               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Feedback / Justificativa</label>
+                                               <input 
+                                                 type="text" 
+                                                 value={manualFeedback}
+                                                 onChange={e => setManualFeedback(e.target.value)}
+                                                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                                                 placeholder="Escreva um feedback para o aluno..."
+                                               />
+                                             </div>
+                                           </div>
+                                           <div className="flex justify-end gap-3 pt-2">
+                                             <button 
+                                               onClick={() => setEditingQuestionId(null)}
+                                               className="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-colors"
+                                               disabled={savingManualGrade}
+                                             >
+                                               Cancelar
+                                             </button>
+                                             <button 
+                                               onClick={async () => {
+                                                 setSavingManualGrade(true);
+                                                 const res = await updateManualGrade(selectedSubmission.id, it.questionId, Number(manualPoints), manualFeedback);
+                                                 if (res.success) {
+                                                   setSelectedSubmission((prev: any) => ({
+                                                     ...prev,
+                                                     score: res.newTotalScore,
+                                                     report: prev.report.map((r: any) => 
+                                                       r.questionId === it.questionId 
+                                                         ? { ...r, pointsObtained: Number(manualPoints), feedback: manualFeedback }
+                                                         : r
+                                                     )
+                                                   }));
+                                                   setExam((prev: any) => ({
+                                                     ...prev,
+                                                     submissions: prev.submissions.map((s: any) => 
+                                                       s.id === selectedSubmission.id ? { ...s, score: res.newTotalScore } : s
+                                                     )
+                                                   }));
+                                                   setEditingQuestionId(null);
+                                                 } else {
+                                                   alert("Erro ao salvar nota: " + res.error);
+                                                 }
+                                                 setSavingManualGrade(false);
+                                               }}
+                                               disabled={savingManualGrade}
+                                               className="px-6 py-2 rounded-xl bg-primary text-black text-xs font-black hover:scale-105 transition-all disabled:opacity-50"
+                                             >
+                                               {savingManualGrade ? 'Salvando...' : 'Salvar Correção'}
+                                             </button>
+                                           </div>
+                                         </div>
+                                       ) : it.feedback ? (
+                                         <div className={`mt-4 p-5 rounded-2xl flex items-start gap-3 border ${isPending ? 'bg-amber-500/10 border-amber-500/20' : 'bg-primary/5 border-primary/10'}`}>
+                                            <span className={`material-symbols-outlined text-xl ${isPending ? 'text-amber-500' : 'text-primary'}`}>
+                                              {isPending ? 'warning' : 'smart_toy'}
+                                            </span>
                                             <div className="space-y-1">
-                                               <p className="text-[10px] font-black text-primary uppercase tracking-widest">Feedback da IA</p>
-                                               <p className="text-xs text-gray-400 italic leading-relaxed">{it.feedback}</p>
+                                               <p className={`text-[10px] font-black uppercase tracking-widest ${isPending ? 'text-amber-500' : 'text-primary'}`}>
+                                                 {isPending ? 'Aviso do Sistema' : 'Feedback da IA / Professor'}
+                                               </p>
+                                               <p className={`text-xs italic leading-relaxed ${isPending ? 'text-amber-200/70' : 'text-gray-400'}`}>{it.feedback}</p>
                                             </div>
                                          </div>
-                                      )}
+                                      ) : null}
                                    </>
                                 )}
                              </div>
                           </div>
                        </div>
                     </div>
-                 ))}
+                 );
+              })}
               </div>
 
               <footer className="p-8 border-t border-white/5 flex justify-end shrink-0 bg-surface">

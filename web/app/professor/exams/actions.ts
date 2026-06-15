@@ -906,3 +906,53 @@ export async function getExamForEdit(examId: number) {
     return { success: false, error: e.message };
   }
 }
+
+export async function updateManualGrade(submissionId: number, questionId: number, newPoints: number, manualFeedback: string) {
+  const session = await auth()
+  const userId = session?.user ? Number((session.user as any).id) : null
+
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  try {
+    const submission = await prisma.examSubmission.findUnique({
+      where: { id: submissionId },
+      include: { exam: true }
+    });
+
+    if (!submission || submission.exam.teacherId !== userId) {
+        return { success: false, error: "Submissão não encontrada ou acesso negado" };
+    }
+
+    const details = (submission.correctionDetails as any[]) || [];
+    let updated = false;
+    let newTotalScore = 0;
+
+    for (let i = 0; i < details.length; i++) {
+        if (details[i].questionId === questionId) {
+            details[i].pointsObtained = newPoints;
+            details[i].feedback = manualFeedback;
+            updated = true;
+        }
+        newTotalScore += (details[i].pointsObtained || 0);
+    }
+
+    if (!updated) {
+        return { success: false, error: "Questão não encontrada nos detalhes de correção" };
+    }
+
+    await prisma.examSubmission.update({
+        where: { id: submissionId },
+        data: {
+            correctionDetails: details,
+            score: newTotalScore
+        }
+    });
+
+    return { success: true, newTotalScore };
+  } catch (e: any) {
+    console.error("Erro ao atualizar nota manualmente:", e);
+    return { success: false, error: e.message };
+  }
+}

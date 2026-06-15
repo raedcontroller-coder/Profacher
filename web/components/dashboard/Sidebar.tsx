@@ -27,8 +27,8 @@ const adminNavItems: NavItem[] = [
   { icon: 'admin_panel_settings', label: 'Dashboard', href: '/admin' },
   { icon: 'account_balance', label: 'Instituições', href: '/admin/institutions' },
   { icon: 'smart_toy', label: 'IA Geral', href: '/admin/settings/ai' },
-  { icon: 'group', label: 'Usuários Globais', href: '/admin/users' },
-  { icon: 'security', label: 'Logs do Sistema', href: '/admin/logs' },
+  { icon: 'group', label: 'Usuários Globais', href: '/admin/users', disabled: true },
+  { icon: 'security', label: 'Logs do Sistema', href: '/admin/logs', disabled: true },
   { icon: 'settings', label: 'Configurações', href: '/admin/settings' },
 ];
 

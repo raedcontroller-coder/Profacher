@@ -19,6 +19,9 @@ export function getEngineConfig(aiModel: string, aiKey: string): AiEngineConfig 
         bodyModel = "openai/gpt-4o-mini"; // Fallback veloz e barato do OpenRouter caso selecionem o genérico
     } else if (aiModel.includes('deepseek')) {
         endpoint = "https://api.deepseek.com/chat/completions";
+    } else if (aiModel.includes('groq')) {
+        endpoint = "https://api.groq.com/openai/v1/chat/completions";
+        bodyModel = bodyModel.replace('groq-', ''); // Remove o prefixo para passar apenas o nome do modelo
     } else if (aiModel.includes('gemini')) {
         // Se o usuário tentar usar gemini por fora do openrouter sem biblioteca do Google, tentamos openrouter fallback
         // Para maior estabilidade com o modelo OpenAI Format

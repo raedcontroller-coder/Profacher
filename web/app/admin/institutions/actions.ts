@@ -1,5 +1,6 @@
 'use server'
 
+import bcrypt from 'bcryptjs';
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
@@ -171,5 +172,41 @@ export async function deleteInstitution(id: number) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: "Erro ao excluir instituição: " + error.message };
+  }
+}
+
+/**
+ * Cria um novo coordenador para uma instituição existente
+ */
+export async function createCoordinator(institutionId: number, data: { fullName: string; email: string; password?: string }) {
+  const session = await auth();
+  if (!session || (session.user as any).role !== "ADMIN") {
+    throw new Error("Não autorizado");
+  }
+
+  const role = await prisma.role.findUnique({ where: { name: 'COORDINATOR' } });
+  if (!role) throw new Error("Role COORDINATOR não encontrada no sistema");
+
+  const passwordToHash = data.password || 'Mudar123*';
+  const hashedPassword = await bcrypt.hash(passwordToHash, 10);
+
+  try {
+    const user = await prisma.user.create({
+      data: {
+        fullName: data.fullName,
+        email: data.email.toLowerCase().trim(),
+        passwordHash: hashedPassword,
+        roleId: role.id,
+        institutionId: institutionId,
+      }
+    });
+
+    revalidatePath('/admin/institutions');
+    return { success: true, user: { id: user.id, email: user.email } };
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return { success: false, error: "Um usuário com este email já existe." };
+    }
+    return { success: false, error: "Erro ao criar coordenador: " + error.message };
   }
 }

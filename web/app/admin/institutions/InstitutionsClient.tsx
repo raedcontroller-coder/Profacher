@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
-import { getInstitutions, getInstitutionUsers, createInstitution, updateInstitution, deleteInstitution } from './actions';
+import { getInstitutions, getInstitutionUsers, createInstitution, updateInstitution, deleteInstitution, createCoordinator } from './actions';
 import { Pagination } from '@/components/shared/Pagination';
 
 interface User {
@@ -86,7 +86,7 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
   );
 }
 
-function InstitutionCard({ institution, onEdit, onDelete }: { institution: Institution, onEdit: (inst: Institution) => void, onDelete: (inst: Institution) => void }) {
+function InstitutionCard({ institution, onEdit, onDelete, onAddCoordinator }: { institution: Institution, onEdit: (inst: Institution) => void, onDelete: (inst: Institution) => void, onAddCoordinator: (inst: Institution) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -123,6 +123,16 @@ function InstitutionCard({ institution, onEdit, onDelete }: { institution: Insti
           </div>
         </div>
         <div className="flex items-center gap-3">
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onAddCoordinator(institution);
+                }}
+                className="p-3 rounded-2xl bg-white/5 hover:bg-green-500/20 hover:text-green-500 transition-all text-gray-400 group"
+                title="Adicionar Coordenador"
+            >
+                <span className="material-symbols-outlined transition-transform group-hover:scale-110">person_add</span>
+            </button>
             <button 
                 onClick={(e) => {
                     e.stopPropagation();
@@ -563,12 +573,120 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
   );
 }
 
+function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOpen: boolean, onClose: () => void, onSuccess: () => void, institution: Institution | null }) {
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isOpen || !institution) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!institution) return;
+    
+    setLoading(true);
+    setError(null);
+
+    const result = await createCoordinator(institution.id, { 
+      fullName, 
+      email, 
+      password 
+    });
+
+    if (result.success) {
+      onSuccess();
+      onClose();
+      setFullName('');
+      setEmail('');
+      setPassword('');
+    } else {
+      setError(result.error || "Erro desconhecido");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="liquid-glass w-full max-w-xl p-10 rounded-[2.5rem] border border-outline-variant shadow-2xl relative animate-in zoom-in-95 duration-500">
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-on-surface">Adicionar Coordenador</h2>
+            <p className="text-gray-500 mt-2">Cadastre um novo coordenador para a instituição <strong className="text-primary">{institution.name}</strong>.</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-2 rounded-xl hover:bg-white/5 text-gray-500 transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">Nome Completo</label>
+            <input 
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary text-on-surface"
+              placeholder="Ex: João Silva"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">Email</label>
+            <input 
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary text-on-surface"
+              placeholder="coordenador@instituicao.com"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">Senha</label>
+            <input 
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary text-on-surface"
+              placeholder="Se vazio, usa senha padrão (Mudar123*)"
+            />
+          </div>
+
+          {error && <div className="p-4 rounded-xl bg-red-500/5 border border-outline-variant text-red-500 text-sm">{error}</div>}
+
+          <div className="pt-4 flex gap-4">
+            <button type="button" onClick={onClose} className="flex-1 p-4 rounded-2xl border border-outline-variant hover:bg-white/5 font-bold">
+              Cancelar
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="flex-2 bg-primary text-on-primary font-bold p-4 rounded-2xl transition-all flex items-center justify-center gap-2"
+            >
+              {loading ? <span className="animate-spin material-symbols-outlined">sync</span> : (
+                <>
+                  <span className="material-symbols-outlined">person_add</span>
+                  Adicionar
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function InstitutionsClient({ initialUserName }: { initialUserName?: string }) {
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInstitution, setEditingInstitution] = useState<Institution | null>(null);
   const [deletingInstitution, setDeletingInstitution] = useState<Institution | null>(null);
+  const [addingCoordinatorInst, setAddingCoordinatorInst] = useState<Institution | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -637,6 +755,13 @@ export default function InstitutionsClient({ initialUserName }: { initialUserNam
             institution={deletingInstitution} 
           />
 
+          <AddCoordinatorModal 
+            isOpen={!!addingCoordinatorInst} 
+            onClose={() => setAddingCoordinatorInst(null)} 
+            onSuccess={loadData} 
+            institution={addingCoordinatorInst} 
+          />
+
           <section className="space-y-8">
             {loading ? (
               <div className="flex justify-center py-20"><span className="animate-spin material-symbols-outlined text-primary text-4xl">sync</span></div>
@@ -647,6 +772,7 @@ export default function InstitutionsClient({ initialUserName }: { initialUserNam
                     institution={inst} 
                     onEdit={setEditingInstitution}
                     onDelete={setDeletingInstitution}
+                    onAddCoordinator={setAddingCoordinatorInst}
                 />
               ))
             ) : (

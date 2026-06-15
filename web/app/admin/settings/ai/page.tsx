@@ -14,6 +14,9 @@ const AI_MODELS = [
     { id: 'claude-3-5-sonnet', name: 'Anthropic - Claude 3.5 Sonnet' },
     { id: 'deepseek-chat', name: 'Deepseek - V3' },
     { id: 'openrouter', name: 'OpenRouter (Multi-Model)' },
+    { id: 'groq-llama-3.2-11b-vision-preview', name: 'Groq - Llama 3.2 11B Vision' },
+    { id: 'groq-llama-3.2-90b-vision-preview', name: 'Groq - Llama 3.2 90B Vision' },
+    { id: 'groq-llama-3.1-70b-versatile', name: 'Groq - Llama 3.1 70B Versatile' },
 ];
 
 export default function AiSettingsPage() {
@@ -63,7 +66,8 @@ export default function AiSettingsPage() {
           label: 'Nova Chave',
           model: 'gpt-4o',
           key: '',
-          active: savedKeys.length === 0 // a primeira vira ativa
+          active: savedKeys.length === 0, // a primeira vira ativa
+          isFallback: false
       }]);
   }
 
@@ -88,8 +92,18 @@ export default function AiSettingsPage() {
   function handleSetActive(id: string) {
       setSavedKeys(savedKeys.map(k => ({
           ...k,
-          active: k.id === id
+          active: k.id === id,
+          isFallback: k.id === id ? false : k.isFallback // Remove fallback se virou ativa
       })));
+  }
+
+  function handleSetFallback(id: string) {
+      setSavedKeys(savedKeys.map(k => {
+          if (k.id === id) {
+              return { ...k, isFallback: !k.isFallback, active: false }; // Se vira fallback, não pode ser ativa
+          }
+          return { ...k, isFallback: false }; // Desmarca as outras
+      }));
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -157,18 +171,28 @@ export default function AiSettingsPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                                     
-                                    {/* Radio Ativo */}
-                                    <div className="col-span-1 flex items-center justify-center">
-                                        <div 
+                                    {/* Seleção de Status (Principal / Fallback) */}
+                                    <div className="col-span-1 md:col-span-2 flex flex-col gap-3 justify-center items-center border-r border-outline-variant/30 pr-4">
+                                        <button 
+                                            type="button"
                                             onClick={() => handleSetActive(item.id)}
-                                            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${item.active ? 'border-primary bg-primary/20' : 'border-gray-600 hover:border-gray-400'}`}
+                                            className={`w-full py-1.5 px-3 rounded-lg border flex items-center gap-2 transition-all text-xs font-bold ${item.active ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-gray-500 hover:text-gray-300'}`}
                                         >
-                                            {item.active && <div className="w-4 h-4 rounded-full bg-primary animate-in zoom-in" />}
-                                        </div>
+                                            <div className={`w-3 h-3 rounded-full border ${item.active ? 'border-primary bg-primary' : 'border-gray-500'}`} />
+                                            Principal
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => handleSetFallback(item.id)}
+                                            className={`w-full py-1.5 px-3 rounded-lg border flex items-center gap-2 transition-all text-xs font-bold ${item.isFallback ? 'border-orange-500 bg-orange-500/10 text-orange-400' : 'border-outline-variant text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            <div className={`w-3 h-3 rounded-full border ${item.isFallback ? 'border-orange-500 bg-orange-500' : 'border-gray-500'}`} />
+                                            Fallback
+                                        </button>
                                     </div>
 
                                     {/* Campos */}
-                                    <div className="col-span-11 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="col-span-11 md:col-span-10 grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Identificador (Opcional)</label>
                                             <input 
@@ -228,10 +252,9 @@ export default function AiSettingsPage() {
                     <div className="p-6 rounded-2xl bg-primary/5 border border-outline-variant flex items-start gap-4">
                         <span className="material-symbols-outlined text-primary mt-1">info</span>
                         <div className="space-y-1">
-                            <h4 className="text-sm font-bold text-primary">Nota sobre Faturamento & Seleção</h4>
+                            <h4 className="text-sm font-bold text-primary">Nota sobre Redundância (Fallback)</h4>
                             <p className="text-xs text-gray-400 leading-relaxed">
-                                Apenas a chave marcada com o botão de seleção redondo será efetivamente usada pelo sistema. 
-                                As outras ficam guardadas no seu cofre de forma segura para alternância rápida em caso de queda de provedor.
+                                A chave <strong>Principal</strong> será usada para todas as correções. Caso o provedor principal sofra uma queda ou falha, o sistema utilizará automaticamente a chave marcada como <strong>Fallback</strong> para garantir que a correção da prova não seja perdida.
                             </p>
                         </div>
                     </div>
