@@ -3,14 +3,15 @@ import { redirect } from "next/navigation";
 import EditPhysicalClient from "./EditPhysicalClient";
 import { getPhysicalExamData } from "./actions";
 
-export default async function EditPhysicalExamPage({ params }: { params: { id: string } }) {
+export default async function EditPhysicalExamPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
 
   if (!session || (session.user as any)?.role !== "PROFESSOR") {
     redirect("/login");
   }
 
-  const examId = parseInt(params.id);
+  const { id } = await params;
+  const examId = parseInt(id);
   if (isNaN(examId)) {
     redirect("/professor/exams");
   }
