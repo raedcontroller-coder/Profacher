@@ -24,6 +24,7 @@ export async function getTeacherExams() {
         createdAt: true,
         accessCode: true,
         status: true,
+        type: true,
         _count: {
           select: { questions: true }
         }

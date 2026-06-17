@@ -117,6 +117,10 @@ model Exam {
   showScore      Boolean          @default(false) @map("show_score")
   randomizeOrder Boolean          @default(false) @map("randomize_order")
   saveToBank     Boolean          @default(false) @map("save_to_bank")
+  type           ExamType         @default(DIGITAL)
+  answerKeyImages Json?           @map("answer_key_images")
+  aiInstructions String?          @map("ai_instructions")
+  totalScore     Float?           @map("total_score")
   questions      ExamQuestion[]
   submissions    ExamSubmission[]
   teacher        User             @relation(fields: [teacherId], references: [id])
@@ -128,8 +132,10 @@ model Exam {
 model ExamSubmission {
   id          Int       @id @default(autoincrement())
   examId      Int       @map("exam_id")
-  studentName String    @map("student_name")
-  studentRa   String    @map("student_ra")
+  studentName String?   @map("student_name")
+  studentRa   String?   @map("student_ra")
+  studentExamImages Json? @map("student_exam_images")
+  isPhysical  Boolean   @default(false) @map("is_physical")
   answers     Json?
   score       Float?
   startedAt   DateTime  @default(now()) @map("started_at")
@@ -152,6 +158,11 @@ model ExamQuestion {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@map("exam_questions")
+}
+
+enum ExamType {
+  DIGITAL
+  PHYSICAL
 }
 
 enum QuestionType {

@@ -6,6 +6,7 @@ import TopBar from '@/components/dashboard/TopBar';
 import Link from 'next/link';
 import { getTeacherExams, deleteExam, openExamRoom } from './actions';
 import { Pagination } from '@/components/shared/Pagination';
+import CreateExamModal from '@/components/professor/CreateExamModal';
 
 interface Exam {
   id: number;
@@ -14,6 +15,7 @@ interface Exam {
   createdAt: Date;
   accessCode: string | null;
   status: 'DRAFT' | 'WAITING' | 'STARTED' | 'FINISHED';
+  type: 'DIGITAL' | 'PHYSICAL';
   _count: {
     questions: number;
   };
@@ -23,6 +25,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -106,13 +109,13 @@ export default function ExamsClient({ userName }: { userName: string }) {
               <p className="text-gray-400">Gerencie suas avaliações criadas e organizadas por grupos.</p>
             </div>
             
-            <Link 
-              href="/professor/new-exam" 
+            <button 
+              onClick={() => setIsModalOpen(true)}
               className="flex items-center justify-center gap-2 bg-primary text-black font-bold px-6 py-4 rounded-2xl hover:scale-105 transition-all shadow-lg shadow-primary/20 sm:w-auto w-full"
             >
               <span className="material-symbols-outlined">add_circle</span>
               Criar Nova Prova
-            </Link>
+            </button>
           </header>
 
           {/* Filters & Search */}
@@ -151,7 +154,7 @@ export default function ExamsClient({ userName }: { userName: string }) {
                       <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{exam.description || 'Sem descrição'}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Link href={`/professor/exams/${exam.id}/edit`} className={`w-9 h-9 rounded-xl flex items-center justify-center ${exam.status === 'STARTED' ? 'bg-gray-800 text-gray-600' : 'bg-white/5 text-gray-400 hover:bg-primary/20 hover:text-primary'} transition-all`}>
+                      <Link href={`/professor/exams/${exam.id}/${exam.type === 'PHYSICAL' ? 'edit-physical' : 'edit'}`} className={`w-9 h-9 rounded-xl flex items-center justify-center ${exam.status === 'STARTED' ? 'bg-gray-800 text-gray-600' : 'bg-white/5 text-gray-400 hover:bg-primary/20 hover:text-primary'} transition-all`}>
                         <span className="material-symbols-outlined text-lg">edit</span>
                       </Link>
                       <button onClick={() => handleDelete(exam.id, exam.title)} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all">
@@ -161,27 +164,42 @@ export default function ExamsClient({ userName }: { userName: string }) {
                   </div>
 
                   <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xl font-black text-white bg-surface-container px-3 py-1.5 rounded-xl border border-outline-variant min-w-[80px] text-center">
-                        {exam.accessCode || '---'}
-                      </span>
-                      <button onClick={() => { navigator.clipboard.writeText(exam.accessCode || ''); }} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-all">
-                        <span className="material-symbols-outlined text-sm">content_copy</span>
-                      </button>
-                    </div>
+                    {exam.type === 'PHYSICAL' ? (
+                      <div className="px-3 py-1.5 bg-orange-500/10 rounded-xl border border-orange-500/20 text-orange-400 text-sm font-bold flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px]">description</span>
+                        Prova Física
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xl font-black text-white bg-surface-container px-3 py-1.5 rounded-xl border border-outline-variant min-w-[80px] text-center">
+                          {exam.accessCode || '---'}
+                        </span>
+                        <button onClick={() => { navigator.clipboard.writeText(exam.accessCode || ''); }} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-all">
+                          <span className="material-symbols-outlined text-sm">content_copy</span>
+                        </button>
+                      </div>
+                    )}
                     <div className="px-3 py-1 bg-secondary/10 rounded-full border border-black/5 dark:border-white/[0.02] text-secondary text-sm font-bold">
                       {exam._count.questions} questões
                     </div>
                     <span className="text-gray-500 text-sm">{new Date(exam.createdAt).toLocaleDateString('pt-BR')}</span>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Link href={`/professor/exams/${exam.id}/monitor`} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-secondary/10 text-secondary font-bold text-sm hover:bg-secondary hover:text-black transition-all">
-                      <span className="material-symbols-outlined text-lg">monitor</span>
-                      Monitor
-                    </Link>
-                    <Link href={`/professor/exams/${exam.id}/results`} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:brightness-110 transition-all">
-                      <span className="material-symbols-outlined text-lg">analytics</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {exam.type === 'PHYSICAL' && (
+                      <Link href={`/professor/exams/${exam.id}/physical-correction`} className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-orange-500/10 text-orange-400 font-bold text-xs sm:text-sm hover:bg-orange-500 hover:text-white transition-all">
+                        <span className="material-symbols-outlined text-base sm:text-lg">fact_check</span>
+                        Correção
+                      </Link>
+                    )}
+                    {exam.type !== 'PHYSICAL' && (
+                      <Link href={`/professor/exams/${exam.id}/monitor`} className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-secondary/10 text-secondary font-bold text-xs sm:text-sm hover:bg-secondary hover:text-black transition-all">
+                        <span className="material-symbols-outlined text-base sm:text-lg">monitor</span>
+                        Monitor
+                      </Link>
+                    )}
+                    <Link href={`/professor/exams/${exam.id}/results`} className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary/10 text-primary font-bold text-xs sm:text-sm hover:bg-primary hover:text-black transition-all">
+                      <span className="material-symbols-outlined text-base sm:text-lg">analytics</span>
                       Resultados
                     </Link>
                   </div>
@@ -232,22 +250,33 @@ export default function ExamsClient({ userName }: { userName: string }) {
                         </td>
                         <td>
                           <div className="flex flex-col gap-1">
-                            <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-black mb-1">Código de Acesso</span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-2xl font-black text-white bg-[#1a1b1e] px-4 py-2 rounded-2xl border border-outline-variant shadow-lg shadow-primary/5 min-w-[100px] text-center">
-                                {exam.accessCode || '---'}
-                              </span>
-                              <button 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(exam.accessCode || '');
-                                  alert('Código copiado!');
-                                }}
-                                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-all"
-                                title="Copiar código"
-                              >
-                                <span className="material-symbols-outlined text-sm">content_copy</span>
-                              </button>
-                            </div>
+                            {exam.type === 'PHYSICAL' ? (
+                              <div className="flex items-center mt-2">
+                                <div className="px-3 py-1.5 bg-orange-500/10 text-orange-400 border border-orange-500/20 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[16px]">description</span>
+                                  Prova Física
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-black mb-1">Código de Acesso</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-2xl font-black text-white bg-[#1a1b1e] px-4 py-2 rounded-2xl border border-outline-variant shadow-lg shadow-primary/5 min-w-[100px] text-center">
+                                    {exam.accessCode || '---'}
+                                  </span>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(exam.accessCode || '');
+                                      alert('Código copiado!');
+                                    }}
+                                    className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-all"
+                                    title="Copiar código"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </td>
                         <td>
@@ -264,38 +293,49 @@ export default function ExamsClient({ userName }: { userName: string }) {
                         </td>
                         <td>
                           <div className="flex items-center justify-end gap-3">
-                            <Link 
-                              href={`/professor/exams/${exam.id}/monitor`}
-                              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-secondary text-black font-black hover:scale-105 transition-all shadow-xl shadow-secondary/20"
-                              title="Monitorar Sala (Waiting Room)"
-                            >
-                              <span className="material-symbols-outlined text-xl">monitor</span>
-                            </Link>
+                            {exam.type === 'PHYSICAL' && (
+                              <Link 
+                                href={`/professor/exams/${exam.id}/physical-correction`}
+                                className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all"
+                                title="Corrigir Provas Físicas"
+                              >
+                                <span className="material-symbols-outlined md:text-xl">fact_check</span>
+                              </Link>
+                            )}
+
+                            {exam.type !== 'PHYSICAL' && (
+                              <Link 
+                                href={`/professor/exams/${exam.id}/monitor`}
+                                className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center bg-secondary/10 text-secondary hover:bg-secondary hover:text-black transition-all"
+                                title="Monitorar Sala (Waiting Room)"
+                              >
+                                <span className="material-symbols-outlined md:text-xl">monitor</span>
+                              </Link>
+                            )}
 
                             <Link 
                               href={`/professor/exams/${exam.id}/results`}
-                              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-black font-black hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                              className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all"
                               title="Ver Resultados e Entregas"
                             >
-                              <span className="material-symbols-outlined text-xl">analytics</span>
-                              Resultados
+                              <span className="material-symbols-outlined md:text-xl">analytics</span>
                             </Link>
                             
                             <Link 
-                              href={`/professor/exams/${exam.id}/edit`}
-                              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${exam.status === 'STARTED' ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/5 text-gray-400 hover:bg-primary/20 hover:text-primary'}`}
+                              href={`/professor/exams/${exam.id}/${exam.type === 'PHYSICAL' ? 'edit-physical' : 'edit'}`}
+                              className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center transition-all ${exam.status === 'STARTED' ? 'bg-gray-800 text-gray-600 cursor-not-allowed' : 'bg-white/5 text-gray-400 hover:bg-primary/20 hover:text-primary'}`}
                               title={exam.status === 'STARTED' ? 'Não é possível editar em andamento' : 'Editar prova'}
                               onClick={(e) => exam.status === 'STARTED' && e.preventDefault()}
                             >
-                              <span className="material-symbols-outlined text-xl">edit</span>
+                              <span className="material-symbols-outlined md:text-xl">edit</span>
                             </Link>
                             
                             <button 
                               onClick={() => handleDelete(exam.id, exam.title)}
-                              className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all"
+                              className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all"
                               title="Excluir prova"
                             >
-                              <span className="material-symbols-outlined text-xl">delete</span>
+                              <span className="material-symbols-outlined md:text-xl">delete</span>
                             </button>
                           </div>
                         </td>
@@ -323,6 +363,8 @@ export default function ExamsClient({ userName }: { userName: string }) {
 
         </div>
       </main>
+
+      <CreateExamModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

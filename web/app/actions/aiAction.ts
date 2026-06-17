@@ -278,3 +278,112 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
         return { success: false, error: e.message };
     }
 }
+
+export async function gradePhysicalExam(teacherId: number, answerKeyImages: string[], studentImages: string[], totalScore: number, aiInstructions: string = "") {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: teacherId },
+            include: { institution: true }
+        });
+
+        if (!user) return { success: false, error: "Usuário não encontrado" };
+
+        let aiKey = "";
+        let aiModel = "";
+
+        if (user.institution?.hasIntegratedAi || user.roleId === 1) {
+            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
+            aiKey = globalSettings?.globalAiKey || "";
+            aiModel = globalSettings?.globalAiModel || "gpt-4o";
+        } else if (user.institution) {
+            aiKey = user.institution.customAiKey || "";
+            aiModel = user.institution.customAiModel || "gpt-4o";
+        }
+
+        if (!aiKey) return { success: false, error: "IA não configurada." };
+
+        const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
+
+        const systemPrompt = `Você é um avaliador mestre de provas físicas.
+O professor forneceu imagens do gabarito oficial e imagens da prova de um aluno.
+INSTRUÇÕES ADICIONAIS DO PROFESSOR: ${aiInstructions}
+VALOR TOTAL DA PROVA: ${totalScore} pontos.
+
+Sua tarefa:
+1. Extrair o nome do aluno e RA/Matrícula do cabeçalho da prova do aluno (se possível).
+2. Comparar as respostas da prova do aluno com o gabarito oficial.
+3. Para cada questão, atribuir uma nota justa com base no gabarito e nas instruções do professor, garantindo que a soma máxima das questões seja o VALOR TOTAL DA PROVA.
+4. Fornecer um feedback curto para cada questão.
+
+O retorno DEVE ser um JSON estrito no seguinte formato:
+{
+  "studentName": "Nome extraído ou Não Identificado",
+  "studentRa": "RA extraído ou Não Identificado",
+  "score": <nota_total_calculada_em_numero>,
+  "details": [
+    {
+      "questionNumber": 1,
+      "studentAnswer": "resposta extraída do aluno",
+      "correctAnswer": "resposta extraída do gabarito",
+      "pointsObtained": <nota_na_questao>,
+      "maxPoints": <valor_da_questao>,
+      "feedback": "comentário curto"
+    }
+  ]
+}`;
+
+        const messages = [
+            {
+                role: "system",
+                content: systemPrompt
+            },
+            {
+                role: "user",
+                content: [
+                    { type: "text", text: "Aqui estão as imagens do GABARITO OFICIAL:" },
+                    ...answerKeyImages.map(img => ({
+                        type: "image_url",
+                        image_url: { url: img.startsWith('http') ? img : `http://localhost:3000${img}` }
+                    })),
+                    { type: "text", text: "Aqui estão as imagens da PROVA DO ALUNO:" },
+                    ...studentImages.map(img => ({
+                        type: "image_url",
+                        image_url: { url: img.startsWith('http') ? img : `http://localhost:3000${img}` }
+                    }))
+                ]
+            }
+        ];
+
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+                model: bodyModel,
+                messages,
+                temperature: 0.1,
+                max_tokens: 2000,
+                response_format: { type: "json_object" }
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(`Falha HTTP ${response.status}: ${err}`);
+        }
+
+        const data = await response.json();
+        let content = data.choices?.[0]?.message?.content || "{}";
+        content = content.replace(/```json/g, "").replace(/```/g, "").trim();
+        const result = JSON.parse(content);
+
+        const promptTokens = data.usage?.prompt_tokens || 0;
+        const completionTokens = data.usage?.completion_tokens || 0;
+        
+        await logAiUsage(user.id, user.institutionId, bodyModel, promptTokens, completionTokens);
+
+        return { success: true, result };
+    } catch (e: any) {
+        console.error("Erro na correção física com IA:", e);
+        return { success: false, error: e.message };
+    }
+}

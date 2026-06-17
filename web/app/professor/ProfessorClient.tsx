@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { getProfessorStats } from './actions';
+import CreateExamModal from '@/components/professor/CreateExamModal';
 
 interface TeacherStats {
   totalGroups: number;
@@ -14,6 +15,7 @@ interface TeacherStats {
 export default function ProfessorClient({ userName }: { userName: string }) {
   const [stats, setStats] = useState<TeacherStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
@@ -82,7 +84,7 @@ export default function ProfessorClient({ userName }: { userName: string }) {
              </div>
 
              {/* Card 3: Acesso Rápido */}
-             <div className="liquid-glass p-8 rounded-[2.5rem] border border-black/5 dark:border-white/[0.02] bg-primary/5 flex flex-col justify-center items-center text-center gap-4 group cursor-pointer transition-all">
+             <div onClick={() => setIsModalOpen(true)} className="liquid-glass p-8 rounded-[2.5rem] border border-black/5 dark:border-white/[0.02] bg-primary/5 flex flex-col justify-center items-center text-center gap-4 group cursor-pointer transition-all">
                 <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-black shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
                    <span className="material-symbols-outlined text-3xl font-bold">add</span>
                 </div>
@@ -129,6 +131,8 @@ export default function ProfessorClient({ userName }: { userName: string }) {
 
         </div>
       </main>
+
+      <CreateExamModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }
