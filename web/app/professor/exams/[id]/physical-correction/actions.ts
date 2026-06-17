@@ -65,11 +65,30 @@ export async function processPhysicalCorrection(examId: number, studentImages: s
 
     const correctionData = aiRes.result
 
-    const submission = await prisma.examSubmission.create({
-      data: {
+    let studentRa = correctionData.studentRa;
+    if (!studentRa || studentRa.toLowerCase().includes("não identificado") || studentRa.toLowerCase().includes("nao identificado")) {
+      studentRa = `UNKNOWN_${Date.now()}`;
+    }
+
+    const submission = await prisma.examSubmission.upsert({
+      where: {
+        examId_studentRa: {
+          examId: exam.id,
+          studentRa: studentRa
+        }
+      },
+      update: {
+        studentName: correctionData.studentName,
+        isPhysical: true,
+        studentExamImages: studentImages,
+        score: correctionData.score,
+        correctionDetails: correctionData.details,
+        finishedAt: new Date()
+      },
+      create: {
         examId: exam.id,
         studentName: correctionData.studentName,
-        studentRa: correctionData.studentRa || `UNKNOWN_${Date.now()}`,
+        studentRa: studentRa,
         isPhysical: true,
         studentExamImages: studentImages,
         score: correctionData.score,
