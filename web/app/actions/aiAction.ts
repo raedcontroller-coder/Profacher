@@ -6,6 +6,21 @@ import { getPromptForQuestionType } from "@/lib/ai/prompts"
 import { getEngineConfig } from "@/lib/ai/engines"
 import { logAiUsage } from "@/lib/ai/billing"
 
+async function imageUrlToBase64(url: string): Promise<string> {
+    try {
+        const fetchUrl = url.startsWith('http') ? url : `http://localhost:3000${url}`;
+        const response = await fetch(fetchUrl);
+        if (!response.ok) return url;
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const mimeType = response.headers.get('content-type') || 'image/jpeg';
+        return `data:${mimeType};base64,${buffer.toString('base64')}`;
+    } catch (e) {
+        console.warn("Failed to fetch image for base64 conversion", e);
+        return url;
+    }
+}
+
 export async function generateMathEquation(prompt: string) {
     const session = await auth();
     if (!session?.user?.email) return { success: false, error: "Não autorizado" };
@@ -187,17 +202,19 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
 
             if (referenceImage) {
                 userMessageContent[0].text += `\n[O Professor também forneceu uma imagem de desenvolvimento/gabarito que está anexada nesta mensagem]`;
+                const base64Ref = await imageUrlToBase64(referenceImage);
                 userMessageContent.push({
                     type: "image_url",
-                    image_url: { url: referenceImage }
+                    image_url: { url: base64Ref }
                 });
             }
 
             if (studentImage) {
                 userMessageContent[0].text += `\n[O Aluno enviou uma imagem de desenvolvimento/rascunho que está anexada nesta mensagem]`;
+                const base64Student = await imageUrlToBase64(studentImage);
                 userMessageContent.push({
                     type: "image_url",
-                    image_url: { url: studentImage }
+                    image_url: { url: base64Student }
                 });
             }
         }
@@ -332,6 +349,9 @@ O retorno DEVE ser um JSON estrito no seguinte formato:
   ]
 }`;
 
+        const resolvedAnswerKeyImages = await Promise.all(answerKeyImages.map(img => imageUrlToBase64(img)));
+        const resolvedStudentImages = await Promise.all(studentImages.map(img => imageUrlToBase64(img)));
+
         const messages = [
             {
                 role: "system",
@@ -341,14 +361,14 @@ O retorno DEVE ser um JSON estrito no seguinte formato:
                 role: "user",
                 content: [
                     { type: "text", text: "Aqui estão as imagens do GABARITO OFICIAL:" },
-                    ...answerKeyImages.map(img => ({
+                    ...resolvedAnswerKeyImages.map(img => ({
                         type: "image_url",
-                        image_url: { url: img.startsWith('http') ? img : `http://localhost:3000${img}` }
+                        image_url: { url: img }
                     })),
                     { type: "text", text: "Aqui estão as imagens da PROVA DO ALUNO:" },
-                    ...studentImages.map(img => ({
+                    ...resolvedStudentImages.map(img => ({
                         type: "image_url",
-                        image_url: { url: img.startsWith('http') ? img : `http://localhost:3000${img}` }
+                        image_url: { url: img }
                     }))
                 ]
             }

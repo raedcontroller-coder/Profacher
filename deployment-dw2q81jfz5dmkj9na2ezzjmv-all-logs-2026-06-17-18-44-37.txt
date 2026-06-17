@@ -1,0 +1,153 @@
+2026-Jun-17 18:34:06.065763 Docker 29.3.1 with BuildKit and Buildx detected on deployment server (localhost).
+2026-Jun-17 18:34:06.094391 Starting deployment of raedcontroller-coder/Profacher:main to localhost.
+2026-Jun-17 18:34:06.685854 Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.12
+2026-Jun-17 18:34:06.922143 [DEBUG] [CMD]: docker stop -t 30 dw2q81jfz5dmkj9na2ezzjmv
+2026-Jun-17 18:34:06.922143 [DEBUG] Error response from daemon: No such container: dw2q81jfz5dmkj9na2ezzjmv
+2026-Jun-17 18:34:07.805989 [DEBUG] [CMD]: docker run -d --network coolify --name dw2q81jfz5dmkj9na2ezzjmv  --rm -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/coollabsio/coolify-helper:1.0.12
+2026-Jun-17 18:34:07.805989 [DEBUG] bee8665d1424a7d042c073acf2965f30ba4f049377ad87ee8251dc875482a174
+2026-Jun-17 18:34:11.325781 [DEBUG] [CMD]: docker exec dw2q81jfz5dmkj9na2ezzjmv bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git ls-remote https://x-access-token:<REDACTED>@github.com/raedcontroller-coder/Profacher.git refs/heads/main'
+2026-Jun-17 18:34:11.325781 [DEBUG] dd709434c6c95c69fd08723838e26519048eee0e	refs/heads/main
+2026-Jun-17 18:34:12.180502 ----------------------------------------
+2026-Jun-17 18:34:12.206622 Importing raedcontroller-coder/Profacher:main (commit sha dd709434c6c95c69fd08723838e26519048eee0e) to /artifacts/dw2q81jfz5dmkj9na2ezzjmv.
+2026-Jun-17 18:34:12.717318 [DEBUG] [CMD]: docker exec dw2q81jfz5dmkj9na2ezzjmv bash -c 'git clone --depth=1 --recurse-submodules --shallow-submodules -b '\''main'\'' '\''https://x-access-token:<REDACTED>@github.com/raedcontroller-coder/Profacher.git'\'' '\''/artifacts/dw2q81jfz5dmkj9na2ezzjmv'\'' && cd '\''/artifacts/dw2q81jfz5dmkj9na2ezzjmv'\'' && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git fetch --depth=1 origin '\''dd709434c6c95c69fd08723838e26519048eee0e'\'' && git -c advice.detachedHead=false checkout '\''dd709434c6c95c69fd08723838e26519048eee0e'\'' >/dev/null 2>&1 && cd '\''/artifacts/dw2q81jfz5dmkj9na2ezzjmv'\'' && if [ -f .gitmodules ]; then git submodule sync && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git submodule update --init --recursive --depth=1; fi && cd '\''/artifacts/dw2q81jfz5dmkj9na2ezzjmv'\'' && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git lfs pull'
+2026-Jun-17 18:34:12.717318 [DEBUG] Cloning into '/artifacts/dw2q81jfz5dmkj9na2ezzjmv'...
+2026-Jun-17 18:34:15.088301 [DEBUG] From https://github.com/raedcontroller-coder/Profacher
+2026-Jun-17 18:<REDACTED>@x397rfv45z1ifmls6j4h4s8j:5432/profacher_db_hml
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG MINIO_SECRET_KEY=Raedr93D928
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG AUTH_TRUST_HOST=True
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG NEXT_PUBLIC_PUSHER_APP_KEY=pk_6f849b2a1e7d3c5f4988021a64b9c7d2
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG NEXT_PUBLIC_PUSHER_HOST=soketi-profacher.62.171.175.197.sslip.io
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG AUTH_URL=http://profacher.raed.world/
+2026-Jun-17 18:<REDACTED>@x397rfv45z1ifmls6j4h4s8j:5432/profacher_db_hml
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG MINIO_SECRET_KEY=Raedr93D928
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG AUTH_TRUST_HOST=True
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG NEXT_PUBLIC_PUSHER_APP_KEY=pk_6f849b2a1e7d3c5f4988021a64b9c7d2
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG NEXT_PUBLIC_PUSHER_HOST=soketi-profacher.62.171.175.197.sslip.io
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG AUTH_URL=http://profacher.raed.world/
+2026-Jun-17 18:<REDACTED>@x397rfv45z1ifmls6j4h4s8j:5432/profacher_db_hml
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG MINIO_SECRET_KEY=Raedr93D928
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG AUTH_TRUST_HOST=True
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG NEXT_PUBLIC_PUSHER_APP_KEY=pk_6f849b2a1e7d3c5f4988021a64b9c7d2
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG NEXT_PUBLIC_PUSHER_HOST=soketi-profacher.62.171.175.197.sslip.io
+2026-Jun-17 18:34:22.414630 [DEBUG] ARG AUTH_URL=http://profacher.raed.world/
+2026-Jun-17 18:<REDACTED>@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+2026-Jun-17 18:34:26.164748 [DEBUG] #5 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+2026-Jun-17 18:34:26.164748 [DEBUG] #5 DONE 0.1s
+2026-Jun-17 18:34:26.164748 [DEBUG] 
+2026-Jun-17 18:34:26.164748 [DEBUG] #6 [builder 2/5] WORKDIR /app
+2026-Jun-17 18:34:26.164748 [DEBUG] #6 CACHED
+2026-Jun-17 18:34:26.164748 [DEBUG] 
+2026-Jun-17 18:34:26.164748 [DEBUG] #7 [runner 3/9] RUN apk add --no-cache libc6-compat openssl
+2026-Jun-17 18:34:26.164748 [DEBUG] #7 CACHED
+2026-Jun-17 18:34:26.164748 [DEBUG] 
+2026-Jun-17 18:34:26.164748 [DEBUG] #8 [runner 4/9] RUN addgroup --system --gid 1001 nodejs
+2026-Jun-17 18:34:26.164748 [DEBUG] #8 CACHED
+2026-Jun-17 18:34:26.164748 [DEBUG] 
+2026-Jun-17 18:34:26.164748 [DEBUG] #9 [runner 5/9] RUN adduser --system --uid 1001 nextjs
+2026-Jun-17 18:34:26.301903 [DEBUG] #9 CACHED
+2026-Jun-17 18:34:26.301903 [DEBUG] 
+2026-Jun-17 18:34:26.301903 [DEBUG] #4 [internal] load build context
+2026-Jun-17 18:34:26.537974 [DEBUG] #4 transferring context: 5.44MB 0.1s done
+2026-Jun-17 18:34:26.537974 [DEBUG] #4 DONE 0.2s
+2026-Jun-17 18:34:26.537974 [DEBUG] 
+2026-Jun-17 18:34:26.537974 [DEBUG] #10 [deps 2/7] RUN apk add --no-cache libc6-compat openssl
+2026-Jun-17 18:34:26.537974 [DEBUG] #10 CACHED
+2026-Jun-17 18:34:26.537974 [DEBUG] 
+2026-Jun-17 18:34:26.537974 [DEBUG] #11 [deps 3/7] WORKDIR /app
+2026-Jun-17 18:34:26.537974 [DEBUG] #11 CACHED
+2026-Jun-17 18:34:26.537974 [DEBUG] 
+2026-Jun-17 18:34:26.537974 [DEBUG] #12 [deps 4/7] COPY package.json package-lock.json ./
+2026-Jun-17 18:34:26.537974 [DEBUG] #12 CACHED
+2026-Jun-17 18:34:26.537974 [DEBUG] 
+2026-Jun-17 18:34:26.537974 [DEBUG] #13 [deps 5/7] COPY prisma ./prisma/
+2026-Jun-17 18:34:26.537974 [DEBUG] #13 DONE 0.1s
+2026-Jun-17 18:34:26.693631 [DEBUG] #14 [deps 6/7] RUN npm ci
+2026-Jun-17 18:35:43.864947 [DEBUG] #14 77.24 npm warn deprecated next@15.1.0: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.
+2026-Jun-17 18:<REDACTED>@11.17.0
+2026-Jun-17 18:35:56.042149 [DEBUG] #14 89.34 npm notice
+2026-Jun-17 18:35:56.654748 [DEBUG] #14 DONE 90.1s
+2026-Jun-17 18:35:56.812007 [DEBUG] #15 [deps 7/7] RUN npx prisma generate
+2026-Jun-17 18:36:05.926859 [DEBUG] #15 9.241 Prisma schema loaded from prisma/schema.prisma
+2026-Jun-17 18:36:10.356095 [DEBUG] #15 13.69
+2026-Jun-17 18:36:10.356095 [DEBUG] #15 13.69 ✔ Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 917ms
+2026-Jun-17 18:36:10.356095 [DEBUG] #15 13.69
+2026-Jun-17 18:36:10.356095 [DEBUG] #15 13.69 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-Jun-17 18:<REDACTED>@0.0.0 build
+2026-Jun-17 18:37:47.299505 [DEBUG] #18 2.787 > next build
+2026-Jun-17 18:37:47.299505 [DEBUG] #18 2.787
+2026-Jun-17 18:37:50.536908 [DEBUG] #18 6.045    ▲ Next.js 15.1.0
+2026-Jun-17 18:37:50.688514 [DEBUG] #18 6.050
+2026-Jun-17 18:37:50.788111 [DEBUG] #18 6.302    Creating an optimized production build ...
+2026-Jun-17 18:40:14.177617 [DEBUG] #18 149.7  ✓ Compiled successfully
+2026-Jun-17 18:40:14.400349 [DEBUG] #18 149.8    Linting and checking validity of types ...
+2026-Jun-17 18:41:07.155586 [DEBUG] #18 202.7    Collecting page data ...
+2026-Jun-17 18:41:09.807134 [DEBUG] #18 205.3 prisma:warn Prisma failed to detect the libssl/openssl version to use, and may not work as expected. Defaulting to "openssl-1.1.x".
+2026-Jun-17 18:41:09.807134 [DEBUG] #18 205.3 Please manually install OpenSSL and try installing Prisma again.
+2026-Jun-17 18:41:10.020550 [DEBUG] #18 205.4 [Error [PrismaClientInitializationError]: Unable to require(`/app/node_modules/.prisma/client/libquery_engine-linux-musl.so.node`).
+2026-Jun-17 18:41:10.020550 [DEBUG] #18 205.4 The Prisma engines do not seem to be compatible with your system. Please refer to the documentation about Prisma's system requirements: https://pris.ly/d/system-requirements
+2026-Jun-17 18:<REDACTED>@11.17.0
+2026-Jun-17 18:42:42.501144 [DEBUG] #18 298.0 npm notice
+2026-Jun-17 18:42:42.873384 [DEBUG] #18 DONE 298.4s
+2026-Jun-17 18:42:46.326710 [DEBUG] #19 [runner 6/9] COPY --from=builder /app/public ./public
+2026-Jun-17 18:42:46.483754 [DEBUG] #19 DONE 0.2s
+2026-Jun-17 18:42:47.554674 [DEBUG] #20 [runner 7/9] COPY --from=builder /app/.next/standalone ./
+2026-Jun-17 18:42:49.715562 [DEBUG] #20 DONE 2.2s
+2026-Jun-17 18:42:49.871361 [DEBUG] #21 [runner 8/9] COPY --from=builder /app/.next/static ./.next/static
+2026-Jun-17 18:42:50.001779 [DEBUG] #21 DONE 0.3s
+2026-Jun-17 18:42:50.139297 [DEBUG] #22 [runner 9/9] COPY --from=builder /app/prisma ./prisma
+2026-Jun-17 18:42:50.139297 [DEBUG] #22 DONE 0.1s
+2026-Jun-17 18:42:50.311156 [DEBUG] #23 exporting to image
+2026-Jun-17 18:42:50.311156 [DEBUG] #23 exporting layers
+2026-Jun-17 18:43:08.666378 [DEBUG] #23 exporting layers 18.5s done
+2026-Jun-17 18:43:08.776242 [DEBUG] #23 exporting manifest sha256:daca1d597a9a7605d8894b1e5778f5fea23fb9eb37e3742149241d7c4354a14e 0.0s done
+2026-Jun-17 18:43:08.776242 [DEBUG] #23 exporting config sha256:c87494ec4bd37ef080db0e6ac9a06b2e3a63fe54975ed49fa21cd98e2e917479 0.0s done
+2026-Jun-17 18:43:08.776242 [DEBUG] #23 exporting attestation manifest sha256:63c15eca9e372f6251323e69a23e0765b230438d1936a45658e3c9681a94fbaa
+2026-Jun-17 18:43:08.936676 [DEBUG] #23 exporting attestation manifest sha256:63c15eca9e372f6251323e69a23e0765b230438d1936a45658e3c9681a94fbaa 0.1s done
+2026-Jun-17 18:43:08.936676 [DEBUG] #23 exporting manifest list sha256:82e7516a371cb1bbd326862921f2ad2db89c2ef19df2c97beaaa423670688d7b
+2026-Jun-17 18:43:09.055078 [DEBUG] #23 exporting manifest list sha256:82e7516a371cb1bbd326862921f2ad2db89c2ef19df2c97beaaa423670688d7b 0.1s done
+2026-Jun-17 18:43:09.055078 [DEBUG] #23 naming to docker.io/library/c448abzp6qohnr3kg9zcslfy:dd709434c6c95c69fd08723838e26519048eee0e 0.1s done
+2026-Jun-17 18:43:09.055078 [DEBUG] #23 unpacking to docker.io/library/c448abzp6qohnr3kg9zcslfy:dd709434c6c95c69fd08723838e26519048eee0e
+2026-Jun-17 18:43:17.270857 [DEBUG] #23 unpacking to docker.io/library/c448abzp6qohnr3kg9zcslfy:dd709434c6c95c69fd08723838e26519048eee0e 8.2s done
+2026-Jun-17 18:43:17.473020 [DEBUG] #23 DONE 27.3s
+2026-Jun-17 18:43:18.358300 [DEBUG] 20 warnings found (use docker --debug to expand):
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "MINIO_ACCESS_KEY") (line 31)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "MINIO_SECRET_KEY") (line 34)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_URL") (line 38)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "MINIO_SECRET_KEY") (line 69)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_TRUST_HOST") (line 70)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_URL") (line 73)
+2026-Jun-17 18:43:18.358300 [DEBUG] - LegacyKeyValueFormat: "ENV key=value" should be used instead of legacy "ENV key value" format (line 97)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_TRUST_HOST") (line 9)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_URL") (line 12)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "PUSHER_SECRET") (line 40)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "MINIO_ACCESS_KEY") (line 66)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_SECRET") (line 32)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_SECRET") (line 67)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "MINIO_ACCESS_KEY") (line 5)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "MINIO_SECRET_KEY") (line 8)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "PUSHER_SECRET") (line 14)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_TRUST_HOST") (line 35)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "PUSHER_SECRET") (line 75)
+2026-Jun-17 18:43:18.358300 [DEBUG] - LegacyKeyValueFormat: "ENV key=value" should be used instead of legacy "ENV key value" format (line 98)
+2026-Jun-17 18:43:18.358300 [DEBUG] - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "AUTH_SECRET") (line 6)
+2026-Jun-17 18:43:18.450195 Building docker image completed.
+2026-Jun-17 18:43:18.571804 [DEBUG] Creating .env file with runtime variables for container.
+2026-Jun-17 18:43:19.311175 ----------------------------------------
+2026-Jun-17 18:43:19.326126 Rolling update started.
+2026-Jun-17 18:43:21.754039 [DEBUG] [CMD]: docker exec dw2q81jfz5dmkj9na2ezzjmv bash -c 'COOLIFY_URL=https://profacher.raed.world COOLIFY_FQDN=profacher.raed.world COOLIFY_BRANCH=main COOLIFY_RESOURCE_UUID=c448abzp6qohnr3kg9zcslfy  docker compose --project-name c448abzp6qohnr3kg9zcslfy --project-directory /artifacts/dw2q81jfz5dmkj9na2ezzjmv/web -f /artifacts/dw2q81jfz5dmkj9na2ezzjmv/web/docker-compose.yaml up --build -d'
+2026-Jun-17 18:43:21.754039 [DEBUG] time="2026-06-17T18:43:21Z" level=warning msg="Found orphan containers ([c448abzp6qohnr3kg9zcslfy-210238962559]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+2026-Jun-17 18:43:21.754039 [DEBUG] Container c448abzp6qohnr3kg9zcslfy-183402888285  Creating
+2026-Jun-17 18:43:22.250055 [DEBUG] c448abzp6qohnr3kg9zcslfy-183402888285 Your kernel does not support memory swappiness capabilities or the cgroup is not mounted. Memory swappiness discarded.
+2026-Jun-17 18:43:22.258128 [DEBUG] Container c448abzp6qohnr3kg9zcslfy-183402888285  Created
+2026-Jun-17 18:43:22.437650 [DEBUG] Container c448abzp6qohnr3kg9zcslfy-183402888285  Starting
+2026-Jun-17 18:43:23.855676 [DEBUG] Container c448abzp6qohnr3kg9zcslfy-183402888285  Started
+2026-Jun-17 18:43:24.453130 New container started.
+2026-Jun-17 18:43:24.511786 Removing old containers.
+2026-Jun-17 18:43:27.047035 [DEBUG] [CMD]: docker stop -t 30 c448abzp6qohnr3kg9zcslfy-210238962559
+2026-Jun-17 18:43:27.047035 [DEBUG] c448abzp6qohnr3kg9zcslfy-210238962559
+2026-Jun-17 18:43:27.698324 [DEBUG] [CMD]: docker rm -f c448abzp6qohnr3kg9zcslfy-210238962559
+2026-Jun-17 18:43:27.698324 [DEBUG] c448abzp6qohnr3kg9zcslfy-210238962559
+2026-Jun-17 18:43:27.735952 Rolling update completed.
+2026-Jun-17 18:43:28.721651 Gracefully shutting down build container: dw2q81jfz5dmkj9na2ezzjmv
+2026-Jun-17 18:43:29.388091 [DEBUG] [CMD]: docker stop -t 30 dw2q81jfz5dmkj9na2ezzjmv
+2026-Jun-17 18:43:29.388091 [DEBUG] dw2q81jfz5dmkj9na2ezzjmv
