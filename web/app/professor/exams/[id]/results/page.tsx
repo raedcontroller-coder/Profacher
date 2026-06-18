@@ -25,6 +25,10 @@ export default function ExamResultsPage() {
   const ITEMS_PER_PAGE = 10;
 
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
+  const [manualPoints, setManualPoints] = useState<string>('');
+  const [manualFeedback, setManualFeedback] = useState<string>('');
+  const [savingManualGrade, setSavingManualGrade] = useState(false);
+
   const [editingStudent, setEditingStudent] = useState(false);
   const [editStudentName, setEditStudentName] = useState("");
   const [editStudentRa, setEditStudentRa] = useState("");
