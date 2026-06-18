@@ -277,6 +277,34 @@ export async function getSubmissionDetails(submissionId: number) {
       return { success: false, error: "Submissão não encontrada" };
     }
 
+    if (submission.isPhysical) {
+      const details = (submission.correctionDetails as any[]) || [];
+      const report = details.map((d: any, index: number) => ({
+        questionId: d.questionNumber || index,
+        content: `Questão ${d.questionNumber || index + 1}`,
+        type: 'ESSAY',
+        studentAnswer: d.studentAnswer || 'Não respondida',
+        correctAnswer: d.correctAnswer || '',
+        referenceDevelopment: null,
+        points: d.maxPoints || 0,
+        pointsObtained: d.pointsObtained || 0,
+        feedback: d.feedback || '',
+        options: [],
+        tfResult: []
+      }));
+      
+      return {
+        success: true,
+        studentName: submission.studentName,
+        studentRa: submission.studentRa,
+        score: submission.score,
+        focusLoses: submission.focusLoses,
+        maxScore: report.reduce((acc: number, r: any) => acc + r.points, 0) || submission.exam.totalScore || 10,
+        report,
+        isPhysical: true
+      };
+    }
+
     // Mapear respostas com enunciados
     const answers = (submission.answers as any) || {};
     const report = submission.exam.questions.map(eq => {
