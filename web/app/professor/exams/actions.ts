@@ -989,7 +989,7 @@ export async function updateManualGrade(submissionId: number, questionId: number
   }
 }
 
-export async function updateSubmissionStudentData(submissionId: number, studentName: string, studentRa: string) {
+export async function updateSubmissionQuickData(submissionId: number, studentName: string, studentRa: string, score: number) {
   const session = await auth()
   const userId = session?.user ? Number((session.user as any).id) : null
 
@@ -1025,13 +1025,14 @@ export async function updateSubmissionStudentData(submissionId: number, studentN
         where: { id: submissionId },
         data: {
             studentName: studentName,
-            studentRa: studentRa
+            studentRa: studentRa,
+            score: score
         }
     });
 
     return { success: true };
   } catch (e: any) {
-    console.error("Erro ao atualizar dados do aluno:", e);
+    console.error("Erro ao atualizar dados rápidos:", e);
     return { success: false, error: e.message };
   }
 }

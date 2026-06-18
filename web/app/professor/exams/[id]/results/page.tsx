@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
-import { getExamForMonitor, kickStudent, getSubmissionDetails, updateManualGrade, updateSubmissionStudentData } from '../../actions';
+import { getExamForMonitor, kickStudent, getSubmissionDetails, updateManualGrade, updateSubmissionQuickData } from '../../actions';
 import { generateTeacherSummaryPdf, generateFullDetailedClassPdf, generateExamPdf } from '@/lib/utils/pdf-generator';
 import MathRenderer from '@/components/shared/MathRenderer';
 import { Pagination } from '@/components/shared/Pagination';
@@ -25,14 +25,12 @@ export default function ExamResultsPage() {
   const ITEMS_PER_PAGE = 10;
 
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
-  const [manualPoints, setManualPoints] = useState<string>('');
-  const [manualFeedback, setManualFeedback] = useState<string>('');
-  const [savingManualGrade, setSavingManualGrade] = useState(false);
-
   const [editingStudent, setEditingStudent] = useState(false);
   const [editStudentName, setEditStudentName] = useState("");
   const [editStudentRa, setEditStudentRa] = useState("");
+  const [editStudentScore, setEditStudentScore] = useState("");
   const [savingStudent, setSavingStudent] = useState(false);
+  const [quickEditSubmission, setQuickEditSubmission] = useState<any>(null);
 
   useEffect(() => { setCurrentPage(1); }, [filterType]);
 
@@ -273,22 +271,34 @@ export default function ExamResultsPage() {
                                )}
                             </td>
                             <td className="py-5 px-2 text-right">
-                               <button 
-                                 onClick={async () => {
-                                   setLoadingDetails(true);
-                                   const res = await getSubmissionDetails(p.id);
-                                   if (res.success) {
-                                     setSelectedSubmission(res);
-                                     setEditStudentName(res.studentName || "");
-                                     setEditStudentRa(res.studentRa || "");
-                                   }
-                                   setLoadingDetails(false);
-                                 }}
-                                 className="px-4 py-2 rounded-lg bg-white/5 hover:bg-primary hover:text-black flex items-center gap-2 text-[10px] font-black transition-all ml-auto uppercase"
-                               >
-                                 <span className="material-symbols-outlined text-sm">visibility</span>
-                                 Ver Prova
-                               </button>
+                               <div className="flex items-center justify-end gap-2">
+                                 <button 
+                                   onClick={() => {
+                                      setQuickEditSubmission(p);
+                                      setEditStudentName(p.name || "");
+                                      setEditStudentRa(p.ra || "");
+                                      setEditStudentScore(String(p.score ?? "0"));
+                                   }}
+                                   className="w-8 h-8 rounded-full border border-white/10 hover:bg-white/10 flex items-center justify-center text-gray-400 transition-all"
+                                   title="Edição Rápida (Nome, RA, Nota)"
+                                 >
+                                   <span className="material-symbols-outlined text-sm">edit</span>
+                                 </button>
+                                 <button 
+                                   onClick={async () => {
+                                     setLoadingDetails(true);
+                                     const res = await getSubmissionDetails(p.id);
+                                     if (res.success) {
+                                       setSelectedSubmission(res);
+                                     }
+                                     setLoadingDetails(false);
+                                   }}
+                                   className="px-4 py-2 rounded-lg bg-white/5 hover:bg-primary hover:text-black flex items-center gap-2 text-[10px] font-black transition-all uppercase"
+                                 >
+                                   <span className="material-symbols-outlined text-sm">visibility</span>
+                                   Ver Prova
+                                 </button>
+                               </div>
                             </td>
                           </tr>
                         );
@@ -316,61 +326,13 @@ export default function ExamResultsPage() {
            <div className="relative w-full max-w-[1000px] h-[90vh] liquid-glass rounded-[3rem] border border-white/10 flex flex-col overflow-hidden min-w-0">
               
               <header className="p-10 border-b border-white/5 flex items-center justify-between shrink-0">
-                 <div className="space-y-2">
-                    {editingStudent ? (
-                       <div className="flex flex-col gap-2">
-                          <input 
-                             className="bg-white/5 border border-white/10 rounded px-3 py-1 text-white text-xl font-bold" 
-                             value={editStudentName} 
-                             onChange={e => setEditStudentName(e.target.value)} 
-                          />
-                          <input 
-                             className="bg-white/5 border border-white/10 rounded px-3 py-1 text-white text-sm" 
-                             value={editStudentRa} 
-                             onChange={e => setEditStudentRa(e.target.value)} 
-                          />
-                          <div className="flex gap-2 mt-2">
-                             <button onClick={() => setEditingStudent(false)} className="text-xs px-3 py-1 text-gray-400 border border-gray-600 rounded">Cancelar</button>
-                             <button 
-                               onClick={async () => {
-                                  setSavingStudent(true);
-                                  const res = await updateSubmissionStudentData(selectedSubmission.id, editStudentName, editStudentRa);
-                                  if (res.success) {
-                                     setSelectedSubmission((prev: any) => ({ ...prev, studentName: editStudentName, studentRa: editStudentRa }));
-                                     setExam((prev: any) => ({
-                                       ...prev,
-                                       submissions: prev.submissions.map((s: any) => 
-                                         s.id === selectedSubmission.id ? { ...s, studentName: editStudentName, studentRa: editStudentRa } : s
-                                       )
-                                     }));
-                                     setEditingStudent(false);
-                                  } else {
-                                     alert("Erro ao atualizar: " + res.error);
-                                  }
-                                  setSavingStudent(false);
-                               }}
-                               disabled={savingStudent}
-                               className="text-xs px-3 py-1 bg-primary text-black font-bold rounded"
-                             >
-                               {savingStudent ? 'Salvando...' : 'Salvar'}
-                             </button>
-                          </div>
-                       </div>
-                    ) : (
-                       <>
-                          <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                             {selectedSubmission.studentName}
-                             <button onClick={() => setEditingStudent(true)} className="text-gray-500 hover:text-white transition-colors" title="Editar Nome/RA">
-                                <span className="material-symbols-outlined text-sm">edit</span>
-                             </button>
-                          </h2>
-                          <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
-                             RA: {selectedSubmission.studentRa} &bull; 
-                             Nota: {selectedSubmission.score?.toFixed(1).replace('.', ',') || '0,0'} / {selectedSubmission.maxScore?.toFixed(1).replace('.', ',')} &bull; 
-                             Alertas Sentinel: {selectedSubmission.focusLoses || 0}
-                          </p>
-                       </>
-                    )}
+                 <div className="space-y-1">
+                    <h2 className="text-2xl font-black text-white">{selectedSubmission.studentName}</h2>
+                    <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
+                       RA: {selectedSubmission.studentRa} &bull; 
+                       Nota: {selectedSubmission.score?.toFixed(1).replace('.', ',') || '0,0'} / {selectedSubmission.maxScore?.toFixed(1).replace('.', ',')} &bull; 
+                       Alertas Sentinel: {selectedSubmission.focusLoses || 0}
+                    </p>
                  </div>
                  <button onClick={() => setSelectedSubmission(null)} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 border border-white/5 transition-all">
                    <span className="material-symbols-outlined">close</span>
@@ -587,6 +549,85 @@ export default function ExamResultsPage() {
                    BAIXAR PDF INDIVIDUAL
                  </button>
               </footer>
+           </div>
+        </div>
+      )}
+
+      {/* Modal de Edição Rápida */}
+      {quickEditSubmission && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setQuickEditSubmission(null)} />
+           <div className="relative w-full max-w-[400px] liquid-glass rounded-3xl border border-white/10 p-8 space-y-6">
+              <div className="space-y-1">
+                 <h3 className="text-xl font-black text-white flex items-center gap-2">
+                   <span className="material-symbols-outlined text-primary">edit</span>
+                   Edição Rápida
+                 </h3>
+                 <p className="text-xs text-gray-400">Edite os dados do aluno ou corrija a nota total manualmente.</p>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Nome do Aluno</label>
+                   <input 
+                     type="text" 
+                     value={editStudentName}
+                     onChange={e => setEditStudentName(e.target.value)}
+                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">RA / Matrícula</label>
+                   <input 
+                     type="text" 
+                     value={editStudentRa}
+                     onChange={e => setEditStudentRa(e.target.value)}
+                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Nota Total</label>
+                   <input 
+                     type="number" 
+                     step="0.1"
+                     value={editStudentScore}
+                     onChange={e => setEditStudentScore(e.target.value)}
+                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                   />
+                 </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                 <button 
+                   onClick={() => setQuickEditSubmission(null)}
+                   className="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-colors"
+                   disabled={savingStudent}
+                 >
+                   Cancelar
+                 </button>
+                 <button 
+                   onClick={async () => {
+                      setSavingStudent(true);
+                      const res = await updateSubmissionQuickData(quickEditSubmission.id, editStudentName, editStudentRa, Number(editStudentScore));
+                      if (res.success) {
+                         setExam((prev: any) => ({
+                           ...prev,
+                           submissions: prev.submissions.map((s: any) => 
+                             s.id === quickEditSubmission.id ? { ...s, studentName: editStudentName, studentRa: editStudentRa, score: Number(editStudentScore) } : s
+                           )
+                         }));
+                         setQuickEditSubmission(null);
+                      } else {
+                         alert("Erro ao atualizar: " + res.error);
+                      }
+                      setSavingStudent(false);
+                   }}
+                   disabled={savingStudent}
+                   className="px-6 py-2 rounded-xl bg-primary text-black text-xs font-black hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2"
+                 >
+                   {savingStudent ? 'Salvando...' : 'Salvar Alterações'}
+                 </button>
+              </div>
            </div>
         </div>
       )}
