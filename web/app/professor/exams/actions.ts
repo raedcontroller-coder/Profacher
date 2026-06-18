@@ -295,6 +295,7 @@ export async function getSubmissionDetails(submissionId: number) {
       
       return {
         success: true,
+        id: submissionId,
         studentName: submission.studentName,
         studentRa: submission.studentRa,
         score: submission.score,
@@ -376,6 +377,7 @@ export async function getSubmissionDetails(submissionId: number) {
 
     return { 
       success: true, 
+      id: submissionId,
       studentName: submission.studentName,
       studentRa: submission.studentRa,
       score: submission.score,
@@ -959,7 +961,8 @@ export async function updateManualGrade(submissionId: number, questionId: number
     let newTotalScore = 0;
 
     for (let i = 0; i < details.length; i++) {
-        if (details[i].questionId === questionId) {
+        const currentId = details[i].questionId ?? details[i].questionNumber ?? i;
+        if (currentId === questionId) {
             details[i].pointsObtained = newPoints;
             details[i].feedback = manualFeedback;
             updated = true;
@@ -985,3 +988,51 @@ export async function updateManualGrade(submissionId: number, questionId: number
     return { success: false, error: e.message };
   }
 }
+
+export async function updateSubmissionStudentData(submissionId: number, studentName: string, studentRa: string) {
+  const session = await auth()
+  const userId = session?.user ? Number((session.user as any).id) : null
+
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  try {
+    const submission = await prisma.examSubmission.findUnique({
+      where: { id: submissionId },
+      include: { exam: true }
+    });
+
+    if (!submission || submission.exam.teacherId !== userId) {
+        return { success: false, error: "Submissão não encontrada ou acesso negado" };
+    }
+
+    if (submission.studentRa !== studentRa) {
+        const existing = await prisma.examSubmission.findUnique({
+            where: {
+                examId_studentRa: {
+                    examId: submission.examId,
+                    studentRa: studentRa
+                }
+            }
+        });
+        if (existing) {
+            return { success: false, error: "Já existe uma prova com este RA." };
+        }
+    }
+
+    await prisma.examSubmission.update({
+        where: { id: submissionId },
+        data: {
+            studentName: studentName,
+            studentRa: studentRa
+        }
+    });
+
+    return { success: true };
+  } catch (e: any) {
+    console.error("Erro ao atualizar dados do aluno:", e);
+    return { success: false, error: e.message };
+  }
+}
+
