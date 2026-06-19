@@ -57,7 +57,7 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
             className="w-full bg-[#0d0e0f] border border-outline-variant/30 rounded-xl text-base py-3.5 px-4 focus:ring-2 focus:ring-primary/40 outline-none font-['Inter'] text-on-surface"
           >
             <option value="PROFESSOR">Professor(a)</option>
-            <option value="COORDENADOR">Coordenador(a)</option>
+            <option value="COORDINATOR">Coordenador(a)</option>
           </select>
         </div>
         <div className="flex flex-col justify-end">

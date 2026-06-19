@@ -176,16 +176,16 @@ export async function deleteInstitution(id: number) {
 }
 
 /**
- * Cria um novo coordenador para uma instituição existente
+ * Cria um novo usuário diretamente para uma instituição existente
  */
-export async function createCoordinator(institutionId: number, data: { fullName: string; email: string; password?: string }) {
+export async function createInstitutionUser(institutionId: number, data: { fullName: string; email: string; password?: string, roleName: 'COORDINATOR' | 'PROFESSOR' }) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") {
     throw new Error("Não autorizado");
   }
 
-  const role = await prisma.role.findUnique({ where: { name: 'COORDINATOR' } });
-  if (!role) throw new Error("Role COORDINATOR não encontrada no sistema");
+  const role = await prisma.role.findUnique({ where: { name: data.roleName } });
+  if (!role) throw new Error(`Role ${data.roleName} não encontrada no sistema`);
 
   const passwordToHash = data.password || 'Mudar123*';
   const hashedPassword = await bcrypt.hash(passwordToHash, 10);
@@ -207,6 +207,6 @@ export async function createCoordinator(institutionId: number, data: { fullName:
     if (error.code === 'P2002') {
       return { success: false, error: "Um usuário com este email já existe." };
     }
-    return { success: false, error: "Erro ao criar coordenador: " + error.message };
+    return { success: false, error: "Erro ao criar usuário: " + error.message };
   }
 }

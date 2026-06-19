@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
-import { getInstitutions, getInstitutionUsers, createInstitution, updateInstitution, deleteInstitution, createCoordinator } from './actions';
+import { getInstitutions, getInstitutionUsers, createInstitution, updateInstitution, deleteInstitution, createInstitutionUser } from './actions';
 import { Pagination } from '@/components/shared/Pagination';
 
 interface User {
@@ -86,7 +86,7 @@ function InstitutionUsersList({ institutionId }: { institutionId: number }) {
   );
 }
 
-function InstitutionCard({ institution, onEdit, onDelete, onAddCoordinator }: { institution: Institution, onEdit: (inst: Institution) => void, onDelete: (inst: Institution) => void, onAddCoordinator: (inst: Institution) => void }) {
+function InstitutionCard({ institution, onEdit, onDelete, onAddUser }: { institution: Institution, onEdit: (inst: Institution) => void, onDelete: (inst: Institution) => void, onAddUser: (inst: Institution) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -126,10 +126,10 @@ function InstitutionCard({ institution, onEdit, onDelete, onAddCoordinator }: { 
             <button 
                 onClick={(e) => {
                     e.stopPropagation();
-                    onAddCoordinator(institution);
+                    onAddUser(institution);
                 }}
                 className="p-3 rounded-2xl bg-white/5 hover:bg-green-500/20 hover:text-green-500 transition-all text-gray-400 group"
-                title="Adicionar Coordenador"
+                title="Adicionar Usuário"
             >
                 <span className="material-symbols-outlined transition-transform group-hover:scale-110">person_add</span>
             </button>
@@ -573,10 +573,11 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
   );
 }
 
-function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOpen: boolean, onClose: () => void, onSuccess: () => void, institution: Institution | null }) {
+function AddUserModal({ isOpen, onClose, onSuccess, institution }: { isOpen: boolean, onClose: () => void, onSuccess: () => void, institution: Institution | null }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [roleName, setRoleName] = useState<'COORDINATOR' | 'PROFESSOR'>('COORDINATOR');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -589,10 +590,11 @@ function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOp
     setLoading(true);
     setError(null);
 
-    const result = await createCoordinator(institution.id, { 
+    const result = await createInstitutionUser(institution.id, { 
       fullName, 
       email, 
-      password 
+      password,
+      roleName
     });
 
     if (result.success) {
@@ -601,6 +603,7 @@ function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOp
       setFullName('');
       setEmail('');
       setPassword('');
+      setRoleName('COORDINATOR');
     } else {
       setError(result.error || "Erro desconhecido");
     }
@@ -612,8 +615,8 @@ function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOp
       <div className="liquid-glass w-full max-w-xl p-10 rounded-[2.5rem] border border-outline-variant shadow-2xl relative animate-in zoom-in-95 duration-500">
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-on-surface">Adicionar Coordenador</h2>
-            <p className="text-gray-500 mt-2">Cadastre um novo coordenador para a instituição <strong className="text-primary">{institution.name}</strong>.</p>
+            <h2 className="text-3xl font-bold tracking-tight text-on-surface">Adicionar Usuário</h2>
+            <p className="text-gray-500 mt-2">Cadastre um novo usuário direto na instituição <strong className="text-primary">{institution.name}</strong>.</p>
           </div>
           <button type="button" onClick={onClose} className="p-2 rounded-xl hover:bg-white/5 text-gray-500 transition-colors">
             <span className="material-symbols-outlined">close</span>
@@ -645,7 +648,7 @@ function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOp
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">Senha</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">Senha (Opcional)</label>
             <input 
               type="password"
               value={password}
@@ -653,6 +656,18 @@ function AddCoordinatorModal({ isOpen, onClose, onSuccess, institution }: { isOp
               className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary text-on-surface"
               placeholder="Se vazio, usa senha padrão (Mudar123*)"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-primary/70 ml-1">Cargo</label>
+            <select
+              value={roleName}
+              onChange={(e) => setRoleName(e.target.value as 'COORDINATOR' | 'PROFESSOR')}
+              className="w-full bg-[#0d0e0f]/50 border border-outline-variant rounded-2xl p-4 outline-none focus:border-primary text-on-surface"
+            >
+              <option value="COORDINATOR">Coordenador(a)</option>
+              <option value="PROFESSOR">Professor(a)</option>
+            </select>
           </div>
 
           {error && <div className="p-4 rounded-xl bg-red-500/5 border border-outline-variant text-red-500 text-sm">{error}</div>}
@@ -686,7 +701,7 @@ export default function InstitutionsClient({ initialUserName }: { initialUserNam
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInstitution, setEditingInstitution] = useState<Institution | null>(null);
   const [deletingInstitution, setDeletingInstitution] = useState<Institution | null>(null);
-  const [addingCoordinatorInst, setAddingCoordinatorInst] = useState<Institution | null>(null);
+  const [addingUserInst, setAddingUserInst] = useState<Institution | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -755,11 +770,11 @@ export default function InstitutionsClient({ initialUserName }: { initialUserNam
             institution={deletingInstitution} 
           />
 
-          <AddCoordinatorModal 
-            isOpen={!!addingCoordinatorInst} 
-            onClose={() => setAddingCoordinatorInst(null)} 
+          <AddUserModal 
+            isOpen={!!addingUserInst} 
+            onClose={() => setAddingUserInst(null)} 
             onSuccess={loadData} 
-            institution={addingCoordinatorInst} 
+            institution={addingUserInst} 
           />
 
           <section className="space-y-8">
@@ -772,7 +787,7 @@ export default function InstitutionsClient({ initialUserName }: { initialUserNam
                     institution={inst} 
                     onEdit={setEditingInstitution}
                     onDelete={setDeletingInstitution}
-                    onAddCoordinator={setAddingCoordinatorInst}
+                    onAddUser={setAddingUserInst}
                 />
               ))
             ) : (
