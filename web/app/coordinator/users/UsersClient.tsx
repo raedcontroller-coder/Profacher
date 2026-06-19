@@ -2,20 +2,21 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
-import { getInstitutionUsers, inviteUserAction, deleteUserAction } from '../actions';
+import { getInstitutionUsers, inviteUserAction, deleteUserAction, getPendingInvitationsAction, cancelInvitationAction } from '../actions';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { Pagination } from '@/components/shared/Pagination';
 
-function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: string }) => void }) {
+function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: string, roleName: string }) => void }) {
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (formData: FormData) => {
     const fullName = formData.get('fullName') as string;
     const email = formData.get('email') as string;
+    const roleName = formData.get('roleName') as string;
 
     startTransition(async () => {
-      onInvite({ fullName, email });
+      onInvite({ fullName, email, roleName });
     });
   };
 
@@ -28,7 +29,7 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
         </div>
         <span className="material-symbols-outlined text-primary/30 text-5xl">person_add</span>
       </div>
-      <form action={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <form action={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="space-y-1.5">
           <label className="text-caption text-gray-400 ml-1">Nome Completo</label>
           <input
@@ -48,6 +49,17 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
             placeholder="email@fecap.br"
           />
         </div>
+        <div className="space-y-1.5">
+          <label className="text-caption text-gray-400 ml-1">Cargo</label>
+          <select
+            name="roleName"
+            required
+            className="w-full bg-[#0d0e0f] border border-outline-variant/30 rounded-xl text-base py-3.5 px-4 focus:ring-2 focus:ring-primary/40 outline-none font-['Inter'] text-on-surface"
+          >
+            <option value="PROFESSOR">Professor(a)</option>
+            <option value="COORDENADOR">Coordenador(a)</option>
+          </select>
+        </div>
         <div className="flex flex-col justify-end">
           <button 
             disabled={isPending}
@@ -59,6 +71,69 @@ function InviteCard({ onInvite }: { onInvite: (data: { fullName: string, email: 
         </div>
       </form>
     </div>
+  );
+}
+
+function PendingInvitesTable({ invites, onCancel }: { invites: any[], onCancel: (id: string) => void }) {
+  if (invites.length === 0) return null;
+
+  return (
+    <section className="bg-[#1f2021] rounded-2xl overflow-hidden shadow-xl border border-outline-variant mt-8">
+      <div className="p-8 flex items-center justify-between bg-[#292a2b]/40 border-b border-outline-variant">
+        <div className="flex items-center gap-6">
+          <h3 className="font-bold text-2xl text-yellow-500">Convites Pendentes</h3>
+          <div className="h-8 w-px bg-outline-variant" />
+          <span className="text-caption text-gray-500">{invites.length} AGUARDANDO ACEITE</span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="table-admin w-full text-left">
+          <thead>
+            <tr>
+              <th className="py-3 px-4 text-gray-500 font-bold text-xs uppercase tracking-wider">E-mail Convidado</th>
+              <th className="py-3 px-4 text-gray-500 font-bold text-xs uppercase tracking-wider">Cargo</th>
+              <th className="py-3 px-4 text-gray-500 font-bold text-xs uppercase tracking-wider">Data de Envio</th>
+              <th className="py-3 px-4 text-gray-500 font-bold text-xs uppercase tracking-wider text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline-variant">
+            {invites.map((invite) => (
+              <tr key={invite.id} className="group hover:bg-[#343536]/40 transition-colors">
+                <td className="px-4 py-4">
+                  <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined text-yellow-500/50 text-3xl">mark_email_unread</span>
+                    <div>
+                      <p className="font-bold text-subtitle text-yellow-500">{invite.email}</p>
+                      <p className="text-body text-gray-500">Expira em {new Date(invite.expiresAt).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-4">
+                  <span className="px-3 py-1 rounded-lg text-xs font-bold border border-yellow-500/20 bg-yellow-500/10 text-yellow-500 uppercase tracking-wider">
+                    {invite.role.name}
+                  </span>
+                </td>
+                <td className="px-4 py-4">
+                  <p className="text-body text-on-surface-variant">
+                    {new Date(invite.createdAt).toLocaleDateString('pt-BR')}
+                  </p>
+                </td>
+                <td className="px-4 py-4 text-right">
+                  <button 
+                    onClick={() => { if(confirm(`Cancelar convite para ${invite.email}?`)) onCancel(invite.id) }}
+                    className="p-2 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-all active:scale-90"
+                    title="Cancelar Convite"
+                  >
+                    <span className="material-symbols-outlined text-2xl">cancel</span>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -141,6 +216,7 @@ function UserTable({ users, onDelete, currentUserId }: { users: any[], onDelete:
 export default function UsersClient({ initialUserName }: { initialUserName?: string }) {
   const { data: session, status } = useSession();
   const [users, setUsers] = useState<any[]>([]);
+  const [invites, setInvites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const currentUserId = (session?.user as any)?.id;
@@ -149,8 +225,12 @@ export default function UsersClient({ initialUserName }: { initialUserName?: str
 
   async function loadUsers() {
     try {
-      const data = await getInstitutionUsers();
-      setUsers(data);
+      const [dataUsers, dataInvites] = await Promise.all([
+        getInstitutionUsers(),
+        getPendingInvitationsAction()
+      ]);
+      setUsers(dataUsers);
+      setInvites(dataInvites);
     } catch (error) {
       console.error("Erro:", error);
     } finally {
@@ -162,7 +242,7 @@ export default function UsersClient({ initialUserName }: { initialUserName?: str
     loadUsers();
   }, []);
 
-  async function handleInvite(data: { fullName: string, email: string }) {
+  async function handleInvite(data: { fullName: string, email: string, roleName: string }) {
     const result = await inviteUserAction(data);
     if (result?.error) {
       alert(result.error);
@@ -179,6 +259,11 @@ export default function UsersClient({ initialUserName }: { initialUserName?: str
     } else {
       loadUsers();
     }
+  }
+
+  async function handleCancelInvite(id: string) {
+    await cancelInvitationAction(id);
+    loadUsers();
   }
 
   return (
@@ -209,7 +294,10 @@ export default function UsersClient({ initialUserName }: { initialUserName?: str
           {loading ? (
              <div className="flex justify-center py-20"><span className="animate-spin material-symbols-outlined text-primary text-4xl">sync</span></div>
           ) : (
-            <UserTable users={users} onDelete={handleDelete} currentUserId={currentUserId} />
+            <>
+              <PendingInvitesTable invites={invites} onCancel={handleCancelInvite} />
+              <UserTable users={users} onDelete={handleDelete} currentUserId={currentUserId} />
+            </>
           )}
         </div>
       </main>

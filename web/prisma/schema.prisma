@@ -12,6 +12,7 @@ model Role {
   id    Int    @id @default(autoincrement())
   name  String @unique
   users User[]
+  invitations Invitation[]
 
   @@map("roles")
 }
@@ -28,6 +29,7 @@ model Institution {
   hasIntegratedAi Boolean      @default(false) @map("has_integrated_ai")
   users           User[]
   aiUsageLogs     AiUsageLog[]
+  invitations     Invitation[]
 
   @@map("institutions")
 }
@@ -57,6 +59,7 @@ model User {
   institution    Institution?    @relation(fields: [institutionId], references: [id])
   role           Role            @relation(fields: [roleId], references: [id])
   aiUsageLogs    AiUsageLog[]
+  invitationsSent Invitation[]
 
   @@map("users")
 }
@@ -196,4 +199,22 @@ model AiUsageLog {
   exam        Exam?        @relation(fields: [examId], references: [id], onDelete: SetNull)
 
   @@map("ai_usage_logs")
+}
+
+model Invitation {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  token         String   @unique
+  roleId        Int      @map("role_id")
+  institutionId Int      @map("institution_id")
+  inviterId     Int      @map("inviter_id")
+  status        String   @default("PENDING")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  role        Role        @relation(fields: [roleId], references: [id])
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  inviter     User        @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
 }
