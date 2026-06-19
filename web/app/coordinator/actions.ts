@@ -344,3 +344,51 @@ export async function deleteUserAction(userId: number) {
     return { error: "Erro ao deletar usuário." }
   }
 }
+
+export async function getCoordinatorResultsAction() {
+  const session = await auth()
+  if (!session?.user) throw new Error("Não autorizado")
+
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email as string },
+    select: { institutionId: true }
+  })
+
+  if (!currentUser?.institutionId) return []
+
+  const exams = await prisma.exam.findMany({
+    where: { 
+      teacher: { institutionId: currentUser.institutionId },
+      status: { in: ['STARTED', 'FINISHED'] }
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      createdAt: true,
+      teacher: { select: { fullName: true } },
+      submissions: {
+        select: { score: true }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return exams.map(exam => {
+    const totalSubmissions = exam.submissions.length
+    const avgScore = totalSubmissions > 0 
+      ? exam.submissions.reduce((acc, sub) => acc + (sub.score || 0), 0) / totalSubmissions 
+      : 0
+
+    return {
+      id: exam.id,
+      title: exam.title,
+      teacherName: exam.teacher.fullName,
+      status: exam.status,
+      createdAt: exam.createdAt,
+      totalSubmissions,
+      avgScore
+    }
+  })
+}
+

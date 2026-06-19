@@ -16,7 +16,6 @@ interface NavItem {
 
 const coordinatorNavItems: NavItem[] = [
   { icon: 'dashboard', label: 'Dashboard', href: '/coordinator' },
-  { icon: 'description', label: 'Provas', href: '/coordinator/exams' },
   { icon: 'analytics', label: 'Resultados', href: '/coordinator/results' },
   { icon: 'group', label: 'Gestão de Usuários', href: '/coordinator/users' },
   { icon: 'monitoring', label: 'Custos de IA', href: '/coordinator/ai-costs' },
@@ -126,10 +125,10 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const footerContent = (
     <div className="mt-auto space-y-2 pb-2">
-      {(role === 'COORDENADOR' || role === 'PROFESSOR') && (
+      {role === 'PROFESSOR' && (
         <div className="px-4">
           <Link
-            href={role === 'COORDENADOR' ? "/coordinator/new-exam" : "/professor/new-exam"}
+            href="/professor/new-exam"
             className={`flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 rounded-2xl border border-black/5 dark:border-white/[0.02] group shadow-lg ${isCollapsed ? 'px-0' : 'px-4'}`}
             title="Nova Prova"
           >
@@ -244,10 +243,10 @@ export default function Sidebar({ role }: SidebarProps) {
 
         {/* Footer mobile */}
         <div className="mt-auto space-y-2 pb-2">
-          {(role === 'COORDENADOR' || role === 'PROFESSOR') && (
+          {role === 'PROFESSOR' && (
             <div className="px-4">
               <Link
-                href={role === 'COORDENADOR' ? "/coordinator/new-exam" : "/professor/new-exam"}
+                href="/professor/new-exam"
                 className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 px-4 rounded-2xl border border-black/5 dark:border-white/[0.02] font-bold"
               >
                 <span className="material-symbols-outlined text-2xl">add_circle</span>
