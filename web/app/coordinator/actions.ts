@@ -3,6 +3,7 @@
 import { prisma } from "../../lib/prisma"
 import { auth } from "../../auth"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import bcrypt from "bcryptjs"
 import nodemailer from "nodemailer"
 import path from "path"
@@ -216,7 +217,12 @@ export async function inviteUserAction({ fullName, email, roleName = "PROFESSOR"
       tls: { rejectUnauthorized: false }
     })
 
-    const inviteLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/register?token=${token}`
+    const headersList = await headers()
+    const host = headersList.get("host") || "localhost:3000"
+    const protocol = process.env.NODE_ENV === "production" || host.includes("raed.world") ? "https" : "http"
+    const baseUrl = process.env.NEXTAUTH_URL || `${protocol}://${host}`
+
+    const inviteLink = `${baseUrl}/register?token=${token}`
 
     const htmlContent = `
       <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #121315; color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #2a2a30; box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
