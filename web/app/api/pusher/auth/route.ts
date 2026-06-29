@@ -1,6 +1,7 @@
 import { pusherServer } from "@/lib/pusher";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -24,6 +25,33 @@ export async function POST(req: Request) {
       user_id: "",
       user_info: {}
     };
+
+    // [SEGURANÇA] Validação Estrita do Canal
+    if (channelName.startsWith("presence-exam-")) {
+      const accessCode = channelName.replace("presence-exam-", "");
+      
+      // Verifica se a prova realmente existe
+      const exam = await prisma.exam.findUnique({
+        where: { accessCode },
+        select: { id: true }
+      });
+
+      if (!exam) {
+        return new NextResponse("Exam not found", { status: 404 });
+      }
+
+      // Se for um aluno tentando conectar, verifica se ele não foi expulso
+      if (studentRa) {
+         const submission = await prisma.examSubmission.findUnique({
+           where: { examId_studentRa: { examId: exam.id, studentRa } },
+           select: { isExpelled: true }
+         });
+
+         if (submission?.isExpelled) {
+            return new NextResponse("Expelled", { status: 403 });
+         }
+      }
+    }
 
     // 1. Prioridade: Se houver parâmetros de Aluno (Convidado), trata como aluno
     // Isso permite que professores testem a prova no mesmo navegador.

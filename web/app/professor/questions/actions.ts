@@ -70,10 +70,13 @@ export async function deleteQuestionGroup(id: number) {
 }
 
 export async function getGroupWithQuestions(id: number) {
+  // [SEGURANÇA] Valida se o usuário tem uma sessão válida
   const session = await auth()
-  if (!session) throw new Error("Não autorizado")
+  const userId = session?.user ? Number((session.user as any).id) : null
 
-  return await prisma.questionGroup.findUnique({
+  if (!session || !userId) throw new Error("Não autorizado")
+
+  const group = await prisma.questionGroup.findUnique({
     where: { id },
     include: {
       questions: {
@@ -84,6 +87,14 @@ export async function getGroupWithQuestions(id: number) {
       }
     }
   })
+
+  // [SEGURANÇA] Evita IDOR (Insecure Direct Object Reference)
+  // Garante que o usuário logado só consiga ver o grupo de questões se for o dono dele.
+  if (group && group.teacherId !== userId) {
+    throw new Error("Acesso negado: Este banco de questões pertence a outro professor.")
+  }
+
+  return group;
 }
 
 export async function createQuestionInBank(data: {

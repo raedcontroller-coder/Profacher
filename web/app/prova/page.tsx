@@ -18,7 +18,7 @@ export default function UnifiedStudentExamPage() {
   });
   const [loading, setLoading] = useState(false);
   const [examData, setExamData] = useState<any>(null);
-  const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [savingStatus, setSavingStatus] = useState<Record<number, 'saving' | 'saved' | 'error' | undefined>>({});
   const [scoreData, setScoreData] = useState<{ score: number, maxScore: number, details: any[], showScore: boolean } | null>(null);

@@ -245,7 +245,7 @@ export async function getExamForMonitor(examId: number) {
 /**
  * Busca os detalhes completos de uma submissão para o modal do professor.
  */
-export async function getSubmissionDetails(submissionId: number) {
+export async function getSubmissionDetails(submissionId: string) {
   const session = await auth()
   const userId = session?.user ? Number((session.user as any).id) : null
 
@@ -597,7 +597,7 @@ export async function getLiveExamQuestions(accessCode: string, studentName: stri
   }
 }
 
-export async function saveLiveAnswer(submissionId: number, questionId: number, answer: any) {
+export async function saveLiveAnswer(submissionId: string, questionId: number, answer: any) {
   try {
     const submission = await prisma.examSubmission.findUnique({
       where: { id: submissionId }
@@ -621,7 +621,7 @@ export async function saveLiveAnswer(submissionId: number, questionId: number, a
   }
 }
 
-export async function finishExamLive(submissionId: number) {
+export async function finishExamLive(submissionId: string) {
   try {
     const { gradeStudentAnswer } = await import("@/app/actions/aiAction");
 
@@ -938,7 +938,7 @@ export async function getExamForEdit(examId: number) {
   }
 }
 
-export async function updateManualGrade(submissionId: number, questionId: number, newPoints: number, manualFeedback: string) {
+export async function updateManualGrade(submissionId: string, questionId: number, newPoints: number, manualFeedback: string) {
   const session = await auth()
   const userId = session?.user ? Number((session.user as any).id) : null
 
@@ -989,7 +989,7 @@ export async function updateManualGrade(submissionId: number, questionId: number
   }
 }
 
-export async function updateSubmissionQuickData(submissionId: number, studentName: string, studentRa: string, score: number) {
+export async function updateSubmissionQuickData(submissionId: string, studentName: string, studentRa: string, score: number) {
   const session = await auth()
   const userId = session?.user ? Number((session.user as any).id) : null
 

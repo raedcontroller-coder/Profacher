@@ -2,8 +2,19 @@ import { NextResponse } from "next/server"
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { s3Client, BUCKET_NAME } from "@/lib/s3-client"
 
+import { auth } from "@/auth"
+
 export async function POST(req: Request) {
     try {
+        // [SEGURANÇA] Bloqueia envios anônimos de arquivos.
+        // Apenas professores, coordenadores e admins (usuários autenticados no NextAuth) podem enviar arquivos.
+        // Alunos NÃO fazem upload de arquivos através desta rota. Se no futuro alunos precisarem, 
+        // deve-se criar uma rota separada que valide o 'studentRa' e o código da prova.
+        const session = await auth()
+        if (!session?.user) {
+            return NextResponse.json({ error: "Não autorizado." }, { status: 401 })
+        }
+
         const formData = await req.formData()
         const file = formData.get("file") as File
 

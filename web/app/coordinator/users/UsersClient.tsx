@@ -119,7 +119,18 @@ function PendingInvitesTable({ invites, onCancel }: { invites: any[], onCancel: 
                     {new Date(invite.createdAt).toLocaleDateString('pt-BR')}
                   </p>
                 </td>
-                <td className="px-4 py-4 text-right">
+                <td className="px-4 py-4 text-right flex items-center justify-end gap-2">
+                  <button 
+                    onClick={() => {
+                      const link = `${window.location.origin}/register?token=${invite.token}`;
+                      navigator.clipboard.writeText(link);
+                      alert('Link de convite copiado para a área de transferência!');
+                    }}
+                    className="p-2 rounded-lg hover:bg-primary/10 text-gray-500 hover:text-primary transition-all active:scale-90"
+                    title="Copiar Link de Convite (Porto Seguro)"
+                  >
+                    <span className="material-symbols-outlined text-2xl">content_copy</span>
+                  </button>
                   <button 
                     onClick={() => { if(confirm(`Cancelar convite para ${invite.email}?`)) onCancel(invite.id) }}
                     className="p-2 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-500 transition-all active:scale-90"

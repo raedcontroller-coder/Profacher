@@ -133,7 +133,7 @@ model Exam {
 }
 
 model ExamSubmission {
-  id          Int       @id @default(autoincrement())
+  id          String    @id @default(uuid())
   examId      Int       @map("exam_id")
   studentName String?   @map("student_name")
   studentRa   String?   @map("student_ra")
