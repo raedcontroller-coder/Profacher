@@ -23,7 +23,17 @@ function AdminMetricCard({ title, value, icon, subtitle }: { title: string, valu
   );
 }
 
-export default function AdminClient({ initialUserName }: { initialUserName?: string }) {
+export default function AdminClient({ 
+  initialUserName,
+  totalInstitutions = 0,
+  totalUsers = 0,
+  totalQueries = 0
+}: { 
+  initialUserName?: string,
+  totalInstitutions?: number,
+  totalUsers?: number,
+  totalQueries?: number
+}) {
   const { data: session, status } = useSession();
   
   const isLoadingSession = status === "loading";
@@ -69,19 +79,19 @@ export default function AdminClient({ initialUserName }: { initialUserName?: str
           <section className="grid grid-cols-12 gap-8">
             <AdminMetricCard 
               title="Instituições Ativas" 
-              value="1" 
+              value={totalInstitutions.toString()} 
               icon="account_balance" 
               subtitle="Expansão"
             />
             <AdminMetricCard 
               title="Usuários Totais" 
-              value="3" 
+              value={totalUsers.toString()} 
               icon="group" 
               subtitle="Crescimento"
             />
             <AdminMetricCard 
               title="Queries de IA" 
-              value="1.2k" 
+              value={totalQueries.toString()} 
               icon="auto_awesome" 
               subtitle="Atividade"
             />
