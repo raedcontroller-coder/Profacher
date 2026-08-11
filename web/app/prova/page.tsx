@@ -97,17 +97,8 @@ export default function UnifiedStudentExamPage() {
       if (typeof current === 'object' && current !== null) {
         finalAnswer = { ...current, justification: optionIdOrValue.justification };
       } else {
-        const q = examData?.questions.find((q: any) => q.id === questionId);
-        if (q?.type === 'MULTIPLE_CHOICE') {
-          finalAnswer = { optionId: current, justification: optionIdOrValue.justification };
-        } else {
-          finalAnswer = { value: current, justification: optionIdOrValue.justification };
-        }
+        finalAnswer = { value: current, justification: optionIdOrValue.justification };
       }
-    } else if (examData?.questions.find((q: any) => q.id === questionId)?.type === 'MULTIPLE_CHOICE') {
-      const current = answersRef.current[questionId];
-      const justification = (typeof current === 'object' && current !== null) ? (current.justification || "") : "";
-      finalAnswer = { optionId: optionIdOrValue, justification };
     } else if (examData?.questions.find((q: any) => q.id === questionId)?.type === 'CUSTOM_HTML') {
       const current = answersRef.current[questionId];
       const justification = (typeof current === 'object' && current !== null) ? (current.justification || "") : "";
@@ -611,18 +602,6 @@ export default function UnifiedStudentExamPage() {
                                 );
                               })}
                             </div>
-                            
-                            {answers[q.id] !== undefined && answers[q.id] !== null && (
-                              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
-                                <label className="text-xs font-bold text-gray-500 ml-4 uppercase tracking-widest">Justifique sua resposta (Opcional)</label>
-                                <textarea 
-                                  className="w-full bg-white/5 border border-outline rounded-[1.5rem] p-6 text-on-surface outline-none focus:border-primary/40 transition-all min-h-[120px] resize-none"
-                                  placeholder="Explique o raciocínio por trás da sua escolha..."
-                                  value={(typeof answers[q.id] === 'object' && answers[q.id] !== null) ? (answers[q.id].justification || "") : ""}
-                                  onChange={(e) => handleSelectOption(q.id, { justification: e.target.value })}
-                                />
-                              </div>
-                            )}
                           </div>
                         )}
                         {q.type === 'CUSTOM_HTML' && (
