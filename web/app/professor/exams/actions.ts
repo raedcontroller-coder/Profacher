@@ -443,6 +443,45 @@ export async function kickStudent(examId: number, studentRa: string) {
   }
 }
 
+export async function removeExpelledStudent(examId: number, studentRa: string) {
+  const session = await auth()
+  const userId = session?.user ? Number((session.user as any).id) : null
+
+  if (!session || (session.user as any).role !== "PROFESSOR" || !userId) {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  try {
+    // 1. Validar propriedade da prova
+    const exam = await prisma.exam.findFirst({
+      where: { id: examId, teacherId: userId },
+      select: { id: true }
+    });
+
+    if (!exam) return { success: false, error: "Acesso negado" };
+
+    // 2. Só permite excluir submissões de alunos bloqueados (evita apagar entregas normais por engano)
+    const submission = await prisma.examSubmission.findUnique({
+      where: { examId_studentRa: { examId, studentRa } },
+      select: { isExpelled: true }
+    });
+
+    if (!submission || !submission.isExpelled) {
+      return { success: false, error: "Apenas alunos bloqueados podem ser excluídos da lista" };
+    }
+
+    // 3. Remove a submissão para liberar o aluno a começar a prova novamente
+    await prisma.examSubmission.delete({
+      where: { examId_studentRa: { examId, studentRa } }
+    });
+
+    return { success: true };
+  } catch (e: any) {
+    console.error("Erro ao excluir aluno bloqueado:", e);
+    return { success: false, error: e.message };
+  }
+}
+
 export async function reportFocusLoss(examId: number, studentRa: string) {
   try {
     // 1. Incrementar no banco

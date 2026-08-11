@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { getPusherClient } from '@/lib/pusher';
-import { startExamLive, stopExamLive, getExamForMonitor, kickStudent } from '../../actions';
+import { startExamLive, stopExamLive, getExamForMonitor, kickStudent, removeExpelledStudent } from '../../actions';
 
 export default function ExamMonitorPage() {
   const params = useParams();
@@ -230,7 +230,21 @@ export default function ExamMonitorPage() {
                       
                       <div className="flex items-center gap-4">
                         {p.isExpelled ? (
-                          <span className="px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full shadow-lg shadow-red-500/20">BLOQUEADO</span>
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 bg-red-500 text-white text-[10px] font-black uppercase rounded-full shadow-lg shadow-red-500/20">BLOQUEADO</span>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Excluir "${p.name}" da lista? Ele poderá começar a prova novamente.`)) return;
+                                await removeExpelledStudent(examId, p.ra);
+                                const update = await getExamForMonitor(examId);
+                                if (update.success) setExam(update.exam);
+                              }}
+                              title="Excluir da lista (permite reiniciar a prova)"
+                              className="w-10 h-10 rounded-full bg-white/5 hover:bg-red-500 hover:text-white text-gray-400 flex items-center justify-center transition-all border border-white/5"
+                            >
+                              <span className="material-symbols-outlined text-lg">delete_forever</span>
+                            </button>
+                          </div>
                         ) : p.finishedAt ? (
                           <span className="px-3 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase rounded-full border border-blue-500/20 flex items-center gap-2">
                              <span className="material-symbols-outlined text-xs">verified</span>
