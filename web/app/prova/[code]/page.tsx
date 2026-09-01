@@ -88,7 +88,7 @@ export default function StudentExamPage() {
           
           {step === 'UNSUPPORTED_BROWSER' ? (
             <div className="text-center space-y-8 animate-in fade-in zoom-in duration-500 py-6">
-              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto text-primary border border-primary/20">
+              <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto text-primary border border-black/5 dark:border-white/[0.02]">
                 <span className="material-symbols-outlined text-4xl text-primary">browser_updated</span>
               </div>
               <div className="space-y-4">

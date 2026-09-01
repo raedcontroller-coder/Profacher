@@ -285,7 +285,7 @@ export default function ExamMonitorPage() {
             </div>
 
             <div className="space-y-8">
-               <div className="liquid-glass rounded-[2.5rem] border border-primary/30 p-8 text-center space-y-4 bg-primary/5">
+               <div className="liquid-glass rounded-[2.5rem] border border-black/5 dark:border-white/[0.02] p-8 text-center space-y-4 bg-primary/5">
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Código de Acesso</p>
                   <div className="text-6xl font-black font-mono tracking-tighter text-white drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]">
                     {exam?.accessCode}

@@ -146,6 +146,7 @@ model ExamSubmission {
   isExpelled  Boolean   @default(false) @map("is_expelled")
   focusLoses  Int       @default(0) @map("focus_loses")
   correctionDetails Json? @map("correction_details")
+  satisfactionRating Int? @map("satisfaction_rating")
   exam        Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentRa])

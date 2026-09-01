@@ -228,7 +228,7 @@ export default function PhysicalCorrectionClient({ examId, userName }: { examId:
                     </button>
                   </div>
 
-                  <div className="bg-primary/10 border border-primary/20 rounded-2xl p-6 flex items-center justify-between print:border-gray-300">
+                  <div className="bg-primary/10 border border-black/5 dark:border-white/[0.02] rounded-2xl p-6 flex items-center justify-between print:border-gray-300">
                     <div>
                       <p className="text-sm text-primary font-bold uppercase tracking-widest mb-1">Aluno Identificado</p>
                       <h4 className="text-2xl font-black">{report.studentName}</h4>

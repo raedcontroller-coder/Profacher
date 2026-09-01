@@ -222,7 +222,7 @@ export default function EditExamClient({
                         {questions.length > 0 && (
                             <button 
                                 onClick={() => generateBlankExamPdf(title, questions)}
-                                className="px-6 py-3 rounded-2xl bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/20 font-bold flex items-center gap-2 transition-all shadow-lg"
+                                className="px-6 py-3 rounded-2xl bg-secondary/20 hover:bg-secondary/30 text-secondary border border-black/5 dark:border-white/[0.02] font-bold flex items-center gap-2 transition-all shadow-lg"
                             >
                                 <span className="material-symbols-outlined text-lg">download</span>
                                 BAIXAR PDF

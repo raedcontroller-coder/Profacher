@@ -225,7 +225,8 @@ export async function getExamForMonitor(examId: number) {
             score: true,
             isExpelled: true,
             focusLoses: true,
-            answers: true
+            answers: true,
+            correctionDetails: true
           }
         }
       }
@@ -656,6 +657,31 @@ export async function saveLiveAnswer(submissionId: string, questionId: number, a
     return { success: true };
   } catch (e: any) {
     console.error("Erro ao salvar resposta live:", e);
+    return { success: false, error: e.message };
+  }
+}
+
+export async function saveSatisfactionRating(submissionId: string, rating: number) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return { success: false, error: "Avaliação inválida" };
+  }
+
+  try {
+    const submission = await prisma.examSubmission.findUnique({
+      where: { id: submissionId },
+      select: { id: true }
+    });
+
+    if (!submission) return { success: false, error: "Submissão não encontrada" };
+
+    await prisma.examSubmission.update({
+      where: { id: submissionId },
+      data: { satisfactionRating: rating }
+    });
+
+    return { success: true };
+  } catch (e: any) {
+    console.error("Erro ao salvar avaliação de satisfação:", e);
     return { success: false, error: e.message };
   }
 }

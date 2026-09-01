@@ -71,7 +71,7 @@ export default function ExamResultsPage() {
           <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase rounded-full">
+                <span className="px-3 py-1 bg-primary/10 text-primary border border-black/5 dark:border-white/[0.02] text-[10px] font-black uppercase rounded-full">
                   PAINEL DE RESULTADOS
                 </span>
                 <button 
@@ -102,7 +102,7 @@ export default function ExamResultsPage() {
                          finishedAt: s.finishedAt
                        }))
                    })}
-                   className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 rounded-xl text-xs font-black transition-all shadow-lg"
+                   className="flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-black/5 dark:border-white/[0.02] rounded-xl text-xs font-black transition-all shadow-lg"
                  >
                    <span className="material-symbols-outlined text-sm">description</span>
                    Resumo da Turma (PDF)
@@ -143,7 +143,7 @@ export default function ExamResultsPage() {
                       }
                     }}
                     disabled={loadingDetails}
-                    className="flex items-center gap-2 px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-gray-800 dark:text-gray-300 border border-secondary/20 rounded-xl text-xs font-black transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-secondary/10 hover:bg-secondary/20 text-gray-800 dark:text-gray-300 border border-black/5 dark:border-white/[0.02] rounded-xl text-xs font-black transition-all disabled:opacity-50"
                  >
                    <span className="material-symbols-outlined text-sm">history_edu</span>
                    {loadingDetails ? 'Processando...' : 'Relatório Detalhado (Geral)'}
@@ -152,11 +152,177 @@ export default function ExamResultsPage() {
             </div>
           </header>
 
+          {(() => {
+            const allSubs = exam?.submissions || [];
+            const totalStudents = allSubs.length;
+            const finishedSubs = allSubs.filter((s: any) => s.finishedAt && !s.isExpelled);
+            const inProgressCount = allSubs.filter((s: any) => !s.finishedAt && !s.isExpelled).length;
+            const blockedCount = allSubs.filter((s: any) => s.isExpelled).length;
+
+            const scores = finishedSubs.map((s: any) => s.score || 0);
+            const avgScore = scores.length ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0;
+            const highestScore = scores.length ? Math.max(...scores) : 0;
+            const lowestScore = scores.length ? Math.min(...scores) : 0;
+
+            const top3 = [...finishedSubs].sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).slice(0, 3);
+
+            // Agregação de acertos por questão (baseado nas correções já processadas)
+            const questionMap = new Map<number, { content: string, obtained: number, possible: number }>();
+            finishedSubs.forEach((s: any) => {
+              const details = (s.correctionDetails as any[]) || [];
+              details.forEach((d: any) => {
+                if (!d?.questionId) return;
+                const entry = questionMap.get(d.questionId) || { content: d.question, obtained: 0, possible: 0 };
+                entry.obtained += d.pointsObtained || 0;
+                entry.possible += d.pointsTotal || 0;
+                questionMap.set(d.questionId, entry);
+              });
+            });
+            const questionStats = Array.from(questionMap.entries())
+              .map(([id, v]) => ({ id, content: v.content, accuracy: v.possible > 0 ? (v.obtained / v.possible) * 100 : 0 }))
+              .sort((a, b) => b.accuracy - a.accuracy);
+
+            const total = totalStudents || 1;
+            const pieSegments = [
+              { label: 'Concluído', count: finishedSubs.length, color: '#22c55e' },
+              { label: 'Em Andamento', count: inProgressCount, color: '#eab308' },
+              { label: 'Bloqueado', count: blockedCount, color: '#ef4444' },
+            ].filter(s => s.count > 0);
+            const circumference = 2 * Math.PI * 70;
+            let cumulative = 0;
+            const arcs = pieSegments.map(s => {
+              const pct = s.count / total;
+              const dash = pct * circumference;
+              const offset = cumulative * circumference;
+              cumulative += pct;
+              return { ...s, dash, offset };
+            });
+
+            const accuracyColor = (pct: number) => pct >= 70 ? '#22c55e' : pct >= 40 ? '#eab308' : '#ef4444';
+            const podiumStyle = [
+              { badge: 'bg-amber-500 text-black', card: 'bg-amber-500/10 border-amber-500/30' },
+              { badge: 'bg-gray-300 text-black', card: 'bg-gray-400/10 border-gray-400/30' },
+              { badge: 'bg-orange-600 text-white', card: 'bg-orange-700/10 border-orange-700/30' },
+            ];
+
+            return (
+              <div className="liquid-glass rounded-[2.5rem] border border-outline-variant p-8 space-y-10">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">insights</span>
+                  Desempenho Geral
+                </h3>
+
+                {/* Métricas rápidas */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total de Alunos', value: totalStudents, icon: 'groups' },
+                    { label: 'Nota Média', value: avgScore.toFixed(1).replace('.', ','), icon: 'analytics' },
+                    { label: 'Maior Nota', value: highestScore.toFixed(1).replace('.', ','), icon: 'trending_up' },
+                    { label: 'Menor Nota', value: lowestScore.toFixed(1).replace('.', ','), icon: 'trending_down' },
+                  ].map(m => (
+                    <div key={m.label} className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
+                      <span className="material-symbols-outlined text-primary text-lg">{m.icon}</span>
+                      <p className="text-2xl font-black text-white">{m.value}</p>
+                      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{m.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                  {/* Gráfico de pizza: status das entregas */}
+                  <div className="space-y-4">
+                    <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Status das Entregas</p>
+                    {totalStudents === 0 ? (
+                      <p className="text-gray-500 text-sm py-10 text-center">Nenhum aluno na sala ainda.</p>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+                        <div className="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0">
+                          <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
+                            <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="16" fill="transparent" className="text-white/5" />
+                            {arcs.map(a => (
+                              <circle
+                                key={a.label}
+                                cx="80" cy="80" r="70"
+                                stroke={a.color}
+                                strokeWidth="16"
+                                fill="transparent"
+                                strokeDasharray={`${a.dash} ${circumference - a.dash}`}
+                                strokeDashoffset={-a.offset}
+                              />
+                            ))}
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-3xl font-black text-white">{totalStudents}</span>
+                            <span className="text-[9px] text-gray-500 uppercase font-black tracking-widest">Alunos</span>
+                          </div>
+                        </div>
+                        <div className="space-y-3 w-full sm:w-auto">
+                          {pieSegments.map(s => (
+                            <div key={s.label} className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                              <span className="text-sm text-gray-300">{s.label}</span>
+                              <span className="text-sm font-black text-white ml-auto sm:ml-4">{s.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Top 3 alunos */}
+                  <div className="space-y-4">
+                    <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Top 3 Alunos</p>
+                    <div className="space-y-3">
+                      {top3.length === 0 && (
+                        <p className="text-gray-500 text-sm py-10 text-center">Nenhum aluno finalizou a prova ainda.</p>
+                      )}
+                      {top3.map((s: any, idx: number) => (
+                        <div key={s.id} className={`p-4 rounded-2xl border flex items-center gap-4 ${podiumStyle[idx].card}`}>
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${podiumStyle[idx].badge}`}>
+                            {idx + 1}º
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-sm text-white truncate">{s.studentName}</p>
+                            <p className="text-[10px] text-gray-500 font-mono">RA: {s.studentRa}</p>
+                          </div>
+                          <p className="text-lg font-black text-white shrink-0">{(s.score || 0).toFixed(1).replace('.', ',')} <span className="text-[10px] text-gray-500 font-bold">PTS</span></p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ranking de questões por acerto */}
+                <div className="space-y-4">
+                  <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Questões: Mais Acertadas → Mais Erradas</p>
+                  {questionStats.length === 0 ? (
+                    <p className="text-gray-500 text-sm py-6 text-center">Ainda não há correções processadas para gerar o ranking.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {questionStats.map((q, idx) => (
+                        <div key={q.id} className="flex items-center gap-4">
+                          <span className="text-[10px] font-mono text-gray-600 w-5 shrink-0">{idx + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <MathRenderer content={q.content} className="!p-0 text-xs text-gray-300 truncate" />
+                            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mt-1.5">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${q.accuracy}%`, backgroundColor: accuracyColor(q.accuracy) }} />
+                            </div>
+                          </div>
+                          <span className="text-xs font-black w-12 text-right shrink-0" style={{ color: accuracyColor(q.accuracy) }}>{q.accuracy.toFixed(0)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="liquid-glass rounded-[2.5rem] border border-outline-variant p-8 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">analytics</span>
-                  Desempenho da Turma
+                  Desempenho dos Alunos
                 </h3>
                 <div className="flex items-center bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
                    <button 
@@ -271,7 +437,7 @@ export default function ExamResultsPage() {
                                     <span className="text-[8px] text-gray-500 uppercase font-bold">CONCLUÍDO</span>
                                  </div>
                                ) : (
-                                 <span className="px-3 py-1 bg-primary/10 text-primary text-[9px] font-black uppercase rounded-full border border-primary/20">EM CURSO</span>
+                                 <span className="px-3 py-1 bg-primary/10 text-primary text-[9px] font-black uppercase rounded-full border border-black/5 dark:border-white/[0.02]">EM CURSO</span>
                                )}
                             </td>
                             <td className="py-5 px-2 text-right">
@@ -427,7 +593,7 @@ export default function ExamResultsPage() {
                                                    </div>
                                                )}
                                                {it.correctAnswer && (
-                                                   <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden border border-primary/10">
+                                                   <div className="p-4 rounded-xl bg-primary/5 text-primary/70 text-sm break-words whitespace-pre-wrap max-w-full overflow-hidden border border-black/5 dark:border-white/[0.02]">
                                                        {it.correctAnswer}
                                                    </div>
                                                )}

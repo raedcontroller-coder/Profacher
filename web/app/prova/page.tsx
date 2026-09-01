@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getPusherClient } from '@/lib/pusher';
-import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus, reportFocusLoss } from '@/app/professor/exams/actions';
+import { getLiveExamQuestions, saveLiveAnswer, finishExamLive, getQuickExamStatus, reportFocusLoss, saveSatisfactionRating } from '@/app/professor/exams/actions';
 import MathRenderer from '@/components/shared/MathRenderer';
 import { Whiteboard } from "@/components/Whiteboard";
 import { generateExamPdf } from '@/lib/utils/pdf-generator';
@@ -10,7 +10,7 @@ import { generateExamPdf } from '@/lib/utils/pdf-generator';
 const CODE_SEPARATOR = '<!-- PROFACHER_CODE_SEPARATOR -->';
 
 export default function UnifiedStudentExamPage() {
-  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'INSTRUCTIONS' | 'LIVE' | 'REVIEW' | 'FINISHED' | 'EXPULLED' | 'UNSUPPORTED_BROWSER'>('ID');
+  const [step, setStep] = useState<'ID' | 'WAITING' | 'STARTED' | 'INSTRUCTIONS' | 'LIVE' | 'REVIEW' | 'RATING' | 'FINISHED' | 'EXPULLED' | 'UNSUPPORTED_BROWSER'>('ID');
   const [formData, setFormData] = useState({
     name: '',
     ra: '',
@@ -22,6 +22,9 @@ export default function UnifiedStudentExamPage() {
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [savingStatus, setSavingStatus] = useState<Record<number, 'saving' | 'saved' | 'error' | undefined>>({});
   const [scoreData, setScoreData] = useState<{ score: number, maxScore: number, details: any[], showScore: boolean } | null>(null);
+  const [satisfactionRating, setSatisfactionRating] = useState<number | null>(null);
+  const [hoveredRating, setHoveredRating] = useState<number | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
   const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
@@ -153,7 +156,7 @@ export default function UnifiedStudentExamPage() {
   }, [submissionId, examData]);
 
   useEffect(() => {
-    if (!formData.code || !formData.ra || step === 'ID' || step === 'FINISHED' || step === 'EXPULLED') {
+    if (!formData.code || !formData.ra || step === 'ID' || step === 'RATING' || step === 'FINISHED' || step === 'EXPULLED') {
       if (pusherRef.current) {
         channelRef.current?.unbind_all();
         pusherRef.current.unsubscribe(`presence-exam-${formData.code.toUpperCase()}`);
@@ -202,7 +205,7 @@ export default function UnifiedStudentExamPage() {
   }, [formData.ra, formData.code, step]);
 
   useEffect(() => {
-    if (step === 'ID' || step === 'FINISHED' || step === 'EXPULLED') {
+    if (step === 'ID' || step === 'RATING' || step === 'FINISHED' || step === 'EXPULLED') {
       if (pusherRef.current) {
         pusherRef.current.disconnect();
         pusherRef.current = null;
@@ -329,7 +332,7 @@ export default function UnifiedStudentExamPage() {
     return (
       <div className="bg-[#121315] min-h-screen flex items-center justify-center p-6 text-center">
         <div className="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-500">
-          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary border border-primary/20">
+          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary border border-black/5 dark:border-white/[0.02]">
             <span className="material-symbols-outlined text-5xl text-primary">browser_updated</span>
           </div>
           <div className="space-y-4">
@@ -369,7 +372,7 @@ export default function UnifiedStudentExamPage() {
           details: result.details || [],
           showScore: result.showScore ?? false
         });
-        setStep('FINISHED');
+        setStep('RATING');
       } else {
         alert("Erro ao finalizar prova: " + result.error);
       }
@@ -378,6 +381,41 @@ export default function UnifiedStudentExamPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleContinueFromRating = async () => {
+    if (satisfactionRating && submissionId) {
+      setSubmittingRating(true);
+      try {
+        await saveSatisfactionRating(submissionId, satisfactionRating);
+      } catch (err) {
+        console.error("Erro ao salvar avaliação de satisfação:", err);
+      } finally {
+        setSubmittingRating(false);
+      }
+    }
+    setStep('FINISHED');
+  };
+
+  const handleSkipRating = () => {
+    setStep('FINISHED');
+  };
+
+  const handleExitToStart = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.warn("Erro ao sair do fullscreen:", err);
+    }
+    setStep('ID');
+    setExamData(null);
+    setSubmissionId(null);
+    setAnswers({});
+    setScoreData(null);
+    setSatisfactionRating(null);
+    setFormData({ name: '', ra: '', code: '' });
   };
 
   return (
@@ -432,7 +470,7 @@ export default function UnifiedStudentExamPage() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <div className="inline-block px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+                  <div className="inline-block px-4 py-1.5 bg-primary/10 rounded-full border border-black/5 dark:border-white/[0.02]">
                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] animate-pulse">Sincronizando com o Professor</p>
                   </div>
                   <h2 className="text-3xl font-black text-white tracking-tight">AGUARDE UM MOMENTO...</h2>
@@ -460,7 +498,7 @@ export default function UnifiedStudentExamPage() {
             )}
             {step === 'INSTRUCTIONS' && examData && (
               <div className="space-y-8 animate-in fade-in zoom-in duration-700 max-h-[70vh] flex flex-col">
-                <div className="flex items-center gap-4 bg-primary/10 p-6 rounded-3xl border border-primary/20 shrink-0">
+                <div className="flex items-center gap-4 bg-primary/10 p-6 rounded-3xl border border-black/5 dark:border-white/[0.02] shrink-0">
                   <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg">
                     <span className="material-symbols-outlined font-black">info</span>
                   </div>
@@ -510,7 +548,7 @@ export default function UnifiedStudentExamPage() {
                     {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                </div>
-               <button onClick={() => setStep('REVIEW')} className="bg-primary/10 text-primary border border-primary/20 px-8 py-3 rounded-full font-black text-xs hover:bg-primary hover:text-black transition-all flex items-center gap-2 group">
+               <button onClick={() => setStep('REVIEW')} className="bg-primary/10 text-primary border border-black/5 dark:border-white/[0.02] px-8 py-3 rounded-full font-black text-xs hover:bg-primary hover:text-black transition-all flex items-center gap-2 group">
                   REVISAR E ENTREGAR
                   <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">send</span>
                </button>
@@ -671,6 +709,68 @@ acima para responder</p>
           </div>
         )}
 
+        {step === 'RATING' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#121315] animate-in fade-in duration-700 p-6">
+            <div className="w-full max-w-xl liquid-glass p-12 rounded-[3rem] border border-outline-variant shadow-2xl text-center space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
+              <div className="space-y-3">
+                <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary mx-auto border border-black/5 dark:border-white/[0.02]">
+                  <span className="material-symbols-outlined text-4xl">favorite</span>
+                </div>
+                <h1 className="text-3xl font-black text-white tracking-tight">O que achou de fazer a prova nesta plataforma?</h1>
+                <p className="text-gray-400 text-base font-medium">Sua opinião nos ajuda a melhorar a experiência de todos os alunos.</p>
+              </div>
+
+              <div className="flex items-center justify-center gap-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setSatisfactionRating(star)}
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(null)}
+                    className="transition-transform hover:scale-125 focus:outline-none"
+                    aria-label={`${star} estrela${star > 1 ? 's' : ''}`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-8xl transition-colors"
+                      style={{
+                        fontVariationSettings: (hoveredRating ?? satisfactionRating ?? 0) >= star ? "'FILL' 1" : "'FILL' 0",
+                        color: (hoveredRating ?? satisfactionRating ?? 0) >= star ? '#FFC107' : '#3a3a3d'
+                      }}
+                    >
+                      star
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs font-black uppercase tracking-widest h-4 transition-opacity" style={{ color: '#FFC107', opacity: satisfactionRating || hoveredRating ? 1 : 0 }}>
+                {(() => {
+                  const val = hoveredRating ?? satisfactionRating;
+                  return ['', 'Péssimo', 'Ruim', 'Regular', 'Bom', 'Ótimo'][val || 0];
+                })()}
+              </p>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleContinueFromRating}
+                  disabled={submittingRating}
+                  className="w-full py-5 bg-primary text-black rounded-[1.5rem] font-black text-lg hover:scale-[1.02] transition-all shadow-2xl shadow-primary/20 disabled:opacity-60 disabled:hover:scale-100"
+                >
+                  {submittingRating ? 'Enviando...' : 'Continuar'}
+                </button>
+                <button
+                  onClick={handleSkipRating}
+                  disabled={submittingRating}
+                  className="text-gray-600 hover:text-gray-400 text-xs font-bold uppercase tracking-widest transition-colors"
+                >
+                  Pular
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {step === 'FINISHED' && (
           <div className="fixed inset-0 z-50 flex flex-col bg-[#121315] animate-in fade-in duration-700">
             <header className="h-24 liquid-glass border-b border-white/5 flex items-center justify-between px-10 shrink-0">
@@ -679,12 +779,21 @@ acima para responder</p>
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{formData.name} &bull; RA: {formData.ra}</p>
                </div>
                <div className="flex items-center gap-4">
-                  <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/20">
+                  <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest border border-black/5 dark:border-white/[0.02]">
                     Avaliação Processada
                   </span>
+                  <button
+                    onClick={handleExitToStart}
+                    title="Sair e voltar ao início"
+                    className="flex items-center gap-2 px-4 py-1.5 text-gray-500 hover:text-white hover:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">logout</span>
+                    Sair
+                  </button>
                </div>
             </header>
 
+            {scoreData?.showScore ? (
             <main className="flex-1 overflow-y-auto p-10 custom-scrollbar">
               <div className="max-w-[1400px] mx-auto w-full space-y-16 pb-32">
                 <div className="text-center space-y-6 pt-10">
@@ -697,7 +806,6 @@ acima para responder</p>
                   </div>
                 </div>
 
-                {scoreData?.showScore ? (
                   <div className="space-y-20">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
                       <div className="lg:col-span-12 xl:col-span-4 liquid-glass p-12 rounded-[4rem] border border-white/5 flex flex-col items-center justify-center space-y-8 min-h-[450px]">
@@ -726,7 +834,7 @@ acima para responder</p>
                            <p className="text-sm font-black text-gray-500 uppercase tracking-widest text-center">Sua Pontuação Final</p>
                            <p className="text-8xl font-black text-white tracking-tighter text-center">{scoreData.score.toFixed(1).replace('.', ',')} <span className="text-3xl text-gray-700 font-medium tracking-normal">/ {scoreData.maxScore.toFixed(1).replace('.', ',')} pts</span></p>
                         </div>
-                        <div className="md:col-span-2 liquid-glass p-12 rounded-[3.5rem] border border-primary/20 bg-primary/5 flex items-center gap-10 group">
+                        <div className="md:col-span-2 liquid-glass p-12 rounded-[3.5rem] border border-black/5 dark:border-white/[0.02] bg-primary/5 flex items-center gap-10 group">
                            <div className="w-24 h-24 bg-primary/20 rounded-[2.5rem] flex items-center justify-center text-primary shrink-0 group-hover:rotate-12 transition-transform">
                               <span className="material-symbols-outlined text-5xl">auto_awesome</span>
                            </div>
@@ -837,7 +945,7 @@ acima para responder</p>
                                            <p className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                               <span className="material-symbols-outlined text-sm">school</span> gabarito oficial indicado
                                            </p>
-                                           <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 text-primary/90 min-h-[100px] text-lg leading-relaxed">
+                                           <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-black/5 dark:border-white/[0.02] text-primary/90 min-h-[100px] text-lg leading-relaxed">
                                               <div className="break-words whitespace-pre-wrap">
                                                  <MathRenderer content={detail.correctAnswer} className="!p-0 text-lg opacity-90" />
                                               </div>
@@ -864,20 +972,9 @@ acima para responder</p>
                       </div>
                     </div>
                   </div>
-                ) : (
-                    <div className="liquid-glass p-20 rounded-[4rem] border border-outline-variant text-center space-y-8 max-w-4xl mx-auto mt-20">
-                      <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto text-green-500 border border-green-500/20">
-                         <span className="material-symbols-outlined text-5xl">verified</span>
-                      </div>
-                      <div className="space-y-4">
-                        <h2 className="text-5xl font-black text-white tracking-tighter">PROVA ENTREGUE!</h2>
-                        <p className="text-gray-400 text-xl font-medium">As configurações desta prova não permitem feedback imediato da nota. <br/>Aguarde a liberação dos resultados pelo professor.</p>
-                      </div>
-                    </div>
-                )}
 
                 <div className="flex flex-col items-center gap-8 pt-12">
-                  <button 
+                  <button
                     onClick={() => generateExamPdf({
                       studentName: formData.name,
                       studentRa: formData.ra,
@@ -906,6 +1003,48 @@ acima para responder</p>
                 </div>
               </div>
             </main>
+            ) : (
+            <main className="flex-1 flex items-center justify-center p-10 overflow-y-auto custom-scrollbar">
+              <div className="max-w-xl w-full text-center space-y-8">
+                <div className="w-20 h-20 bg-green-500/10 rounded-[2rem] flex items-center justify-center text-green-500 mx-auto border border-green-500/20 shadow-2xl">
+                  <span className="material-symbols-outlined text-4xl">verified</span>
+                </div>
+                <div className="space-y-3">
+                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">Prova Entregue!</h1>
+                  <p className="text-gray-400 text-lg font-medium">As configurações desta prova não permitem feedback imediato da nota.<br/>Aguarde a liberação dos resultados pelo professor.</p>
+                </div>
+
+                <div className="flex flex-col items-center gap-6 pt-2">
+                  <button
+                    onClick={() => generateExamPdf({
+                      studentName: formData.name,
+                      studentRa: formData.ra,
+                      examTitle: examData?.title || 'Prova',
+                      accessCode: formData.code,
+                      date: new Date().toLocaleString('pt-BR'),
+                      score: scoreData?.score || 0,
+                      maxScore: scoreData?.maxScore || 0,
+                      showScore: scoreData?.showScore ?? false,
+                      details: scoreData?.details || []
+                    })}
+                    className="group relative flex items-center gap-4 py-5 px-10 bg-white/5 hover:bg-white/10 border border-outline rounded-[2rem] transition-all"
+                  >
+                    <div className="w-11 h-11 bg-primary/20 rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined font-black">download</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">Documento Oficial</p>
+                      <p className="text-lg font-black text-white">Baixar Comprovante (PDF)</p>
+                    </div>
+                  </button>
+
+                  <div className="text-center pt-4 border-t border-white/5 w-full">
+                    <p className="text-xs text-gray-600 font-bold tracking-[0.3em] uppercase">Profacher 2.0 &bull; Sistema de Avaliação Inteligente</p>
+                  </div>
+                </div>
+              </div>
+            </main>
+            )}
           </div>
         )}
 
