@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./lib/prisma"
 import bcrypt from "bcryptjs"
 import { authConfig } from "./auth.config"
+import { ROLES } from "./lib/roles"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -40,6 +41,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (!isValid) {
             throw new Error("INVALID_PASSWORD")
+          }
+
+          // Só professor independente (accountId setado, sem instituição) precisa confirmar
+          // o e-mail antes de logar — professor de instituição já prova o e-mail ao aceitar o convite.
+          if (user.role.name === ROLES.PROFESSOR && user.accountId && !user.emailVerifiedAt) {
+            throw new Error("EMAIL_NOT_VERIFIED")
           }
 
           return {

@@ -4,7 +4,7 @@ import { authConfig } from "./auth.config";
 export default NextAuth(authConfig).auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
-  const isPublicPage = req.nextUrl.pathname.startsWith("/prova");
+  const isPublicPage = req.nextUrl.pathname.startsWith("/prova") || req.nextUrl.pathname.startsWith("/register") || req.nextUrl.pathname.startsWith("/verify-email");
 
   if (!isLoggedIn && !isAuthPage && !isPublicPage) {
     // Usa o AUTH_URL do ambiente se disponível.

@@ -24,14 +24,105 @@ model Institution {
   apiKeyOpenai    String?  @map("api_key_openai")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+  // DEPRECATED: migrado para Account (hasIntegratedAi/customAiKey/customAiModel).
+  // Mantido temporariamente até a Migration C (ver plano de Account/Subscription); não ler nem escrever mais nestes campos.
   customAiKey     String?  @map("custom_ai_key")
   customAiModel   String?  @map("custom_ai_model")
   hasIntegratedAi Boolean      @default(false) @map("has_integrated_ai")
+  accountId       Int          @unique @map("account_id")
+  account         Account      @relation(fields: [accountId], references: [id])
   users           User[]
   aiUsageLogs     AiUsageLog[]
   invitations     Invitation[]
 
   @@map("institutions")
+}
+
+enum AccountType {
+  INSTITUTION
+  INDIVIDUAL
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  PENDING_PAYMENT
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum SubscriptionPlan {
+  INSTITUTION_STANDARD
+  INDIVIDUAL_MONTHLY
+  INDIVIDUAL_VIP
+}
+
+model Account {
+  id              Int          @id @default(autoincrement())
+  type            AccountType
+  name            String
+  hasIntegratedAi Boolean      @default(false) @map("has_integrated_ai")
+  customAiKey     String?      @map("custom_ai_key")
+  customAiModel   String?      @map("custom_ai_model")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  institution     Institution?
+  users           User[]
+  subscription    Subscription?
+  aiUsageLogs     AiUsageLog[]
+
+  @@map("accounts")
+}
+
+model Subscription {
+  id                   Int                @id @default(autoincrement())
+  accountId            Int                @unique @map("account_id")
+  status               SubscriptionStatus @default(TRIAL)
+  plan                 SubscriptionPlan
+  planId               Int?               @map("plan_id")
+  creditsRemaining     Int?               @map("credits_remaining")
+  seats                Int?
+  trialEndsAt          DateTime?          @map("trial_ends_at")
+  currentPeriodEnd     DateTime?          @map("current_period_end")
+  canceledAt           DateTime?          @map("canceled_at")
+  stripeCustomerId     String?            @map("stripe_customer_id")
+  stripeSubscriptionId String?            @map("stripe_subscription_id")
+  notes                String?
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  account              Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  planRef              Plan?              @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model Plan {
+  id            Int            @id @default(autoincrement())
+  key           String         @unique
+  name          String
+  credits       Int?
+  priceInCents  Int            @map("price_in_cents")
+  isFree        Boolean        @default(false) @map("is_free")
+  active        Boolean        @default(true)
+  stripePriceId String?        @map("stripe_price_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model VipCode {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  createdByEmail String?   @map("created_by_email")
+  note           String?
+  usedByUserId   Int?      @unique @map("used_by_user_id")
+  usedAt         DateTime? @map("used_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  usedBy         User?     @relation(fields: [usedByUserId], references: [id])
+
+  @@map("vip_codes")
 }
 
 model GlobalSettings {
@@ -51,17 +142,38 @@ model User {
   fullName       String          @map("full_name")
   roleId         Int             @map("role_id")
   institutionId  Int?            @map("institution_id")
+  // Preenchido só quando o usuário é um professor independente (sem instituição).
+  // Regra: institutionId e accountId são mutuamente exclusivos (ver CHECK constraint na migration).
+  accountId      Int?            @map("account_id")
+  // Preenchido quando o e-mail é confirmado via link de ativação. Só é exigido no
+  // login de professor independente (accountId setado); demais papéis nascem já
+  // confirmados (convite/criação já prova o e-mail).
+  emailVerifiedAt DateTime?      @map("email_verified_at")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
   exams          Exam[]
   questionGroups QuestionGroup[]
   questions      Question[]
   institution    Institution?    @relation(fields: [institutionId], references: [id])
+  account        Account?        @relation(fields: [accountId], references: [id])
   role           Role            @relation(fields: [roleId], references: [id])
   aiUsageLogs    AiUsageLog[]
   invitationsSent Invitation[]
+  redeemedVipCode VipCode?
+  verificationToken EmailVerificationToken?
 
   @@map("users")
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
 }
 
 model QuestionGroup {
@@ -187,7 +299,10 @@ enum ExamStatus {
 model AiUsageLog {
   id               Int          @id @default(autoincrement())
   teacherId        Int          @map("teacher_id")
+  // DEPRECATED: mantido em paralelo a accountId por compatibilidade com os paineis
+  // de custo existentes (agrupam por institutionId). Ver plano de Account/Subscription.
   institutionId    Int?         @map("institution_id")
+  accountId        Int?         @map("account_id")
   examId           Int?         @map("exam_id")
   modelUsed        String       @map("model_used")
   promptTokens     Int          @default(0) @map("prompt_tokens")
@@ -197,6 +312,7 @@ model AiUsageLog {
 
   teacher     User         @relation(fields: [teacherId], references: [id])
   institution Institution? @relation(fields: [institutionId], references: [id])
+  account     Account?     @relation(fields: [accountId], references: [id])
   exam        Exam?        @relation(fields: [examId], references: [id], onDelete: SetNull)
 
   @@map("ai_usage_logs")

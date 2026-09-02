@@ -3,11 +3,12 @@
 import { prisma } from "../../lib/prisma"
 import { auth } from "../../auth"
 import { revalidatePath } from "next/cache"
-import { headers } from "next/headers"
 import bcrypt from "bcryptjs"
 import nodemailer from "nodemailer"
 import path from "path"
 import crypto from "crypto"
+import { ROLES } from "@/lib/roles"
+import { getBaseUrl } from "@/lib/email"
 
 export async function getInstitutionUsers() {
   const session = await auth()
@@ -16,10 +17,14 @@ export async function getInstitutionUsers() {
   // Busca o usuário logado para pegar a institutionId
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email as string },
-    select: { institutionId: true }
+    select: { institutionId: true, role: { select: { name: true } } }
   })
 
-  if (!currentUser?.institutionId) return []
+  if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+    throw new Error("Não autorizado")
+  }
+
+  if (!currentUser.institutionId) return []
 
   // Busca todos os usuários da mesma instituição
   return await prisma.user.findMany({
@@ -35,13 +40,17 @@ export async function getPendingInvitationsAction() {
 
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email as string },
-    select: { institutionId: true }
+    select: { institutionId: true, role: { select: { name: true } } }
   })
 
-  if (!currentUser?.institutionId) return []
+  if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+    throw new Error("Não autorizado")
+  }
+
+  if (!currentUser.institutionId) return []
 
   return await prisma.invitation.findMany({
-    where: { 
+    where: {
       institutionId: currentUser.institutionId,
       status: "PENDING",
       expiresAt: { gt: new Date() }
@@ -54,11 +63,25 @@ export async function getPendingInvitationsAction() {
 export async function cancelInvitationAction(invitationId: string) {
   const session = await auth()
   if (!session?.user) throw new Error("Não autorizado")
-  
+
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email as string },
+    select: { institutionId: true, role: { select: { name: true } } }
+  })
+
+  if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+    throw new Error("Não autorizado")
+  }
+
+  const invitation = await prisma.invitation.findUnique({ where: { id: invitationId } })
+  if (!invitation || invitation.institutionId !== currentUser.institutionId) {
+    throw new Error("Convite não encontrado")
+  }
+
   await prisma.invitation.delete({
     where: { id: invitationId }
   })
-  
+
   revalidatePath("/coordinator")
   return { success: true }
 }
@@ -69,10 +92,14 @@ export async function getAiUsageByTeacher() {
 
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email as string },
-    select: { institutionId: true }
+    select: { institutionId: true, role: { select: { name: true } } }
   })
 
-  if (!currentUser?.institutionId) return []
+  if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+    throw new Error("Não autorizado")
+  }
+
+  if (!currentUser.institutionId) return []
 
   const usageLogs = await prisma.aiUsageLog.groupBy({
     by: ['teacherId'],
@@ -106,10 +133,14 @@ export async function getCoordinatorDashboardMetrics() {
 
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email as string },
-    select: { institutionId: true }
+    select: { institutionId: true, role: { select: { name: true } } }
   })
 
-  if (!currentUser?.institutionId) {
+  if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+    throw new Error("Não autorizado")
+  }
+
+  if (!currentUser.institutionId) {
     return {
       totalTeachers: 0,
       totalExams: 0,
@@ -170,10 +201,14 @@ export async function inviteUserAction({ fullName, email, roleName = "PROFESSOR"
   try {
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email as string },
-      select: { id: true, fullName: true, institutionId: true, institution: { select: { name: true } } }
+      select: { id: true, fullName: true, institutionId: true, institution: { select: { name: true } }, role: { select: { name: true } } }
     })
 
-    if (!currentUser?.institutionId || !currentUser.institution) return { error: "Instituição não encontrada" }
+    if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+      return { error: "Não autorizado" }
+    }
+
+    if (!currentUser.institutionId || !currentUser.institution) return { error: "Instituição não encontrada" }
 
     // Verifica se o e-mail já existe
     const existingUser = await prisma.user.findUnique({ where: { email } })
@@ -217,11 +252,7 @@ export async function inviteUserAction({ fullName, email, roleName = "PROFESSOR"
       tls: { rejectUnauthorized: false }
     })
 
-    const headersList = await headers()
-    const host = headersList.get("host") || "localhost:3000"
-    const protocol = process.env.NODE_ENV === "production" || host.includes("raed.world") ? "https" : "http"
-    const baseUrl = process.env.NEXTAUTH_URL || `${protocol}://${host}`
-
+    const baseUrl = await getBaseUrl()
     const inviteLink = `${baseUrl}/register?token=${token}`
 
     const htmlContent = `
@@ -310,7 +341,11 @@ export async function deleteUserAction(userId: number) {
 
     if (!currentUser) return { error: "Usuário logado não encontrado" }
 
-    const targetUser = await prisma.user.findUnique({ 
+    if (currentUser.role.name !== ROLES.COORDINATOR && currentUser.role.name !== ROLES.ADMIN) {
+      return { error: "Não autorizado" }
+    }
+
+    const targetUser = await prisma.user.findUnique({
       where: { id: userId },
       include: { role: true }
     })
@@ -324,13 +359,13 @@ export async function deleteUserAction(userId: number) {
 
     // REGRA 2: Só o ADMIN pode excluir "tudo" (outras instituições)
     // Se não for ADMIN, precisa ser da mesma instituição
-    if (currentUser.role.name !== "ADMIN") {
+    if (currentUser.role.name !== ROLES.ADMIN) {
       if (targetUser.institutionId !== currentUser.institutionId) {
         return { error: "Sem permissão para deletar usuários de outra instituição." }
       }
-      
+
       // Coordenador não pode excluir Admin (segurança extra)
-      if (targetUser.role.name === "ADMIN") {
+      if (targetUser.role.name === ROLES.ADMIN) {
         return { error: "Coordenadores não podem excluir administradores globais." }
       }
     }
@@ -351,10 +386,14 @@ export async function getCoordinatorResultsAction() {
 
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email as string },
-    select: { institutionId: true }
+    select: { institutionId: true, role: { select: { name: true } } }
   })
 
-  if (!currentUser?.institutionId) return []
+  if (!currentUser || currentUser.role.name !== ROLES.COORDINATOR) {
+    throw new Error("Não autorizado")
+  }
+
+  if (!currentUser.institutionId) return []
 
   const exams = await prisma.exam.findMany({
     where: { 

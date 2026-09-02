@@ -2,11 +2,26 @@
 
 import React, { useActionState } from 'react';
 import { loginAction } from './actions';
+import { resendVerificationEmailAction } from '@/app/verify-email/actions';
 import LogoProfacher from '@/components/shared/LogoProfacher';
 
 export default function LoginPage() {
-  const [error, formAction, isPending] = useActionState(loginAction, undefined);
+  const [state, formAction, isPending] = useActionState(loginAction, undefined);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
+  const [resendMessage, setResendMessage] = React.useState<string | null>(null);
+
+  async function handleResend() {
+    if (!state?.email) return;
+    setResending(true);
+    setResendMessage(null);
+    try {
+      const res = await resendVerificationEmailAction(state.email);
+      setResendMessage(res.message || 'Se o e-mail estiver cadastrado, um novo link foi enviado.');
+    } finally {
+      setResending(false);
+    }
+  }
 
   return (
     <>
@@ -55,10 +70,23 @@ export default function LoginPage() {
             </div>
 
             <form action={formAction} className="space-y-6">
-              {error && (
-                <div className="bg-error/10 border border-error/20 text-error p-4 rounded-xl text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                  <span className="material-symbols-outlined text-lg">error</span>
-                  {error}
+              {state?.error && (
+                <div className="bg-error/10 border border-error/20 text-error p-4 rounded-xl text-sm flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-lg">error</span>
+                    {state.error}
+                  </div>
+                  {state.emailNotVerified && (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending}
+                      className="self-start text-xs font-bold uppercase tracking-wider text-primary hover:underline disabled:opacity-50"
+                    >
+                      {resending ? 'Enviando...' : 'Reenviar e-mail de confirmação'}
+                    </button>
+                  )}
+                  {resendMessage && <p className="text-xs text-on-surface-variant">{resendMessage}</p>}
                 </div>
               )}
 
@@ -123,7 +151,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-12 text-center text-sm text-on-surface-variant">
-              Novo no círculo Profacher? <a className="text-primary font-semibold hover:underline underline-offset-4 decoration-primary/30" href="#">Solicitar Acesso</a>
+              Novo no círculo Profacher? <a className="text-primary font-semibold hover:underline underline-offset-4 decoration-primary/30" href="/register-professor">Solicitar Acesso</a>
             </p>
           </div>
         </div>

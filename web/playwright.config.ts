@@ -1,4 +1,20 @@
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/* Carrega web/.env.hml (credenciais do ambiente de homologação) sem depender do pacote dotenv */
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envHmlPath = path.resolve(__dirname, '.env.hml');
+if (fs.existsSync(envHmlPath)) {
+  for (const line of fs.readFileSync(envHmlPath, 'utf-8').split('\n')) {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+    if (!match) continue;
+    const key = match[1];
+    const value = (match[2] ?? '').trim().replace(/^["']|["']$/g, '');
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -29,7 +45,7 @@ export default defineConfig({
     /* Maximum time each action such as `click()` can take. Defaults to 0 (no limit). */
     actionTimeout: 0,
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://hml-profacher.raed.world',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
