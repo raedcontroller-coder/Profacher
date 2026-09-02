@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { ROLES } from "@/lib/roles"
 
 const PAGE_SIZE = 15;
 
@@ -12,7 +13,7 @@ const PAGE_SIZE = 15;
  */
 export async function getInstitutions() {
   const session = await auth()
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || (session.user as any).role !== ROLES.ADMIN) {
     throw new Error("Não autorizado")
   }
 
@@ -21,8 +22,9 @@ export async function getInstitutions() {
       id: true,
       name: true,
       slug: true,
-      hasIntegratedAi: true,
-      customAiModel: true,
+      account: {
+        select: { hasIntegratedAi: true, customAiModel: true }
+      },
       _count: {
         select: { users: true }
       }
@@ -40,7 +42,12 @@ export async function getInstitutions() {
   return institutions.map(inst => {
     const cost = aiCosts.find(c => c.institutionId === inst.id);
     return {
-      ...inst,
+      id: inst.id,
+      name: inst.name,
+      slug: inst.slug,
+      hasIntegratedAi: inst.account.hasIntegratedAi,
+      customAiModel: inst.account.customAiModel,
+      _count: inst._count,
       totalAiCostBrl: cost?._sum.costInBRL || 0
     };
   });
@@ -79,29 +86,51 @@ export async function getInstitutionUsers(institutionId: number, page: number = 
 /**
  * Cria uma nova instituição no banco de dados
  */
-export async function createInstitution(data: { 
-  name: string; 
-  slug: string; 
+export async function createInstitution(data: {
+  name: string;
+  slug: string;
   apiKeyOpenai?: string;
   hasIntegratedAi?: boolean;
   customAiModel?: string;
   customAiKey?: string;
 }) {
   const session = await auth()
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || (session.user as any).role !== ROLES.ADMIN) {
     throw new Error("Não autorizado")
   }
 
   try {
-    const institution = await prisma.institution.create({
-      data: {
-        name: data.name,
-        slug: data.slug.toLowerCase().trim().replace(/\s+/g, '-'),
-        apiKeyOpenai: data.apiKeyOpenai || null,
-        hasIntegratedAi: data.hasIntegratedAi || false,
-        customAiModel: data.customAiModel || null,
-        customAiKey: data.customAiKey || null,
-      }
+    const institution = await prisma.$transaction(async (tx) => {
+      const account = await tx.account.create({
+        data: {
+          type: "INSTITUTION",
+          name: data.name,
+          hasIntegratedAi: data.hasIntegratedAi || false,
+          customAiModel: data.customAiModel || null,
+          customAiKey: data.customAiKey || null,
+        }
+      });
+
+      await tx.subscription.create({
+        data: {
+          accountId: account.id,
+          status: "ACTIVE",
+          plan: "INSTITUTION_STANDARD",
+        }
+      });
+
+      return tx.institution.create({
+        data: {
+          name: data.name,
+          slug: data.slug.toLowerCase().trim().replace(/\s+/g, '-'),
+          apiKeyOpenai: data.apiKeyOpenai || null,
+          accountId: account.id,
+          // DEPRECATED: mantidos por compatibilidade até a Migration C, refletem a Account criada acima.
+          hasIntegratedAi: data.hasIntegratedAi || false,
+          customAiModel: data.customAiModel || null,
+          customAiKey: data.customAiKey || null,
+        }
+      });
     });
 
     revalidatePath('/admin/institutions');
@@ -117,31 +146,45 @@ export async function createInstitution(data: {
 /**
  * Atualiza os dados de uma instituição
  */
-export async function updateInstitution(id: number, data: { 
-  name?: string; 
-  slug?: string; 
+export async function updateInstitution(id: number, data: {
+  name?: string;
+  slug?: string;
   apiKeyOpenai?: string;
   hasIntegratedAi?: boolean;
   customAiModel?: string;
   customAiKey?: string;
 }) {
   const session = await auth()
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || (session.user as any).role !== ROLES.ADMIN) {
     throw new Error("Não autorizado")
   }
 
   try {
-    const updateData: any = {};
-    if (data.name) updateData.name = data.name;
-    if (data.slug) updateData.slug = data.slug.toLowerCase().trim().replace(/\s+/g, '-');
-    if (data.apiKeyOpenai !== undefined) updateData.apiKeyOpenai = data.apiKeyOpenai || null;
-    if (data.hasIntegratedAi !== undefined) updateData.hasIntegratedAi = data.hasIntegratedAi;
-    if (data.customAiModel !== undefined) updateData.customAiModel = data.customAiModel || null;
-    if (data.customAiKey !== undefined) updateData.customAiKey = data.customAiKey || null;
+    const institutionUpdateData: any = {};
+    if (data.name) institutionUpdateData.name = data.name;
+    if (data.slug) institutionUpdateData.slug = data.slug.toLowerCase().trim().replace(/\s+/g, '-');
+    if (data.apiKeyOpenai !== undefined) institutionUpdateData.apiKeyOpenai = data.apiKeyOpenai || null;
 
-    const institution = await prisma.institution.update({
-      where: { id },
-      data: updateData
+    const accountUpdateData: any = {};
+    if (data.name) accountUpdateData.name = data.name;
+    if (data.hasIntegratedAi !== undefined) accountUpdateData.hasIntegratedAi = data.hasIntegratedAi;
+    if (data.customAiModel !== undefined) accountUpdateData.customAiModel = data.customAiModel || null;
+    if (data.customAiKey !== undefined) accountUpdateData.customAiKey = data.customAiKey || null;
+
+    // DEPRECATED: mantidos por compatibilidade até a Migration C, refletem a Account atualizada abaixo.
+    Object.assign(institutionUpdateData, accountUpdateData);
+
+    const institution = await prisma.$transaction(async (tx) => {
+      const current = await tx.institution.findUniqueOrThrow({ where: { id }, select: { accountId: true } });
+
+      if (Object.keys(accountUpdateData).length > 0) {
+        await tx.account.update({ where: { id: current.accountId }, data: accountUpdateData });
+      }
+
+      return tx.institution.update({
+        where: { id },
+        data: institutionUpdateData
+      });
     });
 
     revalidatePath('/admin/institutions');
@@ -159,13 +202,15 @@ export async function updateInstitution(id: number, data: {
  */
 export async function deleteInstitution(id: number) {
   const session = await auth()
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || (session.user as any).role !== ROLES.ADMIN) {
     throw new Error("Não autorizado")
   }
 
   try {
-    await prisma.institution.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+      const institution = await tx.institution.findUniqueOrThrow({ where: { id }, select: { accountId: true } });
+      await tx.institution.delete({ where: { id } });
+      await tx.account.delete({ where: { id: institution.accountId } });
     });
 
     revalidatePath('/admin/institutions');
@@ -180,7 +225,7 @@ export async function deleteInstitution(id: number) {
  */
 export async function createInstitutionUser(institutionId: number, data: { fullName: string; email: string; password?: string, roleName: 'COORDINATOR' | 'PROFESSOR' }) {
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || (session.user as any).role !== ROLES.ADMIN) {
     throw new Error("Não autorizado");
   }
 

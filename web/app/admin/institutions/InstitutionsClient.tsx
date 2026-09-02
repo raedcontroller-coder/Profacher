@@ -90,10 +90,10 @@ function InstitutionCard({ institution, onEdit, onDelete, onAddUser }: { institu
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className={`liquid-glass rounded-[2rem] p-8 border border-outline-variant shadow-2xl transition-all duration-500 ${isExpanded ? 'ring-2 ring-primary' : 'hover:border-primary'}`}>
+    <div className={`liquid-glass rounded-[2rem] p-8 border border-outline-variant shadow-2xl transition-all duration-500 ${isExpanded ? 'ring-2 ring-primary/30' : 'hover:border-primary/30'}`}>
       <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center border border-primary shadow-inner group">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary/10 to-primary/5 flex items-center justify-center border border-black/5 dark:border-white/[0.02] shadow-inner group">
              <span className="material-symbols-outlined text-3xl text-primary transition-transform group-hover:scale-110">account_balance</span>
           </div>
           <div>

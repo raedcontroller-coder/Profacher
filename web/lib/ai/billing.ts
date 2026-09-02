@@ -41,7 +41,8 @@ export async function logAiUsage(
     institutionId: number | null,
     bodyModel: string,
     promptTokens: number,
-    completionTokens: number
+    completionTokens: number,
+    accountId: number | null = null
 ) {
     if (promptTokens === 0 && completionTokens === 0) return;
 
@@ -50,11 +51,12 @@ export async function logAiUsage(
         const usdToBrlRate = globalSettings?.usdToBrlRate || 5.50;
         const costUsd = calculateAiCostInUSD(bodyModel, promptTokens, completionTokens);
         const costBrl = costUsd * usdToBrlRate;
-        
+
         await prisma.aiUsageLog.create({
             data: {
                 teacherId,
                 institutionId,
+                accountId,
                 modelUsed: bodyModel,
                 promptTokens,
                 completionTokens,

@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import DeleteAccountSection from './DeleteAccountSection';
 
 export const metadata = {
   title: 'Configurações - Profacher',
@@ -130,12 +131,13 @@ export default async function ProfessorSettingsPage() {
           )}
         </div>
 
-        {/* Coordenador Responsável */}
+        {/* Coordenador Responsável — só faz sentido para professor vinculado a uma instituição */}
+        {institution && (
         <div className="liquid-glass rounded-2xl p-6 relative overflow-hidden group md:col-span-2">
           <div className="absolute top-0 right-0 p-4 opacity-5 dark:opacity-10 group-hover:opacity-10 dark:group-hover:opacity-20 transition-opacity">
             <span className="material-symbols-outlined text-6xl text-purple-500 dark:text-purple-400">admin_panel_settings</span>
           </div>
-          
+
           <div className="flex items-center gap-3 mb-6">
             <span className="material-symbols-outlined text-purple-500 dark:text-purple-400 text-2xl">admin_panel_settings</span>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Coordenação Responsável</h2>
@@ -164,6 +166,12 @@ export default async function ProfessorSettingsPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* Zona de perigo — só para professor independente (professor de instituição é gerenciado pelo coordenador/admin) */}
+        {!institution && (
+          <DeleteAccountSection email={profile.email} />
+        )}
 
           </div>
         </div>

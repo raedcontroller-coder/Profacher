@@ -243,7 +243,7 @@ export default function AiSettingsPage() {
                     <button 
                         type="button"
                         onClick={handleAddKey}
-                        className="flex items-center gap-2 text-primary font-bold hover:brightness-125 transition-all text-sm bg-primary/10 px-6 py-3 rounded-xl border border-primary/20"
+                        className="flex items-center gap-2 text-primary font-bold hover:brightness-125 transition-all text-sm bg-primary/10 px-6 py-3 rounded-xl border border-black/5 dark:border-white/[0.02]"
                     >
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar Nova Chave

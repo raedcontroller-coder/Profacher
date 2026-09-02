@@ -38,6 +38,7 @@
   "exclude": [
     "node_modules",
     "scripts",
+    "prisma/backfill-accounts.ts",
     "test-*.ts",
     "**/*.test.ts",
     "**/*.test.tsx",

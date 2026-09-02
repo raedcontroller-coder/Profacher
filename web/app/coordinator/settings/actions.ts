@@ -2,12 +2,13 @@
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { ROLES } from "@/lib/roles"
 
 export async function getCoordinatorProfileData() {
   const session = await auth()
   const userId = session?.user ? Number((session.user as any).id) : null
 
-  if (!session || (session.user as any).role !== "COORDENADOR" && (session.user as any).role !== "COORDINATOR" || !userId) {
+  if (!session || (session.user as any).role !== ROLES.COORDINATOR || !userId) {
     return { success: false, error: "Não autorizado" }
   }
 

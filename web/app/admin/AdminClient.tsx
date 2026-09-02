@@ -7,7 +7,7 @@ import TopBar from '@/components/dashboard/TopBar';
 
 function AdminMetricCard({ title, value, icon, subtitle }: { title: string, value: string, icon: string, subtitle?: string }) {
   return (
-    <div className="col-span-12 lg:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden group shadow-2xl border border-primary">
+    <div className="col-span-12 lg:col-span-4 liquid-glass rounded-2xl p-8 relative overflow-hidden group shadow-2xl border border-black/5 dark:border-white/[0.02]">
       <div className="absolute -right-6 -top-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary transition-all" />
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
@@ -23,16 +23,84 @@ function AdminMetricCard({ title, value, icon, subtitle }: { title: string, valu
   );
 }
 
-export default function AdminClient({ 
+type SatisfactionStats = {
+  average: number,
+  total: number,
+  distribution: Record<1 | 2 | 3 | 4 | 5, number>
+}
+
+function SatisfactionCard({ stats }: { stats: SatisfactionStats }) {
+  const { average, total, distribution } = stats;
+
+  return (
+    <section className="liquid-glass rounded-[2.5rem] p-10 border border-black/5 dark:border-white/[0.02] shadow-2xl">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h3 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary text-3xl">favorite</span>
+            Satisfação dos Alunos
+          </h3>
+          <p className="text-gray-500 text-sm mt-1">Avaliação coletada ao final das provas</p>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <p className="text-gray-500 text-center py-10">Ainda não há avaliações registradas.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+          <div className="text-center space-y-3">
+            <p className="text-6xl font-black text-on-surface tracking-tighter">{average.toFixed(1)}</p>
+            <div className="flex items-center justify-center gap-1">
+              {[1, 2, 3, 4, 5].map(star => (
+                <span
+                  key={star}
+                  className="material-symbols-outlined text-2xl"
+                  style={{
+                    fontVariationSettings: average >= star - 0.25 ? "'FILL' 1" : "'FILL' 0",
+                    color: average >= star - 0.25 ? '#FFC107' : '#3a3a3d'
+                  }}
+                >
+                  star
+                </span>
+              ))}
+            </div>
+            <p className="text-gray-500 text-caption uppercase tracking-widest">{total} {total === 1 ? 'avaliação' : 'avaliações'}</p>
+          </div>
+
+          <div className="space-y-3">
+            {([5, 4, 3, 2, 1] as const).map(star => {
+              const count = distribution[star];
+              const pct = total > 0 ? (count / total) * 100 : 0;
+              return (
+                <div key={star} className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-gray-400 w-4">{star}</span>
+                  <span className="material-symbols-outlined text-sm text-amber-400" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                  <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs font-mono text-gray-500 w-8 text-right">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default function AdminClient({
   initialUserName,
   totalInstitutions = 0,
   totalUsers = 0,
-  totalQueries = 0
-}: { 
+  totalQueries = 0,
+  satisfactionStats
+}: {
   initialUserName?: string,
   totalInstitutions?: number,
   totalUsers?: number,
-  totalQueries?: number
+  totalQueries?: number,
+  satisfactionStats?: SatisfactionStats
 }) {
   const { data: session, status } = useSession();
   
@@ -97,8 +165,11 @@ export default function AdminClient({
             />
           </section>
 
+          {/* Satisfação dos Alunos */}
+          {satisfactionStats && <SatisfactionCard stats={satisfactionStats} />}
+
           {/* Global Construction Card */}
-          <section className="liquid-glass p-12 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-6 shadow-2xl border border-primary min-h-[400px] relative overflow-hidden group">
+          <section className="liquid-glass p-12 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-6 shadow-2xl border border-black/5 dark:border-white/[0.02] min-h-[400px] relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             
             <div className="w-24 h-24 rounded-3xl bg-primary/5 flex items-center justify-center relative z-10 mb-2">

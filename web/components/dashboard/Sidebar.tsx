@@ -1,11 +1,69 @@
 'use client'
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import LogoProfacher from '../shared/LogoProfacher';
 import { useSidebarStore } from '@/store/useSidebarStore';
+import { getMyCreditsInfoAction } from '@/app/professor/actions';
+
+const CREDITS_POLL_INTERVAL_MS = 20000;
+
+interface CreditsInfo {
+  creditsRemaining: number | null;
+  planName: string | null;
+}
+
+function ProfessorCreditsIndicator({ isCollapsed }: { isCollapsed: boolean }) {
+  const [credits, setCredits] = useState<CreditsInfo | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      try {
+        const data = await getMyCreditsInfoAction();
+        if (active) setCredits(data);
+      } catch {
+        if (active) setCredits(null);
+      }
+    }
+
+    load();
+    const interval = setInterval(load, CREDITS_POLL_INTERVAL_MS);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Professor de instituição não usa créditos — não mostra nada.
+  if (!credits) return null;
+
+  const isUnlimited = credits.creditsRemaining === null;
+
+  return (
+    <div className={isCollapsed ? 'flex justify-center px-2' : 'px-4'}>
+      <div
+        className={`flex items-center gap-2.5 bg-primary/5 border border-black/5 dark:border-white/[0.02] rounded-2xl ${isCollapsed ? 'p-3' : 'px-4 py-3'}`}
+        title={isUnlimited ? 'Créditos ilimitados' : `${credits.creditsRemaining} créditos restantes`}
+      >
+        <span className="material-symbols-outlined text-primary text-xl shrink-0">bolt</span>
+        {!isCollapsed && (
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest truncate">
+              {credits.planName || 'Créditos'}
+            </span>
+            <span className="text-sm font-black text-on-surface truncate">
+              {isUnlimited ? 'Ilimitado' : `${credits.creditsRemaining} créditos`}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface NavItem {
   icon: string;
@@ -25,6 +83,7 @@ const coordinatorNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { icon: 'admin_panel_settings', label: 'Dashboard', href: '/admin' },
   { icon: 'account_balance', label: 'Instituições', href: '/admin/institutions' },
+  { icon: 'person', label: 'Professores', href: '/admin/accounts' },
   { icon: 'smart_toy', label: 'IA Geral', href: '/admin/settings/ai' },
   { icon: 'group', label: 'Usuários Globais', href: '/admin/users', disabled: true },
   { icon: 'security', label: 'Logs do Sistema', href: '/admin/logs', disabled: true },
@@ -125,6 +184,9 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const footerContent = (
     <div className="mt-auto space-y-2 pb-2">
+      {role === 'PROFESSOR' && (
+        <ProfessorCreditsIndicator isCollapsed={isCollapsed} />
+      )}
       {role === 'PROFESSOR' && (
         <div className="px-4">
           <Link
@@ -243,6 +305,9 @@ export default function Sidebar({ role }: SidebarProps) {
 
         {/* Footer mobile */}
         <div className="mt-auto space-y-2 pb-2">
+          {role === 'PROFESSOR' && (
+            <ProfessorCreditsIndicator isCollapsed={false} />
+          )}
           {role === 'PROFESSOR' && (
             <div className="px-4">
               <Link

@@ -69,7 +69,24 @@ describe('Login Actions', () => {
     
     const formData = createFormData('prof@fecap.br', 'errada');
     const result = await loginAction(undefined, formData);
-    
-    expect(result).toBe('E-mail ou senha incorretos.');
+
+    expect(result).toEqual({ error: 'E-mail ou senha incorretos.' });
+  });
+
+  it('deve sinalizar e-mail não confirmado quando authorize lança EMAIL_NOT_VERIFIED', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ role: { name: 'PROFESSOR' } } as any);
+
+    const authError = new AuthError('Detalhe_Authorize: EMAIL_NOT_VERIFIED');
+    authError.type = 'CallbackRouteError';
+    vi.mocked(signIn).mockRejectedValue(authError);
+
+    const formData = createFormData('prof@fecap.br', '123');
+    const result = await loginAction(undefined, formData);
+
+    expect(result).toEqual({
+      error: 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.',
+      emailNotVerified: true,
+      email: 'prof@fecap.br',
+    });
   });
 });

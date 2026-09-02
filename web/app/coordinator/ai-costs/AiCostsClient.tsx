@@ -16,14 +16,14 @@ function AiCostCard({ usageData }: { usageData: any[] }) {
   const totalInstitutionCost = usageData.reduce((acc, curr) => acc + curr.totalCost, 0);
 
   return (
-    <div className="col-span-12 liquid-glass rounded-2xl p-8 shadow-2xl relative overflow-hidden border border-primary/20">
+    <div className="col-span-12 liquid-glass rounded-2xl p-8 shadow-2xl relative overflow-hidden border border-black/5 dark:border-white/[0.02]">
       <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
         <span className="material-symbols-outlined text-9xl text-primary">monitoring</span>
       </div>
       
       <div className="relative z-10">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-black/5 dark:border-white/[0.02]">
             <span className="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
           </div>
           <div>

@@ -7,7 +7,7 @@ import { auth } from '@/auth';
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     user: { findUnique: vi.fn(), findMany: vi.fn() },
-    invitation: { findMany: vi.fn(), delete: vi.fn() }
+    invitation: { findUnique: vi.fn(), findMany: vi.fn(), delete: vi.fn() }
   }
 }));
 
@@ -18,6 +18,9 @@ vi.mock('@/auth', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn()
 }));
+
+const COORDINATOR = { role: { name: 'COORDINATOR' } };
+const PROFESSOR = { role: { name: 'PROFESSOR' } };
 
 describe('Coordinator Actions', () => {
   beforeEach(() => {
@@ -30,19 +33,26 @@ describe('Coordinator Actions', () => {
       await expect(getInstitutionUsers()).rejects.toThrow('Não autorizado');
     });
 
+    it('deve disparar erro se usuario nao for coordenador', async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...PROFESSOR } as any);
+
+      await expect(getInstitutionUsers()).rejects.toThrow('Não autorizado');
+    });
+
     it('deve retornar vazio se usuario nao tem instituicao', async () => {
       vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-      
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: null, ...COORDINATOR } as any);
+
       const res = await getInstitutionUsers();
       expect(res).toEqual([]);
     });
 
     it('deve retornar usuarios da instituicao', async () => {
       vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
-      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1 } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...COORDINATOR } as any);
       vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: 1, name: 'User 1' }] as any);
-      
+
       const res = await getInstitutionUsers();
       expect(res).toEqual([{ id: 1, name: 'User 1' }]);
       expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -57,11 +67,18 @@ describe('Coordinator Actions', () => {
       await expect(getPendingInvitationsAction()).rejects.toThrow('Não autorizado');
     });
 
+    it('deve disparar erro se usuario nao for coordenador', async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...PROFESSOR } as any);
+
+      await expect(getPendingInvitationsAction()).rejects.toThrow('Não autorizado');
+    });
+
     it('deve buscar convites pendentes da instituicao', async () => {
       vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
-      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1 } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...COORDINATOR } as any);
       vi.mocked(prisma.invitation.findMany).mockResolvedValue([{ id: 'inv1' }] as any);
-      
+
       const res = await getPendingInvitationsAction();
       expect(res).toEqual([{ id: 'inv1' }]);
       expect(prisma.invitation.findMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -70,6 +87,34 @@ describe('Coordinator Actions', () => {
           status: 'PENDING'
         })
       }));
+    });
+  });
+
+  describe('cancelInvitationAction', () => {
+    it('deve disparar erro se usuario nao for coordenador', async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...PROFESSOR } as any);
+
+      await expect(cancelInvitationAction('inv1')).rejects.toThrow('Não autorizado');
+    });
+
+    it('deve disparar erro se o convite nao pertence a instituicao do coordenador', async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...COORDINATOR } as any);
+      vi.mocked(prisma.invitation.findUnique).mockResolvedValue({ id: 'inv1', institutionId: 2 } as any);
+
+      await expect(cancelInvitationAction('inv1')).rejects.toThrow('Convite não encontrado');
+      expect(prisma.invitation.delete).not.toHaveBeenCalled();
+    });
+
+    it('deve cancelar o convite da propria instituicao', async () => {
+      vi.mocked(auth).mockResolvedValue({ user: { email: 'test@test.com' } } as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({ institutionId: 1, ...COORDINATOR } as any);
+      vi.mocked(prisma.invitation.findUnique).mockResolvedValue({ id: 'inv1', institutionId: 1 } as any);
+      vi.mocked(prisma.invitation.delete).mockResolvedValue({ id: 'inv1' } as any);
+
+      const res = await cancelInvitationAction('inv1');
+      expect(res).toEqual({ success: true });
     });
   });
 });

@@ -5,6 +5,14 @@ import { prisma } from "@/lib/prisma"
 import { getPromptForQuestionType } from "@/lib/ai/prompts"
 import { getEngineConfig } from "@/lib/ai/engines"
 import { logAiUsage } from "@/lib/ai/billing"
+import { resolveAiConfigForUser } from "@/lib/ai/account"
+import { consumeCredits } from "@/lib/ai/credits"
+
+const AI_ROUTING_INCLUDE = {
+    institution: { include: { account: true } },
+    account: true,
+    role: true,
+}
 
 async function imageUrlToBase64(url: string): Promise<string> {
     try {
@@ -28,35 +36,16 @@ export async function generateMathEquation(prompt: string) {
     try {
         const user = await prisma.user.findUnique({
             where: { email: session.user.email },
-            include: { institution: true }
+            include: AI_ROUTING_INCLUDE
         });
 
         if (!user) return { success: false, error: "Usuário não encontrado" };
 
-        let aiKey = "";
-        let aiModel = "";
-        let fallbackKey = "";
-        let fallbackModel = "";
-
-        // Roteamento Hierárquico: Instituição Integrada vs Customizada vs Admin Global
-        if (user.institution?.hasIntegratedAi || user.roleId === 1) {
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            aiKey = globalSettings?.globalAiKey || "";
-            aiModel = globalSettings?.globalAiModel || "gpt-4o";
-            
-            if (globalSettings?.savedAiKeys && Array.isArray(globalSettings.savedAiKeys)) {
-                const fb = (globalSettings.savedAiKeys as any[]).find((k) => k.isFallback);
-                if (fb) {
-                    fallbackKey = fb.key;
-                    fallbackModel = fb.model;
-                }
-            }
-        } else if (user.institution) {
-            aiKey = user.institution.customAiKey || "";
-            aiModel = user.institution.customAiModel || "gpt-4o";
-        } else {
-            return { success: false, error: "Sem acesso a uma API de IA configurada." };
+        const aiConfigResult = await resolveAiConfigForUser(user);
+        if (!aiConfigResult.success) {
+            return { success: false, error: aiConfigResult.error };
         }
+        const { aiKey, aiModel, fallbackKey, fallbackModel, accountId } = aiConfigResult.config;
 
         if (!aiKey) {
             return { success: false, error: "Chave de API não configurada no sistema. Verifique o painel administrativo." };
@@ -126,8 +115,8 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
         // Faturamento (Billing)
         const promptTokens = aiData.usage?.prompt_tokens || 0;
         const completionTokens = aiData.usage?.completion_tokens || 0;
-        
-        await logAiUsage(user.id, user.institutionId, finalBodyModel, promptTokens, completionTokens);
+
+        await logAiUsage(user.id, user.institutionId, finalBodyModel, promptTokens, completionTokens, accountId);
 
         // Sanitizar agressivamente a resposta da IA caso ela desobedeça o prompt
         latex = latex.replace(/```latex/gi, "")
@@ -151,7 +140,7 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
             // Se o ID do professor for fornecido (ex: entrega de aluno), buscamos direto
             user = await prisma.user.findUnique({
                 where: { id: teacherId },
-                include: { institution: true }
+                include: AI_ROUTING_INCLUDE
             });
         } else {
             // Fallback para sessão (ex: professor testando ou criando questões)
@@ -159,37 +148,22 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
             if (!session?.user?.email) return { success: false, error: "Não autorizado" };
             user = await prisma.user.findUnique({
                 where: { email: session.user.email },
-                include: { institution: true }
+                include: AI_ROUTING_INCLUDE
             });
         }
 
         if (!user) return { success: false, error: "Usuário/Professor não encontrado" };
 
-        let aiKey = "";
-        let aiModel = "";
-        let fallbackKey = "";
-        let fallbackModel = "";
-
-        if (user.institution?.hasIntegratedAi || user.roleId === 1) {
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            aiKey = globalSettings?.globalAiKey || "";
-            aiModel = globalSettings?.globalAiModel || "gpt-4o";
-            
-            if (globalSettings?.savedAiKeys && Array.isArray(globalSettings.savedAiKeys)) {
-                const fb = (globalSettings.savedAiKeys as any[]).find((k) => k.isFallback);
-                if (fb) {
-                    fallbackKey = fb.key;
-                    fallbackModel = fb.model;
-                }
-            }
-        } else if (user.institution) {
-            aiKey = user.institution.customAiKey || "";
-            aiModel = user.institution.customAiModel || "gpt-4o";
-        } else {
-            return { success: false, error: "Sem acesso a uma IA configurada." };
+        const aiConfigResult = await resolveAiConfigForUser(user);
+        if (!aiConfigResult.success) {
+            return { success: false, error: aiConfigResult.error };
         }
+        const { aiKey, aiModel, fallbackKey, fallbackModel, accountId } = aiConfigResult.config;
 
         if (!aiKey) return { success: false, error: "IA não configurada." };
+
+        const creditsResult = await consumeCredits(accountId, 1);
+        if (!creditsResult.success) return { success: false, error: creditsResult.error };
 
         const systemPrompt = getPromptForQuestionType(questionType, correctionMode);
 
@@ -283,10 +257,10 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
         const promptTokens = aiData.usage?.prompt_tokens || 0;
         const completionTokens = aiData.usage?.completion_tokens || 0;
         
-        await logAiUsage(user.id, user.institutionId, finalBodyModel, promptTokens, completionTokens);
+        await logAiUsage(user.id, user.institutionId, finalBodyModel, promptTokens, completionTokens, accountId);
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             score: Math.min(100, Math.max(0, Number(result.score) || 0)),
             feedback: result.feedback || "Sem comentários adicionais."
         };
@@ -300,24 +274,23 @@ export async function gradePhysicalExam(teacherId: number, answerKeyImages: stri
     try {
         const user = await prisma.user.findUnique({
             where: { id: teacherId },
-            include: { institution: true }
+            include: AI_ROUTING_INCLUDE
         });
 
         if (!user) return { success: false, error: "Usuário não encontrado" };
 
-        let aiKey = "";
-        let aiModel = "";
-
-        if (user.institution?.hasIntegratedAi || user.roleId === 1) {
-            const globalSettings = await prisma.globalSettings.findUnique({ where: { id: 1 } });
-            aiKey = globalSettings?.globalAiKey || "";
-            aiModel = globalSettings?.globalAiModel || "gpt-4o";
-        } else if (user.institution) {
-            aiKey = user.institution.customAiKey || "";
-            aiModel = user.institution.customAiModel || "gpt-4o";
+        const aiConfigResult = await resolveAiConfigForUser(user);
+        if (!aiConfigResult.success) {
+            return { success: false, error: aiConfigResult.error };
         }
+        const { aiKey, aiModel, accountId } = aiConfigResult.config;
 
         if (!aiKey) return { success: false, error: "IA não configurada." };
+
+        // 1 crédito por página fotografada da prova do aluno (as imagens do gabarito não contam).
+        const creditsToConsume = Math.max(1, studentImages.length);
+        const creditsResult = await consumeCredits(accountId, creditsToConsume);
+        if (!creditsResult.success) return { success: false, error: creditsResult.error };
 
         const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
 
@@ -399,7 +372,7 @@ O retorno DEVE ser um JSON estrito no seguinte formato:
         const promptTokens = data.usage?.prompt_tokens || 0;
         const completionTokens = data.usage?.completion_tokens || 0;
         
-        await logAiUsage(user.id, user.institutionId, bodyModel, promptTokens, completionTokens);
+        await logAiUsage(user.id, user.institutionId, bodyModel, promptTokens, completionTokens, accountId);
 
         return { success: true, result };
     } catch (e: any) {
