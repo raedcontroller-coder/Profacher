@@ -120,7 +120,7 @@ export async function getPlans() {
   return prisma.plan.findMany({ orderBy: { priceInCents: 'asc' } });
 }
 
-export async function updatePlanAction(planId: number, data: { credits?: number | null, priceInCents?: number, active?: boolean }) {
+export async function updatePlanAction(planId: number, data: { credits?: number | null, priceInCents?: number, active?: boolean, stripePriceId?: string | null }) {
   const session = await auth()
   if (!session || (session.user as any).role !== ROLES.ADMIN) {
     throw new Error("Não autorizado")

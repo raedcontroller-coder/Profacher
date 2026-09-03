@@ -34,13 +34,24 @@ export async function loginAction(prevState: LoginState, formData: FormData): Pr
     // Buscar o cargo para redirecionamento dinâmico
     const userRole = await prisma.user.findUnique({
       where: { email },
-      select: { role: { select: { name: true } } }
+      select: {
+        accountId: true,
+        role: { select: { name: true } },
+        account: { select: { subscription: { select: { status: true, planId: true } } } },
+      }
     });
 
     let redirectTo = "/dashboard"; // Default fallback
     if (userRole?.role.name === "ADMIN") redirectTo = "/admin";
     else if (userRole?.role.name === "COORDINATOR") redirectTo = "/coordinator";
-    else if (userRole?.role.name === "PROFESSOR") redirectTo = "/professor";
+    else if (userRole?.role.name === "PROFESSOR") {
+      // Professor independente que nunca escolheu um plano (nem resgatou VIP) ainda não
+      // pode usar a plataforma de graça indefinidamente — precisa passar pela escolha de plano.
+      const subscription = userRole.account?.subscription;
+      redirectTo = (userRole.accountId && subscription?.status === "TRIAL" && !subscription.planId)
+        ? "/register-professor/choose-plan"
+        : "/professor";
+    }
 
     await signIn("credentials", {
       email,
