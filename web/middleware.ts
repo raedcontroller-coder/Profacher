@@ -4,7 +4,7 @@ import { authConfig } from "./auth.config";
 export default NextAuth(authConfig).auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
-  const isPublicPage = req.nextUrl.pathname.startsWith("/prova") || req.nextUrl.pathname.startsWith("/register") || req.nextUrl.pathname.startsWith("/verify-email");
+  const isPublicPage = req.nextUrl.pathname === "/" || req.nextUrl.pathname.startsWith("/prova") || req.nextUrl.pathname.startsWith("/register") || req.nextUrl.pathname.startsWith("/verify-email");
 
   if (!isLoggedIn && !isAuthPage && !isPublicPage) {
     // Usa o AUTH_URL do ambiente se disponível.
@@ -27,6 +27,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public files (images, etc)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|bg.png|RaedLogo.svg).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|bg.png|RaedLogo.svg|blink.jpg).*)',
   ],
 };
