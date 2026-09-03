@@ -17,6 +17,7 @@ interface Plan {
   priceInCents: number;
   isFree: boolean;
   active: boolean;
+  stripePriceId: string | null;
 }
 
 interface IndividualAccount {
@@ -251,6 +252,7 @@ function DeleteProfessorModal({ account, professorName, onClose, onSuccess }: { 
 function PlanRow({ plan, onSaved }: { plan: Plan, onSaved: () => void }) {
   const [credits, setCredits] = useState(String(plan.credits ?? ''));
   const [price, setPrice] = useState((plan.priceInCents / 100).toFixed(2));
+  const [stripePriceId, setStripePriceId] = useState(plan.stripePriceId ?? '');
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -259,6 +261,7 @@ function PlanRow({ plan, onSaved }: { plan: Plan, onSaved: () => void }) {
       await updatePlanAction(plan.id, {
         credits: plan.isFree ? null : (Number(credits) || 0),
         priceInCents: Math.round(Number(price.replace(',', '.')) * 100),
+        stripePriceId: stripePriceId.trim() || null,
       });
       onSaved();
     } finally {
@@ -300,6 +303,15 @@ function PlanRow({ plan, onSaved }: { plan: Plan, onSaved: () => void }) {
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 className="w-24 bg-[#0d0e0f]/50 border border-outline-variant rounded-lg px-2 py-1.5 text-sm text-on-surface outline-none focus:border-primary"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[10px] text-gray-500 uppercase font-bold">Stripe Price ID</label>
+              <input
+                value={stripePriceId}
+                onChange={(e) => setStripePriceId(e.target.value)}
+                placeholder="price_..."
+                className="w-40 bg-[#0d0e0f]/50 border border-outline-variant rounded-lg px-2 py-1.5 text-sm text-on-surface outline-none focus:border-primary font-mono"
               />
             </div>
             <button
