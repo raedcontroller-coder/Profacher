@@ -30,6 +30,7 @@ export default function UnifiedStudentExamPage() {
   const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
   const answersRef = useRef<Record<number, any>>({});
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showDevToolsWarning, setShowDevToolsWarning] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -263,6 +264,33 @@ export default function UnifiedStudentExamPage() {
     };
   }, [step, submissionId, formData.code, formData.ra, examData?.id]);
 
+  // Sentinel: aviso de dissuasão ao tentar abrir o DevTools. Isto NÃO bloqueia nada de
+  // verdade (não existe bloqueio client-side confiável) e nada é reportado ao professor
+  // aqui — é só um susto visual. A proteção real do gabarito é feita no servidor (ver
+  // finishExamLive em professor/exams/actions.ts, que nunca envia a resposta certa ao
+  // cliente quando showScore é falso).
+  useEffect(() => {
+    if (step !== 'LIVE') return;
+
+    const isDevToolsShortcut = (e: KeyboardEvent) => {
+      if (e.key === 'F12') return true;
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c'].includes(key)) return true;
+      if ((e.ctrlKey || e.metaKey) && key === 'u') return true;
+      return false;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isDevToolsShortcut(e)) {
+        e.preventDefault();
+        setShowDevToolsWarning(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [step]);
+
   useEffect(() => {
     if (step === 'STARTED') {
       const timer = setTimeout(async () => {
@@ -422,6 +450,30 @@ export default function UnifiedStudentExamPage() {
     <div className="bg-[#121315] min-h-screen text-on-surface font-['Inter'] flex items-center justify-center p-6 relative overflow-hidden">
       <div className="fixed top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="fixed bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {showDevToolsWarning && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-300">
+          <div className="liquid-glass max-w-md w-full p-10 rounded-[2.5rem] border border-red-500/30 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500 border border-red-500/20">
+              <span className="material-symbols-outlined text-3xl">shield</span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em]">Sentinel · Alerta de Integridade</p>
+              <h2 className="text-2xl font-black text-white">Ação não permitida detectada</h2>
+            </div>
+            <p className="text-gray-400 leading-relaxed">
+              Tentativas de abrir as ferramentas de desenvolvedor durante a prova são registradas
+              e podem levar ao cancelamento da sua avaliação. Continue respondendo normalmente.
+            </p>
+            <button
+              onClick={() => setShowDevToolsWarning(false)}
+              className="w-full py-4 bg-primary text-black rounded-2xl font-black hover:scale-[1.02] transition-all"
+            >
+              ENTENDI, VOU CONTINUAR
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-3xl relative z-10 transition-all duration-700">
         

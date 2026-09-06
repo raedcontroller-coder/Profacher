@@ -926,12 +926,25 @@ export async function finishExamLive(submissionId: string) {
       }
     });
 
-    return { 
-      success: true, 
+    // Se o professor optou por não liberar o resultado na hora, o gabarito não pode
+    // viajar para o cliente de jeito nenhum (nem escondido na tela) — senão um aluno
+    // que termina antes consegue ver a resposta certa pela aba de rede e repassar
+    // pra quem ainda está fazendo a prova, furando o antifraude.
+    const clientDetails = submission.exam.showScore
+      ? details
+      : details.map(({ correctAnswer, tfResult, ...rest }) => ({
+          ...rest,
+          feedback: rest.type === 'MULTIPLE_CHOICE' && typeof rest.feedback === 'string' && rest.feedback.startsWith('Resposta incorreta')
+            ? 'Resposta registrada. Aguarde a liberação do resultado pelo professor.'
+            : rest.feedback,
+        }));
+
+    return {
+      success: true,
       showScore: submission.exam.showScore,
       score: totalScore,
       maxScore: maxScore,
-      details: details
+      details: clientDetails
     };
   } catch (e: any) {
     console.error("Erro ao finalizar prova live:", e);
