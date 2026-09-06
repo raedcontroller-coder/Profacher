@@ -33,6 +33,9 @@ sales.md
 exemplo.pdf
 test-minio.ts
 
+# Internal research notes
+research/
+
 # Loose media and test files
 /blink.jpg
 /blink.png
