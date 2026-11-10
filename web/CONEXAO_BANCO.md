@@ -7,7 +7,7 @@ Quando o túnel cai, o erro no VS Code costuma ser `Can't reach database server`
 
 **Solução**: Abra um novo PowerShell e rode o comando com "keep-alive" (para não cair sozinho):
 ```powershell
-ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -L 5433:10.0.1.7:5432 root@62.171.175.197
+ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -L 5433:10.0.1.59:5432 root@62.171.175.197
 ```
 *Mantenha essa janela aberta. Se fechá-la, a conexão morre.*
 
@@ -19,9 +19,11 @@ O Coolify pode trocar o IP interno (`10.0.1.7`) se reiniciar.
 **Como verificar**:
 No terminal do **Servidor**, rode:
 ```bash
-docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -q -f name=postgres)
+docker inspect e75b65ccf09d | grep IPAddress
 ```
-Se o número for diferente de `10.0.1.7`, você precisa atualizar o comando do SSH (passo 1) e o arquivo `.env`.
+*(ou pelo nome do container: `docker inspect x397rfv45z1ifmls6j4h4s8j | grep IPAddress`)*
+
+Se o número for diferente de `10.0.1.59`, você precisa atualizar o comando do SSH (passo 1) e o arquivo `.env`.
 
 ---
 

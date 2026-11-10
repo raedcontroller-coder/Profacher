@@ -38,7 +38,7 @@ There is no local Postgres. `DATABASE_URL` in `web/.env` points at `127.0.0.1:54
 works with an SSH tunnel open in a separate terminal:
 
 ```powershell
-ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -L 5433:10.0.1.7:5432 root@62.171.175.197
+ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -L 5433:10.0.1.59:5432 root@62.171.175.197
 ```
 
 If it drops (common), `npm run dev` starts fine but every DB-backed request fails with

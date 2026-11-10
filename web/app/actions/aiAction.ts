@@ -52,7 +52,7 @@ export async function generateMathEquation(prompt: string) {
         }
 
         async function attemptMathGeneration(modelToUse: string, keyToUse: string) {
-            const { endpoint, bodyModel, headers } = getEngineConfig(modelToUse, keyToUse);
+            const { endpoint, bodyModel, headers, usageModel } = getEngineConfig(modelToUse, keyToUse);
 
         const response = await fetch(endpoint, {
             method: "POST",
@@ -88,7 +88,7 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
             }
 
             const data = await response.json();
-            return { data, bodyModel };
+            return { data, bodyModel: usageModel }; // usageModel = nome registrado no billing
         }
 
         let aiData: any;
@@ -194,7 +194,7 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
         }
 
         async function attemptGrading(modelToUse: string, keyToUse: string) {
-            const { endpoint, bodyModel, headers } = getEngineConfig(modelToUse, keyToUse);
+            const { endpoint, bodyModel, headers, usageModel } = getEngineConfig(modelToUse, keyToUse);
             const bodyPayload = {
                 model: bodyModel,
                 messages: [
@@ -224,7 +224,7 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
             }
 
             const data = await response.json();
-            return { data, bodyModel };
+            return { data, bodyModel: usageModel }; // usageModel = nome registrado no billing
         }
 
         let aiData: any;
@@ -292,7 +292,7 @@ export async function gradePhysicalExam(teacherId: number, answerKeyImages: stri
         const creditsResult = await consumeCredits(accountId, creditsToConsume);
         if (!creditsResult.success) return { success: false, error: creditsResult.error };
 
-        const { endpoint, bodyModel, headers } = getEngineConfig(aiModel, aiKey);
+        const { endpoint, bodyModel, headers, usageModel } = getEngineConfig(aiModel, aiKey);
 
         const systemPrompt = `Você é um avaliador mestre de provas físicas.
 O professor forneceu imagens do gabarito oficial e imagens da prova de um aluno.
@@ -372,7 +372,7 @@ O retorno DEVE ser um JSON estrito no seguinte formato:
         const promptTokens = data.usage?.prompt_tokens || 0;
         const completionTokens = data.usage?.completion_tokens || 0;
         
-        await logAiUsage(user.id, user.institutionId, bodyModel, promptTokens, completionTokens, accountId);
+        await logAiUsage(user.id, user.institutionId, usageModel, promptTokens, completionTokens, accountId);
 
         return { success: true, result };
     } catch (e: any) {
