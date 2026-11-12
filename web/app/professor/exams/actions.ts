@@ -224,6 +224,7 @@ export async function getExamForMonitor(examId: number) {
             finishedAt: true,
             score: true,
             isExpelled: true,
+            isPhysical: true,
             focusLoses: true,
             answers: true,
             correctionDetails: true
@@ -798,7 +799,7 @@ export async function finishExamLive(submissionId: string) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Avaliado pela IA (Objetiva + Justificativa)." };
               }
-              return { points: 0, feedback: "⚠️ Correção Pendente: Ocorreu uma falha de comunicação com a Inteligência Artificial. Sua resposta foi salva em segurança e será corrigida manualmente pelo professor." };
+              return { points: 0, feedback: `⚠️ Correção Pendente: ${result.error || "Ocorreu uma falha de comunicação com a Inteligência Artificial."} Sua resposta foi salva em segurança e será corrigida pelo professor.` };
             })()
           });
         }
@@ -868,7 +869,7 @@ export async function finishExamLive(submissionId: string) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Corrigido pela IA." };
               }
-              return { points: 0, feedback: "⚠️ Correção Pendente: Ocorreu uma falha de comunicação com a Inteligência Artificial. Sua resposta foi salva em segurança e será corrigida manualmente pelo professor." };
+              return { points: 0, feedback: `⚠️ Correção Pendente: ${result.error || "Ocorreu uma falha de comunicação com a Inteligência Artificial."} Sua resposta foi salva em segurança e será corrigida pelo professor.` };
             })()
           });
         }
@@ -897,7 +898,7 @@ export async function finishExamLive(submissionId: string) {
                 const earned = (result.score! / 100) * q.points;
                 return { points: earned, feedback: result.feedback || "Interação avaliada pela IA." };
               }
-              return { points: 0, feedback: "⚠️ Correção Pendente: Ocorreu uma falha de comunicação com a Inteligência Artificial. Sua resposta foi salva em segurança e será corrigida manualmente pelo professor." };
+              return { points: 0, feedback: `⚠️ Correção Pendente: ${result.error || "Ocorreu uma falha de comunicação com a Inteligência Artificial."} Sua resposta foi salva em segurança e será corrigida pelo professor.` };
             })()
           });
         } else {
@@ -1114,4 +1115,397 @@ export async function updateSubmissionQuickData(submissionId: string, studentNam
     return { success: false, error: e.message };
   }
 }
+
+function isAiPendingFeedback(feedback?: string | null): boolean {
+  if (!feedback || typeof feedback !== 'string') return false;
+  return (
+    feedback.includes('Correção Pendente') ||
+    feedback.includes('falha de comunicação com a Inteligência Artificial')
+  );
+}
+
+export async function regradeSubmissionWithAi(
+  submissionId: string,
+  options?: { onlyPending?: boolean; questionId?: number }
+) {
+  const session = await auth();
+  const userId = session?.user ? Number((session.user as any).id) : null;
+  const role = (session?.user as any)?.role;
+
+  if (!session || !userId || (role !== "PROFESSOR" && role !== "ADMIN" && role !== "COORDINATOR")) {
+    return { success: false, error: "Não autorizado" };
+  }
+
+  try {
+    const { gradeStudentAnswer } = await import("@/app/actions/aiAction");
+
+    const submission = await prisma.examSubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        exam: {
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+              include: {
+                question: {
+                  include: {
+                    options: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!submission) {
+      return { success: false, error: "Submissão não encontrada" };
+    }
+
+    if (role === "PROFESSOR" && submission.exam.teacherId !== userId) {
+      return { success: false, error: "Submissão não encontrada ou acesso negado" };
+    }
+
+    let firstError: string | undefined;
+    let correctedCount = 0;
+
+    // Caso 1: Prova Física Digitalizada
+    if (submission.isPhysical) {
+      const details = Array.isArray(submission.correctionDetails)
+        ? [...(submission.correctionDetails as any[])]
+        : [];
+
+      for (let i = 0; i < details.length; i++) {
+        const d = details[i];
+        const qId = d.questionId ?? d.questionNumber ?? i;
+
+        if (options?.questionId !== undefined && qId !== options.questionId) continue;
+        if (options?.onlyPending && !isAiPendingFeedback(d.feedback)) continue;
+        if (!d.studentAnswer || d.studentAnswer === 'Não respondida') continue;
+
+        const result = await gradeStudentAnswer(
+          d.question || `Questão ${qId}`,
+          d.correctAnswer || "Avalie a resposta do aluno",
+          d.studentAnswer,
+          submission.exam.teacherId,
+          "MODERATE"
+        );
+
+        if (!result.success) {
+          firstError = result.error || "Falha de comunicação com a Inteligência Artificial.";
+          if (!d.feedback || isAiPendingFeedback(d.feedback)) {
+            details[i] = { ...d, feedback: `⚠️ Correção Pendente: ${firstError}` };
+          }
+          break;
+        }
+
+        const maxPts = d.pointsTotal ?? d.maxPoints ?? 1;
+        const earned = (result.score! / 100) * maxPts;
+        details[i] = {
+          ...d,
+          pointsObtained: earned,
+          feedback: result.feedback || "Avaliado pela IA."
+        };
+        correctedCount++;
+      }
+
+      const newTotalScore = details.reduce((acc, item) => acc + (Number(item?.pointsObtained) || 0), 0);
+
+      await prisma.examSubmission.update({
+        where: { id: submissionId },
+        data: {
+          correctionDetails: details,
+          score: newTotalScore
+        }
+      });
+
+      if (firstError) {
+        return {
+          success: false,
+          error: firstError,
+          newTotalScore,
+          updatedDetails: details,
+          correctedCount
+        };
+      }
+
+      return {
+        success: true,
+        newTotalScore,
+        updatedDetails: details,
+        correctedCount
+      };
+    }
+
+    // Caso 2: Prova Digital
+    const answers = (submission.answers as any) || {};
+    const existingDetails = Array.isArray(submission.correctionDetails)
+      ? [...(submission.correctionDetails as any[])]
+      : [];
+
+    for (const eq of submission.exam.questions) {
+      const q = eq.question;
+      const rawAnswer = answers[q.id];
+      let studentAnswer = "";
+      let justification = "";
+
+      if (typeof rawAnswer === 'object' && rawAnswer !== null) {
+        if (q.type === 'MULTIPLE_CHOICE') {
+          studentAnswer = String(rawAnswer.optionId || "").trim();
+          justification = rawAnswer.justification || "";
+        } else if (q.type === 'CUSTOM_HTML') {
+          studentAnswer = String(rawAnswer.value || "").trim();
+          justification = rawAnswer.justification || "";
+        } else {
+          studentAnswer = String(rawAnswer || "").trim();
+        }
+      } else {
+        studentAnswer = String(rawAnswer || "").trim();
+      }
+
+      const referenceAnswer = String(q.referenceAnswer || "").trim();
+
+      let detailIndex = existingDetails.findIndex((d: any) => d?.questionId === q.id);
+      if (detailIndex === -1) {
+        const newDetail: any = {
+          questionId: q.id,
+          question: q.content,
+          type: q.type,
+          studentAnswer: studentAnswer || "Não respondida",
+          pointsTotal: q.points,
+          pointsObtained: 0,
+          feedback: studentAnswer ? "" : "Questão não respondida."
+        };
+
+        if (studentAnswer && q.type === 'MULTIPLE_CHOICE' && !justification) {
+          const correctOption = q.options.find(opt => opt.isCorrect);
+          const selectedOption = q.options.find(opt => String(opt.id).trim() === studentAnswer);
+          newDetail.studentAnswer = selectedOption?.content || studentAnswer;
+          newDetail.correctAnswer = correctOption?.content || "---";
+          if (correctOption && studentAnswer === String(correctOption.id).trim()) {
+            newDetail.pointsObtained = q.points;
+            newDetail.feedback = "Parabéns! Você selecionou a alternativa correta.";
+          } else {
+            newDetail.feedback = `Resposta incorreta. A alternativa correta era a "${newDetail.correctAnswer}".`;
+          }
+        } else if (studentAnswer && q.type === 'TRUE_FALSE') {
+          let correctCount = 0;
+          const correctLabels: string[] = [];
+          const studentLabels: string[] = [];
+          const tfResult: any[] = [];
+          const studentAnswersObj = answers[q.id] || {};
+          q.options.forEach(opt => {
+            const expected = opt.isCorrect ? 'V' : 'F';
+            const studentVal = studentAnswersObj[opt.id] || '?';
+            const isCorrect = studentVal === expected;
+            correctLabels.push(`${opt.content}: ${expected}`);
+            studentLabels.push(`${opt.content}: ${studentVal}`);
+            tfResult.push({ statement: opt.content, studentVal, expectedVal: expected, isCorrect });
+            if (isCorrect) correctCount++;
+          });
+          newDetail.studentAnswer = "[DETEC_BACK] " + studentLabels.join(" | ");
+          newDetail.correctAnswer = correctLabels.join(" | ");
+          newDetail.tfResult = tfResult;
+          if (q.options.length > 0) {
+            newDetail.pointsObtained = (correctCount / q.options.length) * q.points;
+            newDetail.feedback = `Você acertou ${correctCount} de ${q.options.length} afirmações.`;
+          }
+        }
+
+        existingDetails.push(newDetail);
+        detailIndex = existingDetails.length - 1;
+      }
+
+      if (!studentAnswer && !(q.type === 'MATH' && typeof rawAnswer === 'object' && rawAnswer?.development)) {
+        continue;
+      }
+
+      const currentDetail = existingDetails[detailIndex];
+
+      // Filtrar se for apenas uma questão específica ou apenas pendentes
+      if (options?.questionId !== undefined && q.id !== options.questionId) {
+        continue;
+      }
+      if (options?.onlyPending && !isAiPendingFeedback(currentDetail.feedback) && currentDetail.feedback) {
+        continue;
+      }
+
+      const isExactMatch = Boolean(referenceAnswer) && studentAnswer.toLowerCase() === referenceAnswer.toLowerCase();
+
+      if (q.type === 'MULTIPLE_CHOICE' && justification) {
+        const correctOption = q.options.find(opt => opt.isCorrect);
+        const selectedOption = q.options.find(opt => String(opt.id).trim() === studentAnswer);
+        const correctText = correctOption?.content || "---";
+        const combinedInput = `Alternativa Selecionada: ${selectedOption?.content || 'Nenhuma'}\nJustificativa do Aluno: ${justification}`;
+        const prompt = `QUESTÃO OBJETIVA: ${q.content}\nGabarito Correto Esperado: ${correctText}`;
+        const ref = referenceAnswer || correctText;
+
+        const result = await gradeStudentAnswer(
+          prompt,
+          ref,
+          combinedInput,
+          submission.exam.teacherId,
+          q.correctionMode,
+          undefined,
+          undefined,
+          q.type
+        );
+
+        if (!result.success) {
+          firstError = result.error || "Falha de comunicação com a Inteligência Artificial.";
+          if (!currentDetail.feedback || isAiPendingFeedback(currentDetail.feedback)) {
+            existingDetails[detailIndex] = {
+              ...currentDetail,
+              feedback: `⚠️ Correção Pendente: ${firstError}`
+            };
+          }
+          break;
+        }
+
+        const earned = (result.score! / 100) * q.points;
+        existingDetails[detailIndex] = {
+          ...currentDetail,
+          pointsObtained: earned,
+          feedback: result.feedback || "Avaliado pela IA (Objetiva + Justificativa)."
+        };
+        correctedCount++;
+      } else if (q.type === 'ESSAY' || q.type === 'MATH') {
+        let devBase64 = "";
+        let finalStudentAnswer = studentAnswer;
+
+        if (q.type === 'MATH' && typeof rawAnswer === 'object' && rawAnswer !== null) {
+          finalStudentAnswer = String(rawAnswer.answer || "").trim();
+          devBase64 = rawAnswer.development || "";
+        }
+
+        if (isExactMatch && referenceAnswer && !devBase64 && options?.questionId !== q.id) {
+          existingDetails[detailIndex] = {
+            ...currentDetail,
+            pointsObtained: q.points,
+            feedback: "Resposta idêntica ao gabarito esperado."
+          };
+          continue;
+        }
+
+        if (referenceAnswer || devBase64 || finalStudentAnswer) {
+          const result = await gradeStudentAnswer(
+            q.content,
+            referenceAnswer || "Avalie a resposta de acordo com o enunciado da questão.",
+            finalStudentAnswer,
+            submission.exam.teacherId,
+            q.correctionMode,
+            devBase64,
+            q.referenceDevelopment ?? undefined,
+            q.type
+          );
+
+          if (!result.success) {
+            firstError = result.error || "Falha de comunicação com a Inteligência Artificial.";
+            if (!currentDetail.feedback || isAiPendingFeedback(currentDetail.feedback)) {
+              existingDetails[detailIndex] = {
+                ...currentDetail,
+                feedback: `⚠️ Correção Pendente: ${firstError}`
+              };
+            }
+            break;
+          }
+
+          const earned = (result.score! / 100) * q.points;
+          existingDetails[detailIndex] = {
+            ...currentDetail,
+            pointsObtained: earned,
+            feedback: result.feedback || "Corrigido pela IA."
+          };
+          correctedCount++;
+        }
+      } else if (q.type === 'CUSTOM_HTML') {
+        if (isExactMatch && referenceAnswer && options?.questionId !== q.id) {
+          existingDetails[detailIndex] = {
+            ...currentDetail,
+            pointsObtained: q.points,
+            feedback: "Interação perfeita com o resultado esperado."
+          };
+          continue;
+        }
+
+        if (referenceAnswer || justification || options?.questionId === q.id) {
+          const enunciation = q.content.includes(CODE_SEPARATOR)
+            ? q.content.split(CODE_SEPARATOR)[0]
+            : q.content;
+          const combinedInput = justification
+            ? `Interação: ${studentAnswer} | Justificativa: ${justification}`
+            : studentAnswer;
+
+          const result = await gradeStudentAnswer(
+            "QUESTÃO INTERATIVA: " + enunciation,
+            referenceAnswer || "Avalie a interação e justificativa",
+            combinedInput,
+            submission.exam.teacherId,
+            q.correctionMode,
+            undefined,
+            undefined,
+            q.type
+          );
+
+          if (!result.success) {
+            firstError = result.error || "Falha de comunicação com a Inteligência Artificial.";
+            if (!currentDetail.feedback || isAiPendingFeedback(currentDetail.feedback)) {
+              existingDetails[detailIndex] = {
+                ...currentDetail,
+                feedback: `⚠️ Correção Pendente: ${firstError}`
+              };
+            }
+            break;
+          }
+
+          const earned = (result.score! / 100) * q.points;
+          existingDetails[detailIndex] = {
+            ...currentDetail,
+            pointsObtained: earned,
+            feedback: result.feedback || "Interação avaliada pela IA."
+          };
+          correctedCount++;
+        }
+      }
+    }
+
+    const newTotalScore = existingDetails.reduce(
+      (acc, item) => acc + (Number(item?.pointsObtained) || 0),
+      0
+    );
+
+    await prisma.examSubmission.update({
+      where: { id: submissionId },
+      data: {
+        correctionDetails: existingDetails,
+        score: newTotalScore
+      }
+    });
+
+    if (firstError) {
+      return {
+        success: false,
+        error: firstError,
+        newTotalScore,
+        updatedDetails: existingDetails,
+        correctedCount
+      };
+    }
+
+    return {
+      success: true,
+      newTotalScore,
+      updatedDetails: existingDetails,
+      correctedCount
+    };
+  } catch (e: any) {
+    console.error("Erro ao recorrigir prova com IA:", e);
+    return {
+      success: false,
+      error: e?.message || "Erro inesperado ao tentar corrigir com a IA."
+    };
+  }
+}
+
 

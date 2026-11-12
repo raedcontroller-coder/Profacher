@@ -78,7 +78,7 @@ Exemplo 3 (Entrada: Função y igual a log de dez): y = \\log_{10}`
                     }
                 ],
                 temperature: 0.1, // temperatura baixa para maior consistência sintática
-                max_tokens: 300
+                max_tokens: 1000
             })
         });
 
@@ -200,7 +200,7 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
                 messages: [
                     {
                         role: "system",
-                        content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"analysis": "sua análise passo a passo secreta sobre a validade do raciocínio e cálculo antes de dar a nota", "score": number, "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota para o aluno.`
+                        content: systemPrompt + `\n\nOUTPUT: Retorne APENAS um objeto JSON no formato: {"analysis": "sua análise passo a passo secreta sobre a validade do raciocínio e cálculo antes de dar a nota", "score": number (inteiro de 0 a 100), "feedback": "string"}. NADA MAIS. O feedback deve ser uma explicação curta (máx 150 caracteres) justificando a nota para o aluno.`
                     },
                     {
                         role: "user",
@@ -208,7 +208,7 @@ export async function gradeStudentAnswer(questionContent: string, referenceAnswe
                     }
                 ],
                 temperature: 0,
-                max_tokens: 300,
+                max_tokens: 1200,
                 response_format: { type: "json_object" }
             };
 
