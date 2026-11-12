@@ -5,10 +5,24 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
-import { getExamForMonitor, kickStudent, getSubmissionDetails, updateManualGrade, updateSubmissionQuickData } from '../../actions';
+import { getExamForMonitor, kickStudent, getSubmissionDetails, updateManualGrade, updateSubmissionQuickData, regradeSubmissionWithAi } from '../../actions';
 import { generateTeacherSummaryPdf, generateFullDetailedClassPdf, generateExamPdf } from '@/lib/utils/pdf-generator';
 import MathRenderer from '@/components/shared/MathRenderer';
 import { Pagination } from '@/components/shared/Pagination';
+
+function isAiPendingFeedback(feedback?: string | null): boolean {
+  if (!feedback || typeof feedback !== 'string') return false;
+  return (
+    feedback.includes('Correção Pendente') ||
+    feedback.includes('falha de comunicação com a Inteligência Artificial')
+  );
+}
+
+function countSubmissionPendingAi(submission: any): number {
+  if (!submission?.finishedAt || submission?.isExpelled) return 0;
+  const details = Array.isArray(submission.correctionDetails) ? submission.correctionDetails : [];
+  return details.filter((d: any) => isAiPendingFeedback(d?.feedback)).length;
+}
 
 export default function ExamResultsPage() {
   const params = useParams();
@@ -36,6 +50,11 @@ export default function ExamResultsPage() {
   const [savingStudent, setSavingStudent] = useState(false);
   const [quickEditSubmission, setQuickEditSubmission] = useState<any>(null);
 
+  const [regradingSubmissionId, setRegradingSubmissionId] = useState<string | null>(null);
+  const [regradingQuestionId, setRegradingQuestionId] = useState<number | null>(null);
+  const [bulkRegrading, setBulkRegrading] = useState<{ active: boolean; current: number; total: number; studentName: string } | null>(null);
+  const [aiNotice, setAiNotice] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+
   useEffect(() => { setCurrentPage(1); }, [filterType]);
 
   // 1. Carregar dados da prova de forma periódica para monitorar entregas
@@ -53,6 +72,126 @@ export default function ExamResultsPage() {
     return () => clearInterval(interval);
   }, [examId]);
 
+  const handleRegradeSubmission = async (submissionId: string, onlyPending = false, questionId?: number) => {
+    setRegradingSubmissionId(submissionId);
+    if (questionId !== undefined) setRegradingQuestionId(questionId);
+    setAiNotice(null);
+
+    try {
+      const res = await regradeSubmissionWithAi(submissionId, { onlyPending, questionId });
+
+      setExam((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          submissions: (prev.submissions || []).map((s: any) =>
+            s.id === submissionId
+              ? {
+                  ...s,
+                  score: res.newTotalScore ?? s.score,
+                  correctionDetails: res.updatedDetails ?? s.correctionDetails
+                }
+              : s
+          )
+        };
+      });
+
+      if (selectedSubmission && selectedSubmission.id === submissionId) {
+        const refreshed = await getSubmissionDetails(submissionId);
+        if (refreshed.success) {
+          setSelectedSubmission(refreshed);
+        }
+      }
+
+      if (!res.success) {
+        setAiNotice({
+          type: 'error',
+          message: res.error || 'Não foi possível concluir a correção com a IA.'
+        });
+      } else {
+        setAiNotice({
+          type: 'success',
+          message: res.correctedCount
+            ? `Correção com IA concluída com sucesso (${res.correctedCount} ${res.correctedCount === 1 ? 'questão avaliada' : 'questões avaliadas'}).`
+            : 'Nenhuma questão precisava de correção por IA.'
+        });
+      }
+    } catch (err: any) {
+      setAiNotice({
+        type: 'error',
+        message: err?.message || 'Erro inesperado ao tentar corrigir com a IA.'
+      });
+    } finally {
+      setRegradingSubmissionId(null);
+      setRegradingQuestionId(null);
+    }
+  };
+
+  const handleBulkRegrade = async (onlyPending: boolean) => {
+    const finishedSubs = (exam?.submissions || []).filter((s: any) => s.finishedAt && !s.isExpelled);
+    const targets = onlyPending
+      ? finishedSubs.filter((s: any) => countSubmissionPendingAi(s) > 0)
+      : finishedSubs;
+
+    if (targets.length === 0) return;
+
+    setAiNotice(null);
+    let totalCorrectedQuestions = 0;
+
+    for (let i = 0; i < targets.length; i++) {
+      const sub = targets[i];
+      setBulkRegrading({
+        active: true,
+        current: i + 1,
+        total: targets.length,
+        studentName: sub.studentName
+      });
+
+      try {
+        const res = await regradeSubmissionWithAi(sub.id, { onlyPending });
+        totalCorrectedQuestions += res.correctedCount || 0;
+
+        setExam((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            submissions: (prev.submissions || []).map((s: any) =>
+              s.id === sub.id
+                ? {
+                    ...s,
+                    score: res.newTotalScore ?? s.score,
+                    correctionDetails: res.updatedDetails ?? s.correctionDetails
+                  }
+                : s
+            )
+          };
+        });
+
+        if (!res.success) {
+          setBulkRegrading(null);
+          setAiNotice({
+            type: 'error',
+            message: `Não foi possível corrigir a prova de ${sub.studentName}: ${res.error || 'Falha na comunicação com a IA.'}`
+          });
+          return;
+        }
+      } catch (err: any) {
+        setBulkRegrading(null);
+        setAiNotice({
+          type: 'error',
+          message: `Erro ao corrigir a prova de ${sub.studentName}: ${err?.message || 'Falha inesperada.'}`
+        });
+        return;
+      }
+    }
+
+    setBulkRegrading(null);
+    setAiNotice({
+      type: 'success',
+      message: `Correção em lote concluída! ${targets.length} ${targets.length === 1 ? 'prova processada' : 'provas processadas'} (${totalCorrectedQuestions} ${totalCorrectedQuestions === 1 ? 'questão avaliada' : 'questões avaliadas'} pela IA).`
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
@@ -60,6 +199,11 @@ export default function ExamResultsPage() {
       </div>
     );
   }
+
+  const allFinishedSubmissions = (exam?.submissions || []).filter((s: any) => s.finishedAt && !s.isExpelled);
+  const pendingAiSubmissions = allFinishedSubmissions.filter((s: any) => countSubmissionPendingAi(s) > 0);
+  const isBusyRegrading = Boolean(regradingSubmissionId || bulkRegrading?.active);
+
   return (
     <div className="min-h-screen bg-surface text-on-surface selection:bg-primary/30 selection:text-primary font-['Inter']">
       <Sidebar role="PROFESSOR" />
@@ -148,9 +292,106 @@ export default function ExamResultsPage() {
                    <span className="material-symbols-outlined text-sm">history_edu</span>
                    {loadingDetails ? 'Processando...' : 'Relatório Detalhado (Geral)'}
                  </button>
+                 {pendingAiSubmissions.length > 0 && (
+                   <button
+                     onClick={() => handleBulkRegrade(true)}
+                     disabled={isBusyRegrading}
+                     className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all shadow-lg disabled:opacity-50"
+                   >
+                     <span className={`material-symbols-outlined text-sm ${bulkRegrading?.active ? 'animate-spin' : ''}`}>
+                       {bulkRegrading?.active ? 'sync' : 'smart_toy'}
+                     </span>
+                     Corrigir Pendentes com IA ({pendingAiSubmissions.length})
+                   </button>
+                 )}
+                 {allFinishedSubmissions.length > 0 && (
+                   <button
+                     onClick={() => handleBulkRegrade(false)}
+                     disabled={isBusyRegrading}
+                     className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 border border-white/10 rounded-xl text-xs font-black transition-all disabled:opacity-50"
+                   >
+                     <span className={`material-symbols-outlined text-sm ${bulkRegrading?.active ? 'animate-spin' : ''}`}>
+                       {bulkRegrading?.active ? 'sync' : 'auto_awesome'}
+                     </span>
+                     Recorrigir Todas com IA
+                   </button>
+                 )}
               </div>
             </div>
           </header>
+
+          {bulkRegrading?.active && (
+            <div className="p-6 rounded-3xl bg-primary/10 border border-primary/30 space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-primary animate-spin">sync</span>
+                  <div>
+                    <p className="text-sm font-black text-white">
+                      Corrigindo provas com Inteligência Artificial ({bulkRegrading.current} de {bulkRegrading.total})
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Avaliando prova de <strong className="text-white">{bulkRegrading.studentName}</strong>...
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-primary">
+                  {Math.round((bulkRegrading.current / bulkRegrading.total) * 100)}%
+                </span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${(bulkRegrading.current / bulkRegrading.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {aiNotice && (
+            <div className={`p-5 rounded-3xl border flex items-start justify-between gap-4 animate-in fade-in duration-200 ${aiNotice.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-200' : 'bg-green-500/10 border-green-500/30 text-green-200'}`}>
+              <div className="flex items-start gap-3">
+                <span className={`material-symbols-outlined text-xl shrink-0 ${aiNotice.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+                  {aiNotice.type === 'error' ? 'error' : 'check_circle'}
+                </span>
+                <div className="space-y-1">
+                  <p className={`text-xs font-black uppercase tracking-widest ${aiNotice.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+                    {aiNotice.type === 'error' ? 'Não foi possível corrigir com a IA' : 'Correção por IA'}
+                  </p>
+                  <p className="text-sm font-medium leading-relaxed">{aiNotice.message}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAiNotice(null)}
+                className="text-gray-400 hover:text-white transition-colors shrink-0"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+          )}
+
+          {pendingAiSubmissions.length > 0 && !bulkRegrading?.active && (
+            <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-amber-400 text-2xl shrink-0">warning</span>
+                <div className="space-y-1">
+                  <p className="text-xs font-black uppercase tracking-widest text-amber-400">
+                    Correção da IA Pendente em {pendingAiSubmissions.length} {pendingAiSubmissions.length === 1 ? 'Prova' : 'Provas'}
+                  </p>
+                  <p className="text-xs text-amber-100/80 leading-relaxed">
+                    Algumas questões não puderam ser corrigidas pela IA no momento da entrega (por indisponibilidade do modelo ou saldo insuficiente). Você pode reprocessar todas agora ou corrigir individualmente.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleBulkRegrade(true)}
+                disabled={isBusyRegrading}
+                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-xs font-black uppercase tracking-wider shrink-0 flex items-center gap-2 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-base">smart_toy</span>
+                Corrigir Todas as Pendentes ({pendingAiSubmissions.length})
+              </button>
+            </div>
+          )}
 
           {(() => {
             const allSubs = exam?.submissions || [];
@@ -362,7 +603,10 @@ export default function ExamResultsPage() {
                          finishedAt: s.finishedAt,
                          score: s.score,
                          answers: s.answers || {},
-                         isExpelled: s.isExpelled
+                         correctionDetails: s.correctionDetails || [],
+                         focusLoses: s.focusLoses || 0,
+                         isExpelled: s.isExpelled,
+                         isPhysical: s.isPhysical
                       }));
 
                       // Aplicar Filtros
@@ -391,12 +635,15 @@ export default function ExamResultsPage() {
                         const totalQuestions = exam?._count?.questions || 0;
                         const answeredCount = Object.keys(p.answers || {}).length;
                         const progress = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
+                        const pendingAiCount = countSubmissionPendingAi(p);
+                        const hasPendingAi = pendingAiCount > 0;
+                        const isRegradingThisStudent = regradingSubmissionId === p.id;
 
                         return (
                           <tr key={i} className="group hover:bg-white/[0.02] transition-colors">
                             <td className="py-5 px-2">
                               <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${p.isExpelled ? 'bg-red-500/20 text-red-400' : p.finishedAt ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20 text-primary'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${p.isExpelled ? 'bg-red-500/20 text-red-400' : hasPendingAi ? 'bg-amber-500/20 text-amber-400' : p.finishedAt ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20 text-primary'}`}>
                                   {p.name?.charAt(0)}
                                 </div>
                                 <div>
@@ -432,9 +679,15 @@ export default function ExamResultsPage() {
                                {p.isExpelled ? (
                                  <span className="px-3 py-1 bg-red-500/10 text-red-500 text-[9px] font-black uppercase rounded-full border border-red-500/20">BLOQUEADO</span>
                                ) : p.finishedAt ? (
-                                 <div className="flex flex-col">
-                                    <span className="text-xs font-black text-blue-400">{p.score?.toFixed(1).replace('.', ',')} PTS</span>
+                                 <div className="flex flex-col gap-1">
+                                    <span className="text-xs font-black text-blue-400">{(p.score ?? 0).toFixed(1).replace('.', ',')} PTS</span>
                                     <span className="text-[8px] text-gray-500 uppercase font-bold">CONCLUÍDO</span>
+                                    {hasPendingAi && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-full text-[9px] font-black uppercase w-fit">
+                                        <span className="material-symbols-outlined text-[11px]">warning</span>
+                                        IA Pendente ({pendingAiCount})
+                                      </span>
+                                    )}
                                  </div>
                                ) : (
                                  <span className="px-3 py-1 bg-primary/10 text-primary text-[9px] font-black uppercase rounded-full border border-black/5 dark:border-white/[0.02]">EM CURSO</span>
@@ -442,6 +695,22 @@ export default function ExamResultsPage() {
                             </td>
                             <td className="py-5 px-2 text-right">
                                <div className="flex items-center justify-end gap-2">
+                                 {p.finishedAt && !p.isExpelled && (
+                                   <button
+                                     onClick={() => handleRegradeSubmission(p.id, hasPendingAi)}
+                                     disabled={isBusyRegrading}
+                                     className={hasPendingAi
+                                       ? "px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 hover:text-black text-amber-400 border border-amber-500/30 flex items-center gap-1.5 text-[10px] font-black transition-all uppercase disabled:opacity-50"
+                                       : "w-8 h-8 rounded-full border border-white/10 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-primary transition-all disabled:opacity-50"
+                                     }
+                                     title={hasPendingAi ? "Corrigir questões pendentes com IA" : "Recorrigir prova deste aluno com IA"}
+                                   >
+                                     <span className={`material-symbols-outlined text-sm ${isRegradingThisStudent ? 'animate-spin' : ''}`}>
+                                       {isRegradingThisStudent ? 'sync' : 'smart_toy'}
+                                     </span>
+                                     {hasPendingAi && (isRegradingThisStudent ? 'Corrigindo...' : 'Corrigir IA')}
+                                   </button>
+                                 )}
                                  <button 
                                    onClick={() => {
                                       setQuickEditSubmission(p);
@@ -495,7 +764,7 @@ export default function ExamResultsPage() {
            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedSubmission(null)} />
            <div className="relative w-full max-w-[1000px] h-[90vh] liquid-glass rounded-[3rem] border border-white/10 flex flex-col overflow-hidden min-w-0">
               
-              <header className="p-10 border-b border-white/5 flex items-center justify-between shrink-0">
+              <header className="p-10 border-b border-white/5 flex flex-wrap items-center justify-between gap-4 shrink-0">
                  <div className="space-y-1">
                     <h2 className="text-2xl font-black text-white">{selectedSubmission.studentName}</h2>
                     <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
@@ -504,14 +773,65 @@ export default function ExamResultsPage() {
                        Alertas Sentinel: {selectedSubmission.focusLoses || 0}
                     </p>
                  </div>
-                 <button onClick={() => setSelectedSubmission(null)} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 border border-white/5 transition-all">
-                   <span className="material-symbols-outlined">close</span>
-                 </button>
+                 <div className="flex items-center gap-3">
+                   {selectedSubmission.report?.some((it: any) => isAiPendingFeedback(it.feedback)) && (
+                     <button
+                       onClick={() => handleRegradeSubmission(selectedSubmission.id, true)}
+                       disabled={isBusyRegrading}
+                       className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase flex items-center gap-2 transition-all disabled:opacity-50"
+                     >
+                       <span className={`material-symbols-outlined text-base ${regradingSubmissionId === selectedSubmission.id ? 'animate-spin' : ''}`}>
+                         {regradingSubmissionId === selectedSubmission.id ? 'sync' : 'smart_toy'}
+                       </span>
+                       Corrigir Pendentes com IA
+                     </button>
+                   )}
+                   <button
+                     onClick={() => handleRegradeSubmission(selectedSubmission.id, false)}
+                     disabled={isBusyRegrading}
+                     className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 border border-white/10 text-xs font-black uppercase flex items-center gap-2 transition-all disabled:opacity-50"
+                   >
+                     <span className={`material-symbols-outlined text-base ${regradingSubmissionId === selectedSubmission.id ? 'animate-spin' : ''}`}>
+                       {regradingSubmissionId === selectedSubmission.id ? 'sync' : 'auto_awesome'}
+                     </span>
+                     Recorrigir Prova com IA
+                   </button>
+                   <button onClick={() => setSelectedSubmission(null)} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 border border-white/5 transition-all">
+                     <span className="material-symbols-outlined">close</span>
+                   </button>
+                 </div>
               </header>
 
               <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar bg-black/20">
+                 {aiNotice && (
+                   <div className={`p-5 rounded-3xl border flex items-start justify-between gap-4 ${aiNotice.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-200' : 'bg-green-500/10 border-green-500/30 text-green-200'}`}>
+                     <div className="flex items-start gap-3">
+                       <span className={`material-symbols-outlined text-xl shrink-0 ${aiNotice.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+                         {aiNotice.type === 'error' ? 'error' : 'check_circle'}
+                       </span>
+                       <div className="space-y-1">
+                         <p className={`text-xs font-black uppercase tracking-widest ${aiNotice.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>
+                           {aiNotice.type === 'error' ? 'Não foi possível corrigir com a IA' : 'Correção por IA'}
+                         </p>
+                         <p className="text-sm font-medium leading-relaxed">{aiNotice.message}</p>
+                       </div>
+                     </div>
+                     <button onClick={() => setAiNotice(null)} className="text-gray-400 hover:text-white transition-colors shrink-0">
+                       <span className="material-symbols-outlined text-lg">close</span>
+                     </button>
+                   </div>
+                 )}
+
                  {selectedSubmission.report.map((it: any, idx: number) => {
-                    const isPending = it.feedback?.includes('Correção Pendente');
+                    const isPending = isAiPendingFeedback(it.feedback);
+                    const isAiEligible =
+                      isPending ||
+                      it.type === 'ESSAY' ||
+                      it.type === 'MATH' ||
+                      it.type === 'CUSTOM_HTML' ||
+                      (it.type === 'MULTIPLE_CHOICE' && typeof it.studentAnswer === 'string' && it.studentAnswer.includes('Justificativa:'));
+                    const isRegradingThisQuestion = regradingSubmissionId === selectedSubmission.id && regradingQuestionId === it.questionId;
+
                     return (
                     <div key={idx} className={`space-y-4 p-8 rounded-3xl bg-white/5 border ${isPending ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'border-white/5'}`}>
                        <div className="flex items-start gap-4 min-w-0">
@@ -525,6 +845,18 @@ export default function ExamResultsPage() {
                                    <div className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest ${it.pointsObtained >= it.points ? 'bg-green-500/10 border-green-500/20 text-green-400' : it.pointsObtained > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
                                        {it.pointsObtained?.toFixed(1).replace('.', ',') || '0,0'} / {it.points?.toFixed(1).replace('.', ',')} PTS
                                    </div>
+                                   {isAiEligible && (
+                                     <button
+                                       onClick={() => handleRegradeSubmission(selectedSubmission.id, false, it.questionId)}
+                                       disabled={isBusyRegrading}
+                                       className="w-8 h-8 rounded-full border border-white/10 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-primary transition-all disabled:opacity-50"
+                                       title="Corrigir esta questão com IA"
+                                     >
+                                       <span className={`material-symbols-outlined text-sm ${isRegradingThisQuestion ? 'animate-spin' : ''}`}>
+                                         {isRegradingThisQuestion ? 'sync' : 'smart_toy'}
+                                       </span>
+                                     </button>
+                                   )}
                                    <button 
                                      onClick={() => {
                                        setEditingQuestionId(it.questionId);
@@ -672,16 +1004,30 @@ export default function ExamResultsPage() {
                                            </div>
                                          </div>
                                        ) : it.feedback ? (
-                                         <div className={`mt-4 p-5 rounded-2xl flex items-start gap-3 border ${isPending ? 'bg-amber-500/10 border-amber-500/20' : 'bg-primary/5 border-primary/10'}`}>
-                                            <span className={`material-symbols-outlined text-xl ${isPending ? 'text-amber-500' : 'text-primary'}`}>
-                                              {isPending ? 'warning' : 'smart_toy'}
-                                            </span>
-                                            <div className="space-y-1">
-                                               <p className={`text-[10px] font-black uppercase tracking-widest ${isPending ? 'text-amber-500' : 'text-primary'}`}>
-                                                 {isPending ? 'Aviso do Sistema' : 'Feedback da IA / Professor'}
-                                               </p>
-                                               <p className={`text-xs italic leading-relaxed ${isPending ? 'text-amber-200/70' : 'text-gray-400'}`}>{it.feedback}</p>
+                                         <div className={`mt-4 p-5 rounded-2xl flex items-start justify-between gap-4 border ${isPending ? 'bg-amber-500/10 border-amber-500/20' : 'bg-primary/5 border-primary/10'}`}>
+                                            <div className="flex items-start gap-3">
+                                              <span className={`material-symbols-outlined text-xl ${isPending ? 'text-amber-500' : 'text-primary'}`}>
+                                                {isPending ? 'warning' : 'smart_toy'}
+                                              </span>
+                                              <div className="space-y-1">
+                                                 <p className={`text-[10px] font-black uppercase tracking-widest ${isPending ? 'text-amber-500' : 'text-primary'}`}>
+                                                   {isPending ? 'Correção IA Pendente' : 'Feedback da IA / Professor'}
+                                                 </p>
+                                                 <p className={`text-xs italic leading-relaxed ${isPending ? 'text-amber-200/70' : 'text-gray-400'}`}>{it.feedback}</p>
+                                              </div>
                                             </div>
+                                            {isPending && (
+                                              <button
+                                                onClick={() => handleRegradeSubmission(selectedSubmission.id, false, it.questionId)}
+                                                disabled={isBusyRegrading}
+                                                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black uppercase shrink-0 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                                              >
+                                                <span className={`material-symbols-outlined text-xs ${isRegradingThisQuestion ? 'animate-spin' : ''}`}>
+                                                  {isRegradingThisQuestion ? 'sync' : 'smart_toy'}
+                                                </span>
+                                                {isRegradingThisQuestion ? 'Corrigindo...' : 'Tentar IA Novamente'}
+                                              </button>
+                                            )}
                                          </div>
                                       ) : null}
                                    </>
