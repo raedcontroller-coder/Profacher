@@ -2,6 +2,8 @@ export interface AiEngineConfig {
     endpoint: string;
     bodyModel: string;
     headers: Record<string, string>;
+    /** Nome registrado no AiUsageLog/billing. Igual a bodyModel, exceto NVIDIA ("nvidia:<modelo>"), para o custo ser identificado pelo provedor. */
+    usageModel: string;
 }
 
 export function getEngineConfig(aiModel: string, aiKey: string): AiEngineConfig {
@@ -14,9 +16,20 @@ export function getEngineConfig(aiModel: string, aiKey: string): AiEngineConfig 
     }
 
     // Roteamento de APIs
-    if (aiModel === 'openrouter') {
+    // Provedores com nome de modelo livre (ver lib/ai/models.ts): "nvidia:<modelo>" e "openrouter:<modelo>".
+    // Checados primeiro porque o nome do modelo pode conter "deepseek", "gemini", "groq", etc., e cairia nos outros ramos.
+    if (aiModel.startsWith('nvidia:')) {
+        // NVIDIA NIM (build.nvidia.com), ex: "nvidia:meta/llama-3.2-90b-vision-instruct"
+        endpoint = "https://integrate.api.nvidia.com/v1/chat/completions";
+        bodyModel = aiModel.slice('nvidia:'.length).trim();
+    } else if (aiModel.startsWith('openrouter:')) {
+        // OpenRouter com modelo escolhido pelo admin, ex: "openrouter:anthropic/claude-3.5-sonnet"
         endpoint = "https://openrouter.ai/api/v1/chat/completions";
-        bodyModel = "openai/gpt-4o-mini"; // Fallback veloz e barato do OpenRouter caso selecionem o genérico
+        bodyModel = aiModel.slice('openrouter:'.length).trim() || "openai/gpt-4o-mini";
+    } else if (aiModel === 'openrouter') {
+        endpoint = "https://openrouter.ai/api/v1/chat/completions";
+        // Fallback veloz e barato do OpenRouter caso selecionem o genérico (valor legado, antes do campo de modelo livre)
+        bodyModel = "openai/gpt-4o-mini";
     } else if (aiModel.includes('deepseek')) {
         endpoint = "https://api.deepseek.com/chat/completions";
     } else if (aiModel.includes('groq')) {
@@ -39,5 +52,5 @@ export function getEngineConfig(aiModel: string, aiKey: string): AiEngineConfig 
         headers["X-Title"] = "Profacher 2.0"; // Obrigatório pelo OpenRouter
     }
 
-    return { endpoint, bodyModel, headers };
+    return { endpoint, bodyModel, headers, usageModel: endpoint.includes('integrate.api.nvidia.com') ? `nvidia:${bodyModel}` : bodyModel };
 }

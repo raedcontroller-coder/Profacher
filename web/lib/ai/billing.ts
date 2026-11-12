@@ -13,6 +13,10 @@ export function calculateAiCostInUSD(model: string, promptTokens: number, comple
         'llama-3.1-70b-versatile': { prompt: 0.00, completion: 0.00 }, // Groq API free tier
     };
 
+    // NVIDIA API Catalog (build.nvidia.com): créditos gratuitos de desenvolvimento, qualquer modelo.
+    // Ajustar aqui se passar a usar um plano pago da NVIDIA.
+    if (model.startsWith('nvidia:')) return 0;
+
     const normalizedModel = model.split('/').pop()?.toLowerCase() || model.toLowerCase();
 
     let rate = pricesPer1M[normalizedModel];

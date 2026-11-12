@@ -188,7 +188,15 @@ export default function Sidebar({ role }: SidebarProps) {
         <ProfessorCreditsIndicator isCollapsed={isCollapsed} />
       )}
       {role === 'PROFESSOR' && (
-        <div className="px-4">
+        <div className="px-4 space-y-2">
+          <Link
+            href="/professor/new-physical-exam"
+            className={`flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 rounded-2xl border border-black/5 dark:border-white/[0.02] group shadow-lg ${isCollapsed ? 'px-0' : 'px-4'}`}
+            title="Correção"
+          >
+            <span className="material-symbols-outlined text-2xl group-hover:scale-110 transition-transform shrink-0">document_scanner</span>
+            {!isCollapsed && <span className="font-bold text-body whitespace-nowrap">Correção</span>}
+          </Link>
           <Link
             href="/professor/new-exam"
             className={`flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 rounded-2xl border border-black/5 dark:border-white/[0.02] group shadow-lg ${isCollapsed ? 'px-0' : 'px-4'}`}
@@ -309,7 +317,14 @@ export default function Sidebar({ role }: SidebarProps) {
             <ProfessorCreditsIndicator isCollapsed={false} />
           )}
           {role === 'PROFESSOR' && (
-            <div className="px-4">
+            <div className="px-4 space-y-2">
+              <Link
+                href="/professor/new-physical-exam"
+                className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 px-4 rounded-2xl border border-black/5 dark:border-white/[0.02] font-bold"
+              >
+                <span className="material-symbols-outlined text-2xl">document_scanner</span>
+                <span>Correção</span>
+              </Link>
               <Link
                 href="/professor/new-exam"
                 className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary transition-all text-primary hover:text-black py-4 px-4 rounded-2xl border border-black/5 dark:border-white/[0.02] font-bold"

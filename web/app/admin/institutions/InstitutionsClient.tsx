@@ -5,6 +5,17 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { getInstitutions, getInstitutionUsers, createInstitution, updateInstitution, deleteInstitution, createInstitutionUser } from './actions';
 import { Pagination } from '@/components/shared/Pagination';
+import AiModelPicker from '@/components/shared/AiModelPicker';
+import { isCustomModelIncomplete } from '@/lib/ai/models';
+
+// Modelos pré-definidos para instituições com chave própria.
+// OpenRouter e NVIDIA entram automaticamente no AiModelPicker com campo de nome livre.
+const INSTITUTION_AI_MODELS = [
+  { id: 'gpt-4o', name: 'OpenAI GPT-4o' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+  { id: 'deepseek-chat', name: 'Deepseek V3' },
+];
 
 interface User {
   id: number;
@@ -190,6 +201,11 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!institution) return;
+
+    if (!hasIntegratedAi && isCustomModelIncomplete(customAiModel)) {
+        setError("Informe o nome do modelo de IA da instituição.");
+        return;
+    }
     
     if (!confirming) {
         setConfirming(true);
@@ -274,17 +290,13 @@ function EditInstitutionModal({ isOpen, onClose, onSuccess, institution }: { isO
               <div className="space-y-4 pt-4 border-t border-outline-variant animate-in fade-in duration-300">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Modelo de IA da Instituição</label>
-                  <select 
+                  <AiModelPicker
                     value={customAiModel}
-                    onChange={(e) => setCustomAiModel(e.target.value)}
-                    className="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
-                  >
-                    <option value="gpt-4o">OpenAI GPT-4o</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                    <option value="deepseek-chat">Deepseek V3</option>
-                    <option value="openrouter">OpenRouter</option>
-                  </select>
+                    onChange={setCustomAiModel}
+                    presetModels={INSTITUTION_AI_MODELS}
+                    selectClassName="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                    inputClassName="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">API Key Própria</label>
@@ -414,6 +426,10 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!hasIntegratedAi && isCustomModelIncomplete(customAiModel)) {
+      setError("Informe o nome do modelo de IA da instituição.");
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -508,17 +524,13 @@ function RegisterInstitutionModal({ isOpen, onClose, onSuccess }: { isOpen: bool
               <div className="space-y-4 pt-4 border-t border-outline-variant animate-in fade-in duration-300">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Modelo de IA da Instituição</label>
-                  <select 
+                  <AiModelPicker
                     value={customAiModel}
-                    onChange={(e) => setCustomAiModel(e.target.value)}
-                    className="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
-                  >
-                    <option value="gpt-4o">OpenAI GPT-4o</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                    <option value="deepseek-chat">Deepseek V3</option>
-                    <option value="openrouter">OpenRouter</option>
-                  </select>
+                    onChange={setCustomAiModel}
+                    presetModels={INSTITUTION_AI_MODELS}
+                    selectClassName="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                    inputClassName="w-full bg-black/40 border border-outline-variant rounded-xl p-3 outline-none text-sm text-on-surface"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">API Key Própria</label>

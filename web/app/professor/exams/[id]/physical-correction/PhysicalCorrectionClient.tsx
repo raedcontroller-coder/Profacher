@@ -5,6 +5,8 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import Link from 'next/link';
 import { getPhysicalExamData, processPhysicalCorrection } from './actions';
+import { isAcceptedUploadType, ACCEPTED_UPLOAD_ACCEPT_ATTR } from '@/lib/utils/upload-validation';
+import { convertPdfToImageFiles } from '@/lib/utils/pdf-to-images';
 
 export default function PhysicalCorrectionClient({ examId, userName }: { examId: number, userName: string }) {
   const [exam, setExam] = useState<any>(null);
@@ -15,6 +17,7 @@ export default function PhysicalCorrectionClient({ examId, userName }: { examId:
   
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [report, setReport] = useState<any>(null);
+  const [isConvertingPdf, setIsConvertingPdf] = useState(false);
 
   useEffect(() => {
     async function loadExam() {
@@ -29,9 +32,33 @@ export default function PhysicalCorrectionClient({ examId, userName }: { examId:
     loadExam();
   }, [examId]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files as FileList)]);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+
+    const invalid = selected.filter((file) => !isAcceptedUploadType(file));
+    if (invalid.length > 0) {
+      alert(`Formato não suportado: ${invalid.map((f) => f.name).join(', ')}. Envie JPEG, PNG, WEBP, GIF ou PDF.`);
+    }
+
+    const valid = selected.filter((file) => isAcceptedUploadType(file));
+    if (valid.length === 0) return;
+
+    setIsConvertingPdf(true);
+    try {
+      const converted: File[] = [];
+      for (const file of valid) {
+        if (file.type === 'application/pdf') {
+          converted.push(...await convertPdfToImageFiles(file));
+        } else {
+          converted.push(file);
+        }
+      }
+      setFiles((prev) => [...prev, ...converted]);
+    } catch (err: any) {
+      alert(err.message || "Erro ao processar o PDF.");
+    } finally {
+      setIsConvertingPdf(false);
     }
   };
 
@@ -155,6 +182,7 @@ export default function PhysicalCorrectionClient({ examId, userName }: { examId:
                   <span className="bg-orange-500/20 text-orange-500 px-3 py-1 rounded-full text-sm font-bold">{files.length} folha(s)</span>
                 </div>
                 <p className="text-sm text-gray-400">Faça o upload ou tire fotos da prova do aluno. A IA lerá o nome, RA e corrigirá as questões com base no gabarito oficial.</p>
+                <p className="text-xs text-gray-500">Formatos aceitos: JPEG, PNG, WEBP, GIF ou PDF (cada página do PDF vira uma folha automaticamente).</p>
 
                 <div className="grid grid-cols-2 gap-4">
                   {files.map((file, i) => (
@@ -174,20 +202,30 @@ export default function PhysicalCorrectionClient({ examId, userName }: { examId:
                     </div>
                   ))}
 
-                  <button 
+                  <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/20 hover:border-orange-500/50 hover:bg-orange-500/5 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 group"
+                    disabled={isConvertingPdf}
+                    className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/20 hover:border-orange-500/50 hover:bg-orange-500/5 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-orange-500 group disabled:opacity-50 disabled:hover:border-white/20 disabled:hover:bg-transparent"
                   >
-                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-2xl">add</span>
-                    </div>
-                    <span className="font-bold text-sm">+ Adicionar folhas</span>
+                    {isConvertingPdf ? (
+                      <>
+                        <div className="w-8 h-8 border-2 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+                        <span className="font-bold text-sm">Convertendo PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <span className="material-symbols-outlined text-2xl">add</span>
+                        </div>
+                        <span className="font-bold text-sm">+ Adicionar folhas</span>
+                      </>
+                    )}
                   </button>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    accept={ACCEPTED_UPLOAD_ACCEPT_ATTR}
+                    multiple
+                    className="hidden"
                     ref={fileInputRef}
                     onChange={handleFileChange}
                   />

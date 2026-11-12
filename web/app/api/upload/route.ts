@@ -3,6 +3,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { s3Client, BUCKET_NAME } from "@/lib/s3-client"
 
 import { auth } from "@/auth"
+import { isAcceptedUploadType } from "@/lib/utils/upload-validation"
 
 export async function POST(req: Request) {
     try {
@@ -20,6 +21,13 @@ export async function POST(req: Request) {
 
         if (!file) {
             return NextResponse.json({ error: "Nenhum arquivo enviado." }, { status: 400 })
+        }
+
+        // Defesa em profundidade: o front-end já converte PDF em imagem e bloqueia
+        // formatos fora da lista antes de chegar aqui, mas essa rota nunca deve confiar
+        // só nisso (evita upload/armazenamento de um formato que a IA de visão não aceita).
+        if (!isAcceptedUploadType(file)) {
+            return NextResponse.json({ error: "Formato de arquivo não suportado." }, { status: 400 })
         }
 
         const buffer = Buffer.from(await file.arrayBuffer())

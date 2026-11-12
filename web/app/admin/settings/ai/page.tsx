@@ -5,6 +5,8 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import { getGlobalAiSettings, updateGlobalAiSettings } from './actions';
 import { useSession } from 'next-auth/react';
+import AiModelPicker from '@/components/shared/AiModelPicker';
+import { isCustomModelIncomplete } from '@/lib/ai/models';
 
 const AI_MODELS = [
     { id: 'gpt-4o', name: 'OpenAI - GPT 4o' },
@@ -13,10 +15,10 @@ const AI_MODELS = [
     { id: 'gemini-1.5-pro', name: 'Google - Gemini 1.5 Pro' },
     { id: 'claude-3-5-sonnet', name: 'Anthropic - Claude 3.5 Sonnet' },
     { id: 'deepseek-chat', name: 'Deepseek - V3' },
-    { id: 'openrouter', name: 'OpenRouter (Multi-Model)' },
     { id: 'groq-llama-3.2-11b-vision-preview', name: 'Groq - Llama 3.2 11B Vision' },
     { id: 'groq-llama-3.2-90b-vision-preview', name: 'Groq - Llama 3.2 90B Vision' },
     { id: 'groq-llama-3.1-70b-versatile', name: 'Groq - Llama 3.1 70B Versatile' },
+    // OpenRouter e NVIDIA: o nome do modelo é digitado livremente (ver AiModelPicker / lib/ai/models.ts)
 ];
 
 export default function AiSettingsPage() {
@@ -108,8 +110,15 @@ export default function AiSettingsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setMessage(null);
+
+    const incomplete = savedKeys.find(k => isCustomModelIncomplete(k.model));
+    if (incomplete) {
+      setMessage({ type: 'error', text: `Informe o nome do modelo na chave "${incomplete.label || 'sem identificador'}".` });
+      return;
+    }
+
+    setSaving(true);
 
     const result = await updateGlobalAiSettings({ savedAiKeys: savedKeys });
 
@@ -206,15 +215,14 @@ export default function AiSettingsPage() {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-2">Motor / Provedor</label>
                                             <div className="relative group">
-                                                <select 
+                                                <AiModelPicker
                                                     value={item.model}
-                                                    onChange={(e) => handleUpdateKey(item.id, 'model', e.target.value)}
-                                                    className="w-full bg-[#1a1c1e] border border-outline-variant rounded-xl p-4 pr-10 outline-none focus:border-primary transition-all text-sm text-on-surface cursor-pointer"
-                                                >
-                                                    {AI_MODELS.map(m => (
-                                                        <option key={m.id} value={m.id} className="bg-[#1a1c1e]">{m.name}</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(model) => handleUpdateKey(item.id, 'model', model)}
+                                                    presetModels={AI_MODELS}
+                                                    selectClassName="w-full bg-[#1a1c1e] border border-outline-variant rounded-xl p-4 pr-10 outline-none focus:border-primary transition-all text-sm text-on-surface cursor-pointer"
+                                                    inputClassName="w-full bg-[#1a1c1e] border border-outline-variant rounded-xl p-4 outline-none focus:border-primary transition-all text-sm text-on-surface placeholder:text-gray-700"
+                                                    optionClassName="bg-[#1a1c1e]"
+                                                />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
@@ -223,7 +231,7 @@ export default function AiSettingsPage() {
                                                 type="password"
                                                 value={item.key}
                                                 onChange={(e) => handleUpdateKey(item.id, 'key', e.target.value)}
-                                                placeholder="sk-..."
+                                                placeholder="sk-... / nvapi-..."
                                                 className="w-full bg-[#1a1c1e] border border-outline-variant rounded-xl p-4 outline-none focus:border-primary transition-all text-sm text-on-surface placeholder:text-gray-700"
                                             />
                                         </div>

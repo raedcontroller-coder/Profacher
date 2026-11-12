@@ -6,6 +6,8 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import TopBar from '@/components/dashboard/TopBar';
 import Link from 'next/link';
 import { savePhysicalExam } from './actions';
+import { isAcceptedUploadType, ACCEPTED_UPLOAD_ACCEPT_ATTR } from '@/lib/utils/upload-validation';
+import { convertPdfToImageFiles } from '@/lib/utils/pdf-to-images';
 
 export default function NewPhysicalExamClient({ userName }: { userName: string }) {
   const router = useRouter();
@@ -19,10 +21,35 @@ export default function NewPhysicalExamClient({ userName }: { userName: string }
   
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConvertingPdf, setIsConvertingPdf] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files as FileList)]);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = ''; // permite selecionar o mesmo arquivo de novo depois de remover
+
+    const invalid = selected.filter((file) => !isAcceptedUploadType(file));
+    if (invalid.length > 0) {
+      alert(`Formato não suportado: ${invalid.map((f) => f.name).join(', ')}. Envie JPEG, PNG, WEBP, GIF ou PDF.`);
+    }
+
+    const valid = selected.filter((file) => isAcceptedUploadType(file));
+    if (valid.length === 0) return;
+
+    setIsConvertingPdf(true);
+    try {
+      const converted: File[] = [];
+      for (const file of valid) {
+        if (file.type === 'application/pdf') {
+          converted.push(...await convertPdfToImageFiles(file));
+        } else {
+          converted.push(file);
+        }
+      }
+      setFiles((prev) => [...prev, ...converted]);
+    } catch (err: any) {
+      alert(err.message || "Erro ao processar o PDF.");
+    } finally {
+      setIsConvertingPdf(false);
     }
   };
 
@@ -202,6 +229,7 @@ export default function NewPhysicalExamClient({ userName }: { userName: string }
                   <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-sm font-bold">{files.length} folha(s)</span>
                 </div>
                 <p className="text-sm text-gray-400">Tire fotos claras do gabarito oficial ou faça o upload das imagens. Adicione uma folha por vez se necessário.</p>
+                <p className="text-xs text-gray-500">Formatos aceitos: JPEG, PNG, WEBP, GIF ou PDF (cada página do PDF vira uma folha automaticamente).</p>
 
                 <div className="grid grid-cols-2 gap-4">
                   {files.map((file, i) => (
@@ -227,20 +255,30 @@ export default function NewPhysicalExamClient({ userName }: { userName: string }
                   ))}
 
                   {/* Botão de Adicionar */}
-                  <button 
+                  <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/20 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-primary group"
+                    disabled={isConvertingPdf}
+                    className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/20 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-primary group disabled:opacity-50 disabled:hover:border-white/20 disabled:hover:bg-transparent"
                   >
-                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
-                    </div>
-                    <span className="font-bold text-sm">+ Adicionar mais folhas</span>
+                    {isConvertingPdf ? (
+                      <>
+                        <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        <span className="font-bold text-sm">Convertendo PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
+                        </div>
+                        <span className="font-bold text-sm">+ Adicionar mais folhas</span>
+                      </>
+                    )}
                   </button>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    accept={ACCEPTED_UPLOAD_ACCEPT_ATTR}
+                    multiple
+                    className="hidden"
                     ref={fileInputRef}
                     onChange={handleFileChange}
                   />
