@@ -1,16 +1,21 @@
-# Stage 1: Install dependencies
-FROM node:20-slim AS deps
+# Stage 1: Base image com openssl instalado uma única vez
+FROM node:20-slim AS base
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
+
+# Stage 2: Dependencies & Build unificados (elimina a cópia física pesada de node_modules entre containers)
+FROM base AS builder
+# Copia apenas os manifestos primeiro para aproveitar o cache de camadas do Docker
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-RUN npm ci --legacy-peer-deps
+
+# Instalação com cache mount do BuildKit para acelerar downloads e reutilizar pacotes no host
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
+
 RUN npx prisma generate
 
-# Stage 2: Build the application
-FROM node:20-slim AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copia o código-fonte após dependências e Prisma Client estarem prontos
 COPY . .
 
 # Argumentos de Build para variáveis NEXT_PUBLIC_ (Injetadas no bundle JS do Cliente)
@@ -25,16 +30,13 @@ ENV NEXT_PUBLIC_PUSHER_PORT=$NEXT_PUBLIC_PUSHER_PORT
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Stage 3: Production server
-FROM node:20-slim AS runner
-WORKDIR /app
+# Stage 3: Production server (herda de base, já possui openssl configurado)
+FROM base AS runner
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -43,6 +45,6 @@ COPY --from=builder /app/prisma ./prisma
 
 USER nextjs
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 CMD ["node", "server.js"]

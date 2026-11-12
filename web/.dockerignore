@@ -15,3 +15,8 @@ yarn-debug.log*
 yarn-error.log*
 .gitignore
 scripts
+tests
+test-results
+playwright-report
+scratch
+*.md
